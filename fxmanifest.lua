@@ -9,14 +9,19 @@ shared_scripts {
 }
 
 server_scripts {
-  "/server/server.lua"
+  '/server/helpers/allPlayersCatch.lua',
+  "/server/main.lua"
 }
 
 client_scripts {
-  "/client/functions.lua",
+  "/client/helpers/functions.lua",
   "/client/main.lua",
   "/client/services/mainMenu.lua",
   "/client/services/devTools.lua",
   "/client/services/boosters.lua",
   "/client/services/teleports.lua"
+}
+
+dependency = {
+  'vorp_menu'
 }

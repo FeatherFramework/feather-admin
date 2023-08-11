@@ -1,4 +1,5 @@
 CreateThread(function()
+    TriggerServerEvent('feather-admin:StorePlayersInfo')
     if Config.Setup.OpenMenu.button then
         while true do
             Wait(5)

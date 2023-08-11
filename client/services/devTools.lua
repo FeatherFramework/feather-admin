@@ -105,19 +105,15 @@ function showBones()
 end
 
 function devGunFunct()
-    local coordsText, headingText, modelText = nil, nil, nil
+    local playerId = PlayerId()
     while devGun do
         Wait(5)
-        if IsPlayerFreeAiming(PlayerId()) then
-            local entity = getEntity(PlayerId())
-            local coords = GetEntityCoords(entity)
-            local heading = GetEntityHeading(entity)
-            local model = GetEntityModel(entity)
-            coordsText = coords
-            headingText = heading
-            modelText = model
+        if IsPlayerFreeAiming(playerId) then
+            local bool, entity = GetEntityPlayerIsFreeAimingAt(playerId)
+            if bool then
+                local _text = ("Coords: " .. GetEntityCoords(entity) .. "\nHeading: " .. GetEntityHeading(entity) .. "\nHash: " .. GetEntityModel(entity))
+                DrawTxt(_text, 0.0, 0.5, 0.4, 0.4, true, 255, 255, 255, 150, false)
+            end
         end
-        local _text = ("Coords: " .. coordsText .. "\nHeading: " .. headingText .. "\nHash: " .. modelText)
-        DrawTxt(_text, 0.0, 0.5, 0.4, 0.4, true, 255, 255, 255, 150, false)
     end
 end
