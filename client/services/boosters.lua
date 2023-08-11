@@ -2,35 +2,28 @@
 local godMode, visible, infStamina, noClip = false, false, false, false
 
 ----- Menus -----
-function boostersMenu()
+function boostersMenu(playerId) --catching the player id so it can be used for either the admin using the menu or if we do pass an id it can be used to modify another player allowing admins to use booster options on other players not just themselves
+    local isAdmin = true --is admin is used to hide options that only works on admin client
+    if playerId == nil or false then
+        playerId = GetPlayerServerId(PlayerId())
+    else
+        isAdmin = false
+    end
     VORPMenu.CloseAll()
 
     local elements = {}
-    if not godMode then
-        table.insert(elements, { label = "Enable God Mode", value = 'godMode', desc = "Toggle God Mode." })
-    else
-        table.insert(elements, { label = "Disable God Mode", value = 'godMode', desc = "Toggle God Mode." })
+    table.insert(elements, { label = "Toggle God Mode", value = 'godMode', desc = "Toggle God Mode." })
+
+    table.insert(elements, { label = "Toggle Invisibility", value = 'visible', desc = "Toggle Invisibility." })
+
+    table.insert(elements, { label = "Toggle Infinite Stamina", value = 'infStamina', desc = "Toggle Infinite Stamina." })
+
+    if isAdmin then
+        table.insert(elements, { label = "Toggle No Clip", value = 'noClip', desc = "Enable No Clip." })
     end
 
-    if not visible then
-        table.insert(elements, { label = "Enable Invisibility", value = 'visible', desc = "Toggle Invisibility." })
-    else
-        table.insert(elements, { label = "Disable Invisibility", value = 'visible', desc = "Toggle Invisibility." })
-    end
-
-    if not infStamina then
-        table.insert(elements, { label = "Enable Infinite Stamina", value = 'infStamina', desc = "Toggle Infinite Stamina." })
-    else
-        table.insert(elements, { label = "Disable Infinite Stamina", value = 'infStamina', desc = "Toggle Infinite Stamina." })
-    end
-
-    if not noClip then
-        table.insert(elements, { label = "Enable No Clip", value = 'noClip', desc = "Enable No Clip." })
-    else
-        table.insert(elements, { label = "Disable No Clip", value = 'noClip', desc = "Disable No Clip." })
-    end
-
-    table.insert(elements, { label = "Heal Self", value = 'heal', desc = "Heal Self." })
+    table.insert(elements, { label = "Heal", value = 'heal', desc = "Heal." })
+    table.insert(elements, { label = "Change Ped", value = 'changePed', desc = "Change ped." })
 
     VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
         {
@@ -44,47 +37,18 @@ function boostersMenu()
             end
             local selectedOption = {
                 ['godMode'] = function()
-                    if not godMode then
-                        VORPMenu.CloseAll()
-                        godMode = true
-                        SetEntityInvincible(PlayerPedId(), true)
-                        boostersMenu()
-                    else
-                        VORPMenu.CloseAll()
-                        godMode = false
-                        SetEntityInvincible(PlayerPedId(), false)
-                        boostersMenu()
-                    end
+                    TriggerServerEvent('feather-admin:InvincibilitySender', playerId)
                 end,
                 ['visible'] = function()
-                    if not visible then
-                        VORPMenu.CloseAll()
-                        visible = true
-                        SetEntityVisible(PlayerPedId(), false)
-                        boostersMenu()
-                    else
-                        VORPMenu.CloseAll()
-                        visible = false
-                        SetEntityVisible(PlayerPedId(), true)
-                        boostersMenu()
-                    end
+                    TriggerServerEvent('feather-admin:InvisibilitySender', playerId)
                 end,
                 ['infStamina'] = function()
-                    if not infStamina then
-                        infStamina = true
-                        VORPMenu.CloseAll()
-                        boostersMenu()
-                        infiniteStamina()
-                    else
-                        VORPMenu.CloseAll()
-                        infStamina = false
-                        boostersMenu()
-                    end
+                    TriggerServerEvent('feather-admin:InfStaminaSender', playerId)
                 end,
                 ['heal'] = function()
-                    SetEntityHealth(PlayerPedId(), 100.0)
+                    TriggerServerEvent('feather-admin:HealSender', playerId)
                 end,
-                ['noClip'] = function()
+                ['noClip'] = function() --NoClip only works on the admin/users player no other clients
                     if not noClip then
                         noClip = true
                         VORPMenu.CloseAll()
@@ -95,6 +59,10 @@ function boostersMenu()
                         VORPMenu.CloseAll()
                         boostersMenu()
                     end
+                end,
+                ['changePed'] = function()
+                    VORPMenu.CloseAll()
+                    pedChangeMenu(playerId)
                 end
             }
 
@@ -161,3 +129,36 @@ function noClipHandler()
     FreezeEntityPosition(playerPed, false)
     SetEveryoneIgnorePlayer(PlayerPedId(), false)
 end
+
+RegisterNetEvent('feather-admin:SetPlayerInvincibleHandler', function()
+    if not godMode then
+        SetEntityInvincible(PlayerPedId(), true)
+        godMode = true
+    else
+        SetEntityInvincible(PlayerPedId(), false)
+        godMode = false
+    end
+end)
+
+RegisterNetEvent('feather-admin:SetPlayerInvisibleHandler', function()
+    if not visible then
+        SetEntityVisible(PlayerPedId(), false)
+        visible = true
+    else
+        SetEntityVisible(PlayerPedId(), true)
+        visible = false
+    end
+end)
+
+RegisterNetEvent('feather-admin:SetPlayerInfStaminaHandler', function()
+    if not infStamina then
+        infStamina = true
+        infiniteStamina()
+    else
+        infStamina = false
+    end
+end)
+
+RegisterNetEvent('feather-admin:HealPlayerHandler', function()
+    SetEntityHealth(PlayerPedId(), 100.0)
+end)

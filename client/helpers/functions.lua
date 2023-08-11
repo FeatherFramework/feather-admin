@@ -14,3 +14,10 @@ function DrawTxt(str, x, y, w, h, enableShadow, col1, col2, col3, a, centre)
   if enableShadow then SetTextDropshadow(1, 0, 0, 0, 255) end
   DisplayText(str, x, y)
 end
+
+function loadModel(model)
+  RequestModel(model)
+  while not HasModelLoaded(model) do
+    Wait(100)
+  end
+end
