@@ -10,16 +10,16 @@ shared_scripts {
 
 server_scripts {
   '/server/helpers/allPlayersCatch.lua',
+  '/server/helpers/*.lua',
+  '/server/services/*.lua',
   "/server/main.lua"
 }
 
 client_scripts {
   "/client/helpers/functions.lua",
+  '/client/helpers/*.lua',
   "/client/main.lua",
-  "/client/services/mainMenu.lua",
-  "/client/services/devTools.lua",
-  "/client/services/boosters.lua",
-  "/client/services/teleports.lua"
+  "/client/services/*.lua"
 }
 
 dependency = {

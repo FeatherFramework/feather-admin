@@ -2,6 +2,7 @@ function mainAdminMenu()
     VORPMenu.CloseAll()
 
     local elements = {
+        { label = "Players", value = 'allPlayers', desc = "View all players." },
         { label = "Developer Tools", value = 'devTools', desc = "A set of developer tools." },
         { label = "Boosters", value = 'boosters', desc = "Booster options for your ped." },
         { label = "Teleport", value = 'teleports', desc = "Teleports Options" }
@@ -26,6 +27,9 @@ function mainAdminMenu()
                 end,
                 ['teleports'] = function()
                     teleportsMenu()
+                end,
+                ['allPlayers'] = function()
+                    mainAllPlayersMenu()
                 end
             }
 
