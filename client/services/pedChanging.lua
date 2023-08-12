@@ -1,36 +1,4 @@
-function pedChangeMenu(playerId)
-    VORPMenu.CloseAll()
-    if playerId == nil or false then
-        playerId = PlayerId()
-    end
-    local elements = {
-        { label = "Human Peds", value = 'humans', desc = "Human Peds." },
-        { label = "Animal Peds", value = 'animals', desc = "Animal Peds." },
-    }
-
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
-        {
-            title = "Ped Change Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value == 'humans' then
-                mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds)
-            elseif data.current.value == 'animals' then
-                mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds)
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            mainAdminMenu()
-        end)
-end
-
-function mainPedChangeMenu(playerId, recTable)
+local function mainPedChangeMenu(playerId, recTable, allPlayers) --Set as local as its only ever called in this file (more optimal?)
     VORPMenu.CloseAll()
 
     local elements = {}
@@ -60,7 +28,55 @@ function mainPedChangeMenu(playerId, recTable)
         end,
         function(data, menu)
             menu.close()
-            pedChangeMenu(playerId)
+            if allPlayers then
+                pedChangeMenu(playerId, true)
+            else
+                pedChangeMenu(playerId)
+            end
+        end)
+end
+
+function pedChangeMenu(playerId, allPlayers) --Main ped change menu cannot be local as its needed more than just this file
+    VORPMenu.CloseAll()
+    if playerId == nil or false then
+        playerId = PlayerId()
+    end
+    local elements = {
+        { label = "Human Peds", value = 'humans', desc = "Human Peds." },
+        { label = "Animal Peds", value = 'animals', desc = "Animal Peds." },
+    }
+
+    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+        {
+            title = "Ped Change Menu",
+            align = 'top-left',
+            elements = elements
+        },
+        function(data, menu)
+            if data.current == 'backup' then
+                _G[data.trigger]()
+            end
+            if data.current.value == 'humans' then
+                if allPlayers then
+                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds, true)
+                else
+                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds)
+                end
+            elseif data.current.value == 'animals' then
+                if allPlayers then
+                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds, true)
+                else
+                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds)
+                end
+            end
+        end,
+        function(data, menu)
+            menu.close()
+            if allPlayers then
+                allPlayerSelectedPlayerMenu(playerId)
+            else
+                mainAdminMenu()
+            end
         end)
 end
 

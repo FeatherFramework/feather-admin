@@ -27,6 +27,33 @@ local boneIndex = { --- https://github.com/femga/rdr3_discoveries/blob/master/bo
     [14410] = {index = "skel_spine0"}
 }
 
+---- Local functions -----
+local function devGunFunct()
+    local playerId = PlayerId()
+    while devGun do
+        Wait(5)
+        if IsPlayerFreeAiming(playerId) then
+            local bool, entity = GetEntityPlayerIsFreeAimingAt(playerId)
+            if bool then
+                local _text = ("Coords: " .. GetEntityCoords(entity) .. "\nHeading: " .. GetEntityHeading(entity) .. "\nHash: " .. GetEntityModel(entity))
+                DrawTxt(_text, 0.0, 0.5, 0.4, 0.4, true, 255, 255, 255, 150, false)
+            end
+        end
+    end
+end
+
+local function showBones()
+    while boneDev do
+        Wait(5)
+        --Player Ped Bones
+        local playerPed = PlayerPedId()
+        for k, v in pairs(boneIndex) do
+            local boneCoords = GetWorldPositionOfEntityBone(playerPed,GetPedBoneIndex(playerPed, k))
+            Feather.Render:Draw3DText(boneCoords.x,boneCoords.y,boneCoords.z,v.index,0.2)
+        end
+    end
+end
+
 ----- Menus -----
 function devToolsMenu()
     VORPMenu.CloseAll()
@@ -89,31 +116,4 @@ function devToolsMenu()
             menu.close()
             mainAdminMenu()
         end)
-end
-
------ Functions ----
-function showBones()
-    while boneDev do
-        Wait(5)
-        --Player Ped Bones
-        local playerPed = PlayerPedId()
-        for k, v in pairs(boneIndex) do
-            local boneCoords = GetWorldPositionOfEntityBone(playerPed,GetPedBoneIndex(playerPed, k))
-            Feather.Render:Draw3DText(boneCoords.x,boneCoords.y,boneCoords.z,v.index,0.2)
-        end
-    end
-end
-
-function devGunFunct()
-    local playerId = PlayerId()
-    while devGun do
-        Wait(5)
-        if IsPlayerFreeAiming(playerId) then
-            local bool, entity = GetEntityPlayerIsFreeAimingAt(playerId)
-            if bool then
-                local _text = ("Coords: " .. GetEntityCoords(entity) .. "\nHeading: " .. GetEntityHeading(entity) .. "\nHash: " .. GetEntityModel(entity))
-                DrawTxt(_text, 0.0, 0.5, 0.4, 0.4, true, 255, 255, 255, 150, false)
-            end
-        end
-    end
 end

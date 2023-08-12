@@ -5,6 +5,37 @@
 ---- Variables -----
 local autoTpm = false
 
+---- Local Functions ----
+local function autoTpmFunct()
+    while autoTpm do
+        Wait(5)
+        teleportToWaypoint()
+    end
+end
+
+local function teleportToWaypoint()
+    local ped = PlayerPedId()
+    local GetGroundZAndNormalFor_3dCoord = GetGroundZAndNormalFor_3dCoord
+    local waypoint = IsWaypointActive()
+    local coords = GetWaypointCoords()
+    local x, y, groundZ, startingpoint = coords.x, coords.y, 650.0, 750.0
+    local found = false
+    if waypoint then
+        for i = startingpoint, 0, -25.0 do
+            local z = i
+            if (i % 2) ~= 0 then
+                z = startingpoint + i
+            end
+            SetEntityCoords(ped, x, y, z - 1000)
+            Wait(500)
+            found, groundZ = GetGroundZAndNormalFor_3dCoord(x, y, z)
+            if found then
+                SetEntityCoords(ped, x, y, groundZ)
+            end break
+        end
+    end
+end
+
 ----- Menus -----
 function teleportsMenu()
     VORPMenu.CloseAll()
@@ -53,34 +84,4 @@ function teleportsMenu()
             menu.close()
             mainAdminMenu()
         end)
-end
-
-function autoTpmFunct()
-    while autoTpm do
-        Wait(5)
-        teleportToWaypoint()
-    end
-end
-
-function teleportToWaypoint()
-    local ped = PlayerPedId()
-    local GetGroundZAndNormalFor_3dCoord = GetGroundZAndNormalFor_3dCoord
-    local waypoint = IsWaypointActive()
-    local coords = GetWaypointCoords()
-    local x, y, groundZ, startingpoint = coords.x, coords.y, 650.0, 750.0
-    local found = false
-    if waypoint then
-        for i = startingpoint, 0, -25.0 do
-            local z = i
-            if (i % 2) ~= 0 then
-                z = startingpoint + i
-            end
-            SetEntityCoords(ped, x, y, z - 1000)
-            Wait(500)
-            found, groundZ = GetGroundZAndNormalFor_3dCoord(x, y, z)
-            if found then
-                SetEntityCoords(ped, x, y, groundZ)
-            end break
-        end
-    end
 end

@@ -1,4 +1,4 @@
-function mainAllPlayersMenu()
+function mainAllPlayersMenu() --Main all players menu (Menu starts here)
     VORPMenu.CloseAll()
 
     local elements = {}
@@ -36,6 +36,7 @@ function allPlayerSelectedPlayerMenu(playerId)
 
     local elements = {
         { label = "Boosters", value = 'boosters', desc = "Booster options." },
+        { label = "Troll", value = 'trolls', desc = "Troll options." },
     }
 
     VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
@@ -51,6 +52,9 @@ function allPlayerSelectedPlayerMenu(playerId)
             local selectedOption = {
                 ['boosters'] = function()
                     boostersMenu(playerId)
+                end,
+                ['trolls'] = function()
+                    trollMenu(playerId)
                 end
             }
 
@@ -59,7 +63,7 @@ function allPlayerSelectedPlayerMenu(playerId)
             end
         end,
         function(data, menu)
-            Inmenu = false
             menu.close()
+            mainAllPlayersMenu()
         end)
 end
