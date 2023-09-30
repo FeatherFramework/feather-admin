@@ -1,7 +1,3 @@
---[[Credits
-    vorp_admin for the teleportToWaypoint function code
-]]
-
 ---- Variables -----
 local autoTpm = false
 
@@ -14,31 +10,34 @@ local function autoTpmFunct()
 end
 
 local function teleportToWaypoint()
-    local ped = PlayerPedId()
+    local player = PlayerPedId()
     local GetGroundZAndNormalFor_3dCoord = GetGroundZAndNormalFor_3dCoord
     local waypoint = IsWaypointActive()
     local coords = GetWaypointCoords()
-    local x, y, groundZ, startingpoint = coords.x, coords.y, 650.0, 750.0
-    local found = false
+
     if waypoint then
-        for i = startingpoint, 0, -25.0 do
-            local z = i
-            if (i % 2) ~= 0 then
-                z = startingpoint + i
+        local x, y, z = coords.x, coords.y, coords.z
+        local groundCheck, ground = nil, nil
+        for height = 1, 1000 do
+            groundCheck, ground = GetGroundZAndNormalFor_3dCoord(x, y, height + 0.0)
+            if groundCheck then
+                break
             end
-            SetEntityCoords(ped, x, y, z - 1000)
-            Wait(500)
-            found, groundZ = GetGroundZAndNormalFor_3dCoord(x, y, z)
-            if found then
-                SetEntityCoords(ped, x, y, groundZ)
-            end break
         end
+    
+        if ground > 0.0 then
+            z = ground
+        end
+    
+        SetEntityCoords(player, x, y, z)
+        SetEntityHeading(player, hospital.heading)
+        Citizen.InvokeNative(0x9587913B9E772D29, player, 0)
     end
 end
 
 ----- Menus -----
 function teleportsMenu()
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {}
     if not autoTpm then
@@ -48,7 +47,7 @@ function teleportsMenu()
     end
     table.insert(elements,         { label = "Teleport To Waypoint", value = 'tpm', desc = "Teleport to waypoint." })
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Teleport Menu",
             align = 'top-left',
@@ -61,12 +60,12 @@ function teleportsMenu()
             local selectedOption = {
                 ['autoTpm'] = function()
                     if not autoTpm then
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         autoTpm = true
                         teleportsMenu()
                         autoTpmFunct()
                     else
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         autoTpm = false
                         teleportsMenu()
                     end

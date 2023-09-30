@@ -63,7 +63,7 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
     else
         isAdmin = false
     end
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {}
     table.insert(elements, { label = "Toggle God Mode", value = 'godMode', desc = "Toggle God Mode." })
@@ -79,7 +79,7 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
     table.insert(elements, { label = "Heal", value = 'heal', desc = "Heal." })
     table.insert(elements, { label = "Change Ped", value = 'changePed', desc = "Change ped." })
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Boosters Menu",
             align = 'top-left',
@@ -105,17 +105,17 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
                 ['noClip'] = function() --NoClip only works on the admin/users player no other clients
                     if not noClip then
                         noClip = true
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         boostersMenu()
                         noClipHandler()
                     else
                         noClip = false
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         boostersMenu()
                     end
                 end,
                 ['changePed'] = function()
-                    VORPMenu.CloseAll()
+                    MenuAPI.CloseAll()
                     if isAdmin then
                         pedChangeMenu(playerId)
                     else

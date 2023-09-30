@@ -1,8 +1,8 @@
 ----- Pulling Essentials ----
 Feather = exports['feather-core'].initiate()
-VORPMenu = {}
-TriggerEvent("vorp_menu:getData", function(cb)
-  VORPMenu = cb
+MenuAPI = {}
+TriggerEvent("menuapi:getData", function(cb)
+  MenuAPI = cb
 end)
 
 ---- Functions ----

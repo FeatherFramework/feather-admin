@@ -1,6 +1,6 @@
 local isFroze, isCaged, cageObj = false, false, nil
 function trollMenu(playerId) --Main all players menu (Menu starts here)
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {
         { label = 'Lightning Strike', value = 'lightningStrike', desc = 'Summon a lightning bolt to strike this player?' },
@@ -10,7 +10,7 @@ function trollMenu(playerId) --Main all players menu (Menu starts here)
         { label = 'Kill Player', value = 'kill', desc = 'Kill this player?' }
     }
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Troll Options",
             align = 'top-left',

@@ -1,5 +1,5 @@
 function mainAllPlayersMenu() --Main all players menu (Menu starts here)
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {}
     for k, v in pairs(ClientAllPlayers) do
@@ -11,7 +11,7 @@ function mainAllPlayersMenu() --Main all players menu (Menu starts here)
         }
     end
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Admin Menu",
             align = 'top-left',
@@ -32,14 +32,14 @@ function mainAllPlayersMenu() --Main all players menu (Menu starts here)
 end
 
 function allPlayerSelectedPlayerMenu(playerId)
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {
         { label = "Boosters", value = 'boosters', desc = "Booster options." },
         { label = "Troll", value = 'trolls', desc = "Troll options." },
     }
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Admin Menu",
             align = 'top-left',

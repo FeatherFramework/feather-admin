@@ -1,5 +1,5 @@
 local function mainPedChangeMenu(playerId, recTable, allPlayers) --Set as local as its only ever called in this file (more optimal?)
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {}
     for k, v in pairs(recTable) do
@@ -11,7 +11,7 @@ local function mainPedChangeMenu(playerId, recTable, allPlayers) --Set as local 
         }
     end
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Admin Menu",
             align = 'top-left',
@@ -37,7 +37,7 @@ local function mainPedChangeMenu(playerId, recTable, allPlayers) --Set as local 
 end
 
 function pedChangeMenu(playerId, allPlayers) --Main ped change menu cannot be local as its needed more than just this file
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
     if playerId == nil or false then
         playerId = PlayerId()
     end
@@ -46,7 +46,7 @@ function pedChangeMenu(playerId, allPlayers) --Main ped change menu cannot be lo
         { label = "Animal Peds", value = 'animals', desc = "Animal Peds." },
     }
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Ped Change Menu",
             align = 'top-left',

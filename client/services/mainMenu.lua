@@ -1,5 +1,5 @@
 function mainAdminMenu()
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {
         { label = "Players", value = 'allPlayers', desc = "View all players." },
@@ -8,7 +8,7 @@ function mainAdminMenu()
         { label = "Teleport", value = 'teleports', desc = "Teleports Options" }
     }
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Admin Menu",
             align = 'top-left',

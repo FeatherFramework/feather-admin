@@ -56,7 +56,7 @@ end
 
 ----- Menus -----
 function devToolsMenu()
-    VORPMenu.CloseAll()
+    MenuAPI.CloseAll()
 
     local elements = {}
     if not boneDev then
@@ -71,7 +71,7 @@ function devToolsMenu()
         table.insert(elements, { label = "Disable Dev Gun", value = 'devGun', desc = "Toggle Dev gun which will display information about an entity or object when you aim at it." })
     end
 
-    VORPMenu.Open('default', GetCurrentResourceName(), 'vorp_menu',
+    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
             title = "Dev Tools Menu",
             align = 'top-left',
@@ -84,12 +84,12 @@ function devToolsMenu()
             local selectedOption = {
                 ['boneDev'] = function()
                     if not boneDev then
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         boneDev = true
                         devToolsMenu()
                         showBones()
                     else
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         boneDev = false
                         devToolsMenu()
                     end
@@ -97,12 +97,12 @@ function devToolsMenu()
                 ['devGun'] = function()
                     if not devGun then
                         devGun = true
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         devToolsMenu()
                         devGunFunct()
                     else
                         devGun = false
-                        VORPMenu.CloseAll()
+                        MenuAPI.CloseAll()
                         devToolsMenu()
                     end
                 end
