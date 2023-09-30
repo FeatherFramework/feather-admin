@@ -17,4 +17,4 @@
 - Role checks (Security)
 
 ## API Documentation and usage
-[https://featherframework.net/api](https://featherframework.net/)
+[Feather Framework](https://featherframework.net/api)
