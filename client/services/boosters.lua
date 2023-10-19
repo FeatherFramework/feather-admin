@@ -1,5 +1,10 @@
 ----- Variables -----
-local godMode, visible, infStamina, noClip = false, false, false, false
+local boosters = {
+    godMode = false,
+    visible = false,
+    infStamina = false,
+    noClip = false
+}
 
 ----- Local Functions ----
 local function infiniteStamina()
@@ -91,25 +96,25 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
             end
             local selectedOption = {
                 ['godMode'] = function()
-                    TriggerServerEvent('feather-admin:InvincibilitySender', playerId)
+                    TriggerServerEvent('feather-admin:BoosterCheck', "Invincibility", playerId)
                 end,
                 ['visible'] = function()
-                    TriggerServerEvent('feather-admin:InvisibilitySender', playerId)
+                    TriggerServerEvent('feather-admin:BoosterCheck', "Invisibility", playerId)
                 end,
                 ['infStamina'] = function()
-                    TriggerServerEvent('feather-admin:InfStaminaSender', playerId)
+                    TriggerServerEvent('feather-admin:BoosterCheck', "InfStam", playerId)
                 end,
                 ['heal'] = function()
-                    TriggerServerEvent('feather-admin:HealSender', playerId)
+                    TriggerServerEvent('feather-admin:BoosterCheck', "Heal", playerId)
                 end,
                 ['noClip'] = function() --NoClip only works on the admin/users player no other clients
-                    if not noClip then
-                        noClip = true
+                    if not boosters.noClip then
+                        boosters.noClip = true
                         MenuAPI.CloseAll()
                         boostersMenu()
                         noClipHandler()
                     else
-                        noClip = false
+                        boosters.noClip = false
                         MenuAPI.CloseAll()
                         boostersMenu()
                     end
@@ -139,35 +144,40 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
 end
 
 ----- Events ----
-RegisterNetEvent('feather-admin:SetPlayerInvincibleHandler', function()
-    if not godMode then
-        SetEntityInvincible(PlayerPedId(), true)
-        godMode = true
-    else
-        SetEntityInvincible(PlayerPedId(), false)
-        godMode = false
-    end
-end)
+RegisterNetEvent("feather-admin:BoosterHandler", function(event)
+    local options = {
+        ["Invisibility"] = function()
+            if not boosters.visible then
+                SetEntityVisible(PlayerPedId(), false)
+                boosters.visible = true
+            else
+                SetEntityVisible(PlayerPedId(), true)
+                boosters.visible = false
+            end
+        end,
+        ["Invincibility"] = function()
+            if not boosters.godMode then
+                SetEntityInvincible(PlayerPedId(), true)
+                boosters.godMode = true
+            else
+                SetEntityInvincible(PlayerPedId(), false)
+                boosters.godMode = false
+            end
+        end,
+        ["InfStam"] = function()
+            if not boosters.infStamina then
+                boosters.infStamina = true
+                infiniteStamina()
+            else
+                boosters.infStamina = false
+            end
+        end,
+        ["Heal"] = function()
+            SetEntityHealth(PlayerPedId(), 100.0)
+        end
+    }
 
-RegisterNetEvent('feather-admin:SetPlayerInvisibleHandler', function()
-    if not visible then
-        SetEntityVisible(PlayerPedId(), false)
-        visible = true
-    else
-        SetEntityVisible(PlayerPedId(), true)
-        visible = false
+    if options[event] then
+        options[event]()
     end
-end)
-
-RegisterNetEvent('feather-admin:SetPlayerInfStaminaHandler', function()
-    if not infStamina then
-        infStamina = true
-        infiniteStamina()
-    else
-        infStamina = false
-    end
-end)
-
-RegisterNetEvent('feather-admin:HealPlayerHandler', function()
-    SetEntityHealth(PlayerPedId(), 100.0)
 end)
