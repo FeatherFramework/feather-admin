@@ -1,19 +1,23 @@
-RegisterServerEvent('feather-admin:SendLightningStrike', function(playerId)
-    TriggerClientEvent('feather-admin:LightningStrikeHandler', playerId)
-end)
+RegisterServerEvent("feather-admin:TrollCheck", function(event, playerId)
+    local options = {
+        ["LightningStrike"] = function()
+            TriggerClientEvent("feather-troll:TrollHandler", playerId, event)
+        end,
+        ["Freeze"] = function()
+            TriggerClientEvent("feather-troll:TrollHandler", playerId, event)
+        end,
+        ["TeleportToHeaven"] = function()
+            TriggerClientEvent("feather-troll:TrollHandler", playerId, event)
+        end,
+        ["Kill"] = function()
+            TriggerClientEvent("feather-troll:TrollHandler", playerId, event)
+        end,
+        ["Cage"] = function()
+            TriggerClientEvent("feather-troll:TrollHandler", playerId, event)
+        end
+    }
 
-RegisterServerEvent('feather-admin:SendFreezePlayer', function(playerId)
-    TriggerClientEvent('feather-admin:FreezePlayerHandler', playerId)
-end)
-
-RegisterServerEvent('feather-admin:SendTeleportToHeaven', function(playerId)
-    TriggerClientEvent('feather-admin:SendToHeavenHandler', playerId)
-end)
-
-RegisterServerEvent('feather-admin:SendKillPlayer', function(playerId)
-    TriggerClientEvent('feather-admin:KillplayerHandler', playerId)
-end)
-
-RegisterServerEvent('feather-admin:SendCagePlayer', function(playerId)
-    TriggerClientEvent('feather-admin:CagePlayerlayerHandler', playerId)
+    if options[event] then
+        options[event]()
+    end
 end)
