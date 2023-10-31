@@ -2,13 +2,6 @@
 local autoTpm = false
 
 ---- Local Functions ----
-local function autoTpmFunct()
-    while autoTpm do
-        Wait(5)
-        teleportToWaypoint()
-    end
-end
-
 local function teleportToWaypoint()
     local player = PlayerPedId()
     local GetGroundZAndNormalFor_3dCoord = GetGroundZAndNormalFor_3dCoord
@@ -32,6 +25,13 @@ local function teleportToWaypoint()
         SetEntityCoords(player, x, y, z)
         SetEntityHeading(player, hospital.heading)
         Citizen.InvokeNative(0x9587913B9E772D29, player, 0)
+    end
+end
+
+local function autoTpmFunct()
+    while autoTpm do
+        Wait(5)
+        teleportToWaypoint()
     end
 end
 

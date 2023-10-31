@@ -15,6 +15,9 @@ RegisterServerEvent("feather-admin:BoosterCheck", function(event, playerId)
         end,
         ["Heal"] = function()
             TriggerClientEvent('feather-admin:BoosterHandler', playerId, event)
+        end,
+        ["disableFOW"] = function()
+            TriggerClientEvent("feather-admin:BoosterHandler", playerId, event)
         end
     }
 

@@ -70,19 +70,18 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
     end
     MenuAPI.CloseAll()
 
-    local elements = {}
-    table.insert(elements, { label = "Toggle God Mode", value = 'godMode', desc = "Toggle God Mode." })
-
-    table.insert(elements, { label = "Toggle Invisibility", value = 'visible', desc = "Toggle Invisibility." })
-
-    table.insert(elements, { label = "Toggle Infinite Stamina", value = 'infStamina', desc = "Toggle Infinite Stamina." })
+    local elements = {
+        { label = "Toggle God Mode", value = 'godMode', desc = "Toggle God Mode." },
+        { label = "Toggle Invisibility", value = 'visible', desc = "Toggle Invisibility." },
+        { label = "Toggle Infinite Stamina", value = 'infStamina', desc = "Toggle Infinite Stamina." },
+        { label = "Heal", value = 'heal', desc = "Heal." },
+        { label = "Change Ped", value = 'changePed', desc = "Change ped." },
+        { label = "Disable FOW", value = 'disableFOW', desc = "Removes fog from the map if its there." }
+    }
 
     if isAdmin then
         table.insert(elements, { label = "Toggle No Clip", value = 'noClip', desc = "Enable No Clip." })
     end
-
-    table.insert(elements, { label = "Heal", value = 'heal', desc = "Heal." })
-    table.insert(elements, { label = "Change Ped", value = 'changePed', desc = "Change ped." })
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
@@ -126,6 +125,9 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
                     else
                         pedChangeMenu(playerId, true)
                     end
+                end,
+                ["disableFOW"] = function()
+                    TriggerServerEvent('feather-admin:BoosterCheck', "disableFOW", playerId)
                 end
             }
 
@@ -174,6 +176,9 @@ RegisterNetEvent("feather-admin:BoosterHandler", function(event)
         end,
         ["Heal"] = function()
             SetEntityHealth(PlayerPedId(), 100.0)
+        end,
+        ["disableFOW"] = function()
+            SetMinimapHideFow(true)
         end
     }
 
