@@ -9,9 +9,6 @@ RegisterServerEvent("feather-admin:TrollCheck", function(event, playerId)
         ["TeleportToHeaven"] = function()
             TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
         end,
-        ["Kill"] = function()
-            TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
-        end,
         ["Cage"] = function()
             TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
         end,
@@ -25,6 +22,15 @@ RegisterServerEvent("feather-admin:TrollCheck", function(event, playerId)
             TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
         end,
         ['kickFromVehicle'] = function()
+            TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
+        end,
+        ["handcuffPlayer"] = function()
+            TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
+        end,
+        ['hostileBear'] = function()
+            TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
+        end,
+        ['lag'] = function()
             TriggerClientEvent("feather-admin:TrollHandler", playerId, event)
         end
     }

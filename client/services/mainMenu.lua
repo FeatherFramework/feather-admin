@@ -2,10 +2,10 @@ function mainAdminMenu()
     MenuAPI.CloseAll()
 
     local elements = {
-        { label = "Players", value = 'allPlayers', desc = "View all players." },
-        { label = "Developer Tools", value = 'devTools', desc = "A set of developer tools." },
-        { label = "Boosters", value = 'boosters', desc = "Booster options for your ped." },
-        { label = "Teleport", value = 'teleports', desc = "Teleports Options" }
+        { label = Feather.Locale.translate(0, "players"), value = 'allPlayers', desc = Feather.Locale.translate(0, "players_desc") },
+        { label = Feather.Locale.translate(0, "developerTools"), value = 'devTools', desc = Feather.Locale.translate(0, "developerTools_desc") },
+        { label = Feather.Locale.translate(0, "boosters"), value = 'boosters', desc = Feather.Locale.translate(0, "boosters_desc") },
+        { label = Feather.Locale.translate(0, "teleport"), value = 'teleports', desc = Feather.Locale.translate(0, "teleport_desc") }
     }
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',

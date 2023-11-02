@@ -3,7 +3,10 @@
     https://github.com/outsider31000/public-scripts/tree/main/server-data/resources/%5Bdev%5D/devgun whomever wrote this script for some code snippets
 ]]
 ----- Variables -----
-local boneDev, devGun = false, false
+local devTools = {
+    boneDev = false,
+    devGun = false
+}
 
 ------ Data ------
 local boneIndex = { --- https://github.com/femga/rdr3_discoveries/blob/master/boneNames/player_zero__boneNames.lua
@@ -30,7 +33,7 @@ local boneIndex = { --- https://github.com/femga/rdr3_discoveries/blob/master/bo
 ---- Local functions -----
 local function devGunFunct()
     local playerId = PlayerId()
-    while devGun do
+    while devTools.devGun do
         Wait(5)
         if IsPlayerFreeAiming(playerId) then
             local bool, entity = GetEntityPlayerIsFreeAimingAt(playerId)
@@ -43,7 +46,7 @@ local function devGunFunct()
 end
 
 local function showBones()
-    while boneDev do
+    while devTools.boneDev do
         Wait(5)
         --Player Ped Bones
         local playerPed = PlayerPedId()
@@ -58,18 +61,10 @@ end
 function devToolsMenu()
     MenuAPI.CloseAll()
 
-    local elements = {}
-    if not boneDev then
-        table.insert(elements, { label = "Enable Bone Dev", value = 'boneDev', desc = "Toggle Bone Dev which shows all bones on the players ped." })
-    else
-        table.insert(elements, { label = "Disable Bone Dev", value = 'boneDev', desc = "Toggle Bone Dev which shows all bones on the players ped." })
-    end
-
-    if not devGun then
-        table.insert(elements, { label = "Enable Dev Gun", value = 'devGun', desc = "Toggle Dev gun which will display information about an entity or object when you aim at it." })
-    else
-        table.insert(elements, { label = "Disable Dev Gun", value = 'devGun', desc = "Toggle Dev gun which will display information about an entity or object when you aim at it." })
-    end
+    local elements = {
+        { label = Feather.Locale.translate(0, "boneDev"), value = 'boneDev', desc = Feather.Locale.translate(0, "boneDev_desc") },
+        { label = Feather.Locale.translate(0, "devGun"), value = 'devGun', desc = Feather.Locale.translate(0, "devGun_desc") }
+    }
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
@@ -83,27 +78,19 @@ function devToolsMenu()
             end
             local selectedOption = {
                 ['boneDev'] = function()
-                    if not boneDev then
-                        MenuAPI.CloseAll()
-                        boneDev = true
-                        devToolsMenu()
+                    if not devTools.boneDev then
+                        devTools.boneDev = true
                         showBones()
                     else
-                        MenuAPI.CloseAll()
-                        boneDev = false
-                        devToolsMenu()
+                        devTools.boneDev = false
                     end
                 end,
                 ['devGun'] = function()
-                    if not devGun then
-                        devGun = true
-                        MenuAPI.CloseAll()
-                        devToolsMenu()
+                    if not devTools.devGun then
+                        devTools.devGun = true
                         devGunFunct()
                     else
-                        devGun = false
-                        MenuAPI.CloseAll()
-                        devToolsMenu()
+                        devTools.devGun = false
                     end
                 end
             }

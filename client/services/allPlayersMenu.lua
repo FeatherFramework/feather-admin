@@ -35,8 +35,8 @@ function allPlayerSelectedPlayerMenu(playerId)
     MenuAPI.CloseAll()
 
     local elements = {
-        { label = "Boosters", value = 'boosters', desc = "Booster options." },
-        { label = "Troll", value = 'trolls', desc = "Troll options." },
+        { label = Feather.Locale.translate(0, "boosters"), value = 'boosters', desc = Feather.Locale.translate(0, "boosters_desc") },
+        { label = Feather.Locale.translate(0, "troll"), value = 'trolls', desc = Feather.Locale.translate(0, "troll_desc") }
     }
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',

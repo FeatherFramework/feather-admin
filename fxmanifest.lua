@@ -6,7 +6,7 @@ lua54 "yes"
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
 name 'feather-admin'
-version '0.1.0'
+version '0.1.1'
 
 github_version_check 'true'
 github_version_type 'release'
@@ -28,10 +28,18 @@ client_scripts {
   "/client/helpers/functions.lua",
   '/client/helpers/*.lua',
   "/client/main.lua",
-  "/client/services/*.lua"
+  "/client/services/*.lua",
+  "/translations/*.lua"
 }
 
 dependencies {
   'feather-core',
   'menuapi'
 }
+
+-- Version Checking --
+name 'feather-admin'
+version '0.1.1'
+github_version_check 'true'
+github_version_type 'release'
+github_link 'https://github.com/FeatherFramework/feather-admin'

@@ -3,22 +3,26 @@ local trolls = {
     isCaged = false,
     cageObj = nil,
     isCinematic = false,
-    pedGiant = false
+    pedGiant = false,
+    handcuffed = false,
+    lag = false
 }
 
 function trollMenu(playerId) --Main all players menu (Menu starts here)
     MenuAPI.CloseAll()
 
     local elements = {
-        { label = 'Lightning Strike', value = 'lightningStrike', desc = 'Summon a lightning bolt to strike this player?' },
-        { label = 'Toggle Freeze Player', value = 'freeze', desc = 'Toggle Freezing this player in place.' },
-        { label = 'Send To Heaven', value = 'heaven', desc = 'Send this player to heaven?' },
-        { label = 'Toggle Cage Player', value = 'cage', desc = 'Toggle locking this player in a cage?' },
-        { label = 'Kill Player', value = 'kill', desc = 'Kill this player?' },
-        { label = "Toggle Make Ped Giant.", value = 'makePedGiant', desc = "Toggle Make Ped Giant." },
-        { label = "Toggle Force Cinematic Cam", value = "forceCinematicCam", desc = "Toggle force player into cinematic camera." },
-        { label = "Spawn Hostile Ped Army", value = "hostilePedArmy", desc = "Spawns a lot of peds to attack the player until they die or the player dies." },
-        { label = "Kick From Vehicle", value = "kickFromVehicle", desc = "If player is in a vehicle/wagon this will kick them out of it." }
+        { label = Feather.Locale.translate(0, "lightningStrike"), value = 'lightningStrike', desc = Feather.Locale.translate(0, "lightningStrike_desc") },
+        { label = Feather.Locale.translate(0, "freezePlayer"), value = 'freeze', desc = Feather.Locale.translate(0, "freezePlayer_desc") },
+        { label = Feather.Locale.translate(0, "sendToHeaven"), value = 'heaven', desc = Feather.Locale.translate(0, "sendToHeaven_desc") },
+        { label = Feather.Locale.translate(0, "cagePlayer"), value = 'cage', desc = Feather.Locale.translate(0, "cagePlayer_desc") },
+        { label = Feather.Locale.translate(0, "makePedGiant"), value = 'makePedGiant', desc = Feather.Locale.translate(0, "makePedGiant_desc") },
+        { label = Feather.Locale.translate(0, "forceCinematicCam"), value = "forceCinematicCam", desc = Feather.Locale.translate(0, "forceCinematicCam_desc") },
+        { label = Feather.Locale.translate(0, "spawnHostilePedArmy"), value = "hostilePedArmy", desc = Feather.Locale.translate(0, "spawnHostilePedArmy_desc") },
+        { label = Feather.Locale.translate(0, "kickFromVehicle"), value = "kickFromVehicle", desc = Feather.Locale.translate(0, "kickFromVehicle_desc") },
+        { label = Feather.Locale.translate(0, "handcuffPlayer"), value = "handcuffPlayer", desc = Feather.Locale.translate(0, "handcuffPlayer_desc") },
+        { label = Feather.Locale.translate(0, "spawnHostileBear"), value = "hostileBear", desc = Feather.Locale.translate(0, "spawnHostileBear_desc") },
+        { label = Feather.Locale.translate(0, "lagPlayer"), value = 'lag', desc = Feather.Locale.translate(0, "lagPlayer_desc") }
     }
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
@@ -41,9 +45,6 @@ function trollMenu(playerId) --Main all players menu (Menu starts here)
                 ['heaven'] = function()
                     TriggerServerEvent("feather-admin:TrollCheck", "TeleportToHeaven", playerId)
                 end,
-                ['kill'] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "Kill", playerId)
-                end,
                 ['cage'] = function()
                     TriggerServerEvent("feather-admin:TrollCheck", "Cage", playerId)
                 end,
@@ -56,8 +57,17 @@ function trollMenu(playerId) --Main all players menu (Menu starts here)
                 ["hostilePedArmy"] = function()
                     TriggerServerEvent("feather-admin:TrollCheck", "hostilePedArmy", playerId)
                 end,
+                ["handcuffPlayer"] = function()
+                    TriggerServerEvent("feather-admin:TrollCheck", "handcuffPlayer", playerId)
+                end,
                 ["kickFromVehicle"] = function()
                     TriggerServerEvent("feather-admin:TrollCheck", "kickFromVehicle", playerId)
+                end,
+                ['hostileBear'] = function()
+                    TriggerServerEvent("feather-admin:TrollCheck", "hostileBear", playerId)
+                end,
+                ['lag'] = function()
+                    TriggerServerEvent("feather-admin:TrollCheck", "lag", playerId)
                 end
             }
 
@@ -91,9 +101,6 @@ RegisterNetEvent("feather-admin:TrollHandler", function(event)
             local coords = GetEntityCoords(PlayerPedId())
             SetEntityCoords(PlayerPedId(), coords.x, coords.y, coords.z + 1000)
         end,
-        ["Kill"] = function()
-            SetEntityHealth(PlayerPedId(), 0)
-        end,
         ["Cage"] = function()
             if not trolls.isCaged then
                 local coords = GetEntityCoords(PlayerPedId())
@@ -108,14 +115,11 @@ RegisterNetEvent("feather-admin:TrollHandler", function(event)
         ['forceCinematicCam'] = function()
             if not trolls.isCinematic then
                 trolls.isCinematic = true
-                while true do
+                while trolls.isCinematic do
                     Wait(5)
-                    if not trolls.isCinematic then
-                        SetCinematicModeActive(false)
-                        break
-                    end
                     SetCinematicModeActive(true)
                 end
+                SetCinematicModeActive(false)
             else
                 trolls.isCinematic = false
             end
@@ -140,7 +144,7 @@ RegisterNetEvent("feather-admin:TrollHandler", function(event)
                 table.insert(spawnedPeds, ped)
             until spawnCountLimit >= 10
             while true do
-                Wait(0)
+                Wait(100)
                 local isAnyPedAlive = false
                 for k, v in pairs(spawnedPeds) do
                     if not IsEntityDead(v:GetPed()) then
@@ -153,14 +157,51 @@ RegisterNetEvent("feather-admin:TrollHandler", function(event)
                 if not isAnyPedAlive then
                     for k, v in pairs(spawnedPeds) do
                         v:Remove()
-                    end
-                    break
+                    end break
                 end
             end
         end,
         ["kickFromVehicle"] = function()
             if IsPedInAnyVehicle(PlayerPedId()) then
                 TaskLeaveAnyVehicle(PlayerPedId(), 0, 0)
+            end
+        end,
+        ["handcuffPlayer"] = function()
+            if not trolls.handcuffed then
+                SetEnableHandcuffs(PlayerPedId(), true)
+                trolls.handcuffed = true
+            else
+                SetEnableHandcuffs(PlayerPedId(), false)
+                trolls.handcuffed = false
+            end
+        end,
+        ['hostileBear'] = function()
+            local playerCoords = GetEntityCoords(PlayerPedId())
+            local ped = Feather.Ped:Create("MP_A_C_BEAR_01", playerCoords.x, playerCoords.y, playerCoords.z, 0, 'world', false, true)
+            ped:AttackTarget(PlayerPedId(), "LAW")
+            while true do
+                Wait(100)
+                if IsEntityDead(PlayerPedId()) or IsEntityDead(ped:GetPed()) then
+                    ped:Remove() break
+                end
+            end
+        end,
+        ['lag'] = function()
+            if not trolls.lag then
+                trolls.lag = true
+                local storedPlayerCoords = GetEntityCoords(PlayerPedId())
+                while trolls.lag do
+                    Wait(5)
+                    local currPlayerCoords = GetEntityCoords(PlayerPedId())
+                    if Feather.Math.GetDistanceBetween(storedPlayerCoords, currPlayerCoords) >= 5 then
+                        storedPlayerCoords = currPlayerCoords
+                        local x,y,z = table.unpack(storedPlayerCoords)
+                        SetEntityCoords(PlayerPedId(), x - 1, y - 1, z)
+                        Citizen.InvokeNative(0x9587913B9E772D29, PlayerPedId(), true)
+                    end
+                end
+            else
+                trolls.lag = false
             end
         end
     }

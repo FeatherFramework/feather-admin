@@ -18,11 +18,11 @@ local function noClipHandler()
     local speed = 0.1
     local playerPed = PlayerPedId()
     local  PromptGroup = Feather.Prompt:SetupPromptGroup()
-    local speedPrompt = PromptGroup:RegisterPrompt("Change Speed", Feather.Keys.SHIFT, 1, 1, true, 'click')
-    local forwardPrompt = PromptGroup:RegisterPrompt("Forward", Feather.Keys.MOUSE1, 1, 1, true, 'click')
-    local backwardPrompt = PromptGroup:RegisterPrompt("Backward", Feather.Keys.MOUSE2, 1, 1, true, 'click')
-    local upPrompt = PromptGroup:RegisterPrompt("Up", Feather.Keys.CTRL, 1, 1, true, 'click')
-    local downPrompt = PromptGroup:RegisterPrompt("Down", Feather.Keys.LALT, 1, 1, true, 'click')
+    local speedPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "changeSpeed"), Feather.Keys.SHIFT, 1, 1, true, 'click')
+    local forwardPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "forward"), Feather.Keys.MOUSE1, 1, 1, true, 'click')
+    local backwardPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "backward"), Feather.Keys.MOUSE2, 1, 1, true, 'click')
+    local upPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "up"), Feather.Keys.CTRL, 1, 1, true, 'click')
+    local downPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "down"), Feather.Keys.LALT, 1, 1, true, 'click')
 
     local function noClipAction(yoff, zoff, setSpeed) --Credit to vorp admin for this function modified it to make it work
         local newPos = GetOffsetFromEntityInWorldCoords(playerPed, 0.0, yoff * (setSpeed + 0.3), zoff * (setSpeed + 0.3))
@@ -71,16 +71,17 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
     MenuAPI.CloseAll()
 
     local elements = {
-        { label = "Toggle God Mode", value = 'godMode', desc = "Toggle God Mode." },
-        { label = "Toggle Invisibility", value = 'visible', desc = "Toggle Invisibility." },
-        { label = "Toggle Infinite Stamina", value = 'infStamina', desc = "Toggle Infinite Stamina." },
-        { label = "Heal", value = 'heal', desc = "Heal." },
-        { label = "Change Ped", value = 'changePed', desc = "Change ped." },
-        { label = "Disable FOW", value = 'disableFOW', desc = "Removes fog from the map if its there." }
+        { label = Feather.Locale.translate(0, "toggleGodMode"), value = 'godMode', desc = Feather.Locale.translate(0, "toggleGodMode_desc") },
+        { label = Feather.Locale.translate(0, "toggleInvis"), value = 'visible', desc = Feather.Locale.translate(0, "toggleInvis_desc") },
+        { label = Feather.Locale.translate(0, "toggleInfStam"), value = 'infStamina', desc = Feather.Locale.translate(0, "toggleInfStam_desc") },
+        { label = Feather.Locale.translate(0, "heal"), value = 'heal', desc = Feather.Locale.translate(0, "heal") },
+        { label = Feather.Locale.translate(0, "changePed"), value = 'changePed', desc = Feather.Locale.translate(0, "changePed") },
+        { label = Feather.Locale.translate(0, "disableFOW"), value = 'disableFOW', desc = Feather.Locale.translate(0, "disableFOW_desc") },
+        { label = Feather.Locale.translate(0, "kill"), value = "kill", desc = Feather.Locale.translate(0, "kill") }
     }
 
     if isAdmin then
-        table.insert(elements, { label = "Toggle No Clip", value = 'noClip', desc = "Enable No Clip." })
+        table.insert(elements, { label = Feather.Locale.translate(0, "noClip"), value = 'noClip', desc = Feather.Locale.translate(0, "noClip_desc") })
     end
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
@@ -125,6 +126,9 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
                     else
                         pedChangeMenu(playerId, true)
                     end
+                end,
+                ["kill"] = function()
+                    TriggerServerEvent('feather-admin:BoosterCheck', "kill", playerId)
                 end,
                 ["disableFOW"] = function()
                     TriggerServerEvent('feather-admin:BoosterCheck', "disableFOW", playerId)
@@ -176,6 +180,9 @@ RegisterNetEvent("feather-admin:BoosterHandler", function(event)
         end,
         ["Heal"] = function()
             SetEntityHealth(PlayerPedId(), 100.0)
+        end,
+        ["kill"] = function()
+            SetEntityHealth(PlayerPedId(), 0)
         end,
         ["disableFOW"] = function()
             SetMinimapHideFow(true)
