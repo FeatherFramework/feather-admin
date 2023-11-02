@@ -18,6 +18,9 @@ RegisterServerEvent("feather-admin:BoosterCheck", function(event, playerId)
         end,
         ["disableFOW"] = function()
             TriggerClientEvent("feather-admin:BoosterHandler", playerId, event)
+        end,
+        ["kill"] = function()
+            TriggerClientEvent("feather-admin:BoosterHandler", playerId, event)
         end
     }
 

@@ -39,13 +39,10 @@ end
 function teleportsMenu()
     MenuAPI.CloseAll()
 
-    local elements = {}
-    if not autoTpm then
-        table.insert(elements, { label = "Enable Auto Tpm", value = 'autoTpm', desc = "Toggle auto Tpm which while active will teleport the player to any map marker they set." })
-    else
-        table.insert(elements, { label = "Disable Auto Tpm", value = 'autoTpm', desc = "Toggle auto Tpm which while active will teleport the player to any map marker they set." })
-    end
-    table.insert(elements,         { label = "Teleport To Waypoint", value = 'tpm', desc = "Teleport to waypoint." })
+    local elements = {
+        { label = Feather.Locale.translate(0, "autoTPM"), value = 'autoTpm', desc = Feather.Locale.translate(0, "autoTPM_desc") },
+        { label = Feather.Locale.translate(0, "TPM"), value = 'tpm', desc = Feather.Locale.translate(0, "TPM_desc") }
+    }
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
         {
@@ -60,14 +57,10 @@ function teleportsMenu()
             local selectedOption = {
                 ['autoTpm'] = function()
                     if not autoTpm then
-                        MenuAPI.CloseAll()
                         autoTpm = true
-                        teleportsMenu()
                         autoTpmFunct()
                     else
-                        MenuAPI.CloseAll()
                         autoTpm = false
-                        teleportsMenu()
                     end
                 end,
                 ['tpm'] = function()

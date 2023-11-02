@@ -42,8 +42,8 @@ function pedChangeMenu(playerId, allPlayers) --Main ped change menu cannot be lo
         playerId = PlayerId()
     end
     local elements = {
-        { label = "Human Peds", value = 'humans', desc = "Human Peds." },
-        { label = "Animal Peds", value = 'animals', desc = "Animal Peds." },
+        { label = Feather.Locale.translate(0, "humanPed"), value = 'humans', desc = Feather.Locale.translate(0, "humanPed") },
+        { label = Feather.Locale.translate(0, "animalPed"), value = 'animals', desc = Feather.Locale.translate(0, "animalPed") },
     }
 
     MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
