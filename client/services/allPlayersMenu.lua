@@ -1,69 +1,46 @@
-function mainAllPlayersMenu() --Main all players menu (Menu starts here)
-    MenuAPI.CloseAll()
+function MainAllPlayersMenu() --Main all players menu (Menu starts here)
+    FeatherAdminMenu:Close({})
 
-    local elements = {}
+    local allPlayersPage = FeatherAdminMenu:RegisterPage("feather-admin:allPlayersPage")
+    allPlayersPage:RegisterElement("header", {
+        value = "All Players",
+        slot = 'header',
+        style = {}
+    })
     for k, v in pairs(ClientAllPlayers) do
-        elements[#elements+1] = {
+        allPlayersPage:RegisterElement("button", {
             label = 'Player Id: ' .. v,
-            value = 'player' .. k,
-            desc = '',
-            info = v
-        }
+            style = {}
+        }, function()
+            FeatherAdminMenu:Close({})
+            local selectedPlayerPage = FeatherAdminMenu:RegisterPage("feather-admin:selectedPlayerPage")
+            selectedPlayerPage:RegisterElement("header", {
+                value = "Selected Player",
+                slot = 'header',
+                style = {}
+            })
+            selectedPlayerPage:RegisterElement("button", {
+                label = "Boosters",
+                style = {}
+            }, function()
+                FeatherAdminMenu:Close({})
+                boostersMenu(v)
+            end)
+            selectedPlayerPage:RegisterElement("button", {
+                label = "Troll",
+                style = {}
+            }, function()
+                FeatherAdminMenu:Close({})
+                trollMenu(v)
+            end)
+
+            FeatherAdminMenu:Open({
+                startupPage = selectedPlayerPage
+            })
+        end)
     end
 
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Admin Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value then
-                allPlayerSelectedPlayerMenu(data.current.info)
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            mainAdminMenu()
-        end)
-end
-
-function allPlayerSelectedPlayerMenu(playerId)
-    MenuAPI.CloseAll()
-
-    local elements = {
-        { label = Feather.Locale.translate(0, "boosters"), value = 'boosters', desc = Feather.Locale.translate(0, "boosters_desc") },
-        { label = Feather.Locale.translate(0, "troll"), value = 'trolls', desc = Feather.Locale.translate(0, "troll_desc") }
-    }
-
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Admin Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['boosters'] = function()
-                    boostersMenu(playerId)
-                end,
-                ['trolls'] = function()
-                    trollMenu(playerId)
-                end
-            }
-
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            mainAllPlayersMenu()
-        end)
+    FeatherAdminMenu:Open({
+        startupPage = allPlayersPage
+    })
 end
