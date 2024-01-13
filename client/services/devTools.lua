@@ -52,55 +52,45 @@ local function showBones()
         local playerPed = PlayerPedId()
         for k, v in pairs(boneIndex) do
             local boneCoords = GetWorldPositionOfEntityBone(playerPed,GetPedBoneIndex(playerPed, k))
-            Feather.Render:Draw3DText(boneCoords.x,boneCoords.y,boneCoords.z,v.index,0.2)
+            DrawText3D(boneCoords.x, boneCoords.y, boneCoords.z ,v.index)
         end
     end
 end
 
 ----- Menus -----
 function devToolsMenu()
-    MenuAPI.CloseAll()
+    FeatherAdminMenu:Close({})
 
-    local elements = {
-        { label = Feather.Locale.translate(0, "boneDev"), value = 'boneDev', desc = Feather.Locale.translate(0, "boneDev_desc") },
-        { label = Feather.Locale.translate(0, "devGun"), value = 'devGun', desc = Feather.Locale.translate(0, "devGun_desc") }
-    }
+    local devToolsPage = FeatherAdminMenu:RegisterPage("feather-admin:devToolsPage")
+    devToolsPage:RegisterElement("header", {
+        value = "Dev Tools",
+        slot = 'header',
+        style = {}
+    })
+    devToolsPage:RegisterElement("button", {
+        label = "Dev Gun",
+        style = {}
+    }, function()
+        if not devTools.devGun then
+            devTools.devGun = true
+            devGunFunct()
+        else
+            devTools.devGun = false
+        end
+    end)
+    devToolsPage:RegisterElement("button", {
+        label = "Bone Dev",
+        style = {}
+    }, function()
+        if not devTools.boneDev then
+            devTools.boneDev = true
+            showBones()
+        else
+            devTools.boneDev = false
+        end
+    end)
 
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Dev Tools Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['boneDev'] = function()
-                    if not devTools.boneDev then
-                        devTools.boneDev = true
-                        showBones()
-                    else
-                        devTools.boneDev = false
-                    end
-                end,
-                ['devGun'] = function()
-                    if not devTools.devGun then
-                        devTools.devGun = true
-                        devGunFunct()
-                    else
-                        devTools.devGun = false
-                    end
-                end
-            }
-
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            mainAdminMenu()
-        end)
+    FeatherAdminMenu:Open({
+        startupPage = devToolsPage
+    })
 end

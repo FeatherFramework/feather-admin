@@ -68,85 +68,82 @@ function boostersMenu(playerId) --catching the player id so it can be used for e
     else
         isAdmin = false
     end
-    MenuAPI.CloseAll()
+    FeatherAdminMenu:Close({})
 
-    local elements = {
-        { label = Feather.Locale.translate(0, "toggleGodMode"), value = 'godMode', desc = Feather.Locale.translate(0, "toggleGodMode_desc") },
-        { label = Feather.Locale.translate(0, "toggleInvis"), value = 'visible', desc = Feather.Locale.translate(0, "toggleInvis_desc") },
-        { label = Feather.Locale.translate(0, "toggleInfStam"), value = 'infStamina', desc = Feather.Locale.translate(0, "toggleInfStam_desc") },
-        { label = Feather.Locale.translate(0, "heal"), value = 'heal', desc = Feather.Locale.translate(0, "heal") },
-        { label = Feather.Locale.translate(0, "changePed"), value = 'changePed', desc = Feather.Locale.translate(0, "changePed") },
-        { label = Feather.Locale.translate(0, "disableFOW"), value = 'disableFOW', desc = Feather.Locale.translate(0, "disableFOW_desc") },
-        { label = Feather.Locale.translate(0, "kill"), value = "kill", desc = Feather.Locale.translate(0, "kill") }
-    }
-
+    local boostersPage = FeatherAdminMenu:RegisterPage("feather-admin:boostersPage")
+    boostersPage:RegisterElement("header", {
+        value = "Boosters",
+        slot = 'header',
+        style = {}
+    })
+    boostersPage:RegisterElement("button", {
+        label = "Toggle God Mode",
+        style = {}
+    }, function()
+        TriggerServerEvent('feather-admin:BoosterCheck', "Invincibility", playerId)
+    end)
+    boostersPage:RegisterElement("button", {
+        label = "Toggle Invisibility",
+        style = {}
+    }, function()
+        TriggerServerEvent('feather-admin:BoosterCheck', "Invisibility", playerId)
+    end)
+    boostersPage:RegisterElement("button", {
+        label = "Toggle Infinite Stamina",
+        style = {}
+    }, function()
+        TriggerServerEvent('feather-admin:BoosterCheck', "InfStam", playerId)
+    end)
+    boostersPage:RegisterElement("button", {
+        label = "Heal",
+        style = {}
+    }, function()
+        TriggerServerEvent('feather-admin:BoosterCheck', "Heal", playerId)
+    end)
+    boostersPage:RegisterElement("button", {
+        label = "Kill",
+        style = {}
+    }, function()
+        TriggerServerEvent('feather-admin:BoosterCheck', "kill", playerId)
+    end)
+    boostersPage:RegisterElement("button", {
+        label = "Disable FOW",
+        style = {}
+    }, function()
+        TriggerServerEvent('feather-admin:BoosterCheck', "disableFOW", playerId)
+    end)
+    boostersPage:RegisterElement("button", {
+        label = "Change Ped",
+        style = {}
+    }, function()
+        FeatherAdminMenu:Close({})
+        if isAdmin then
+            pedChangeMenu(playerId)
+        else
+            pedChangeMenu(playerId, true)
+        end
+    end)
     if isAdmin then
-        table.insert(elements, { label = Feather.Locale.translate(0, "noClip"), value = 'noClip', desc = Feather.Locale.translate(0, "noClip_desc") })
-    end
-
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Boosters Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['godMode'] = function()
-                    TriggerServerEvent('feather-admin:BoosterCheck', "Invincibility", playerId)
-                end,
-                ['visible'] = function()
-                    TriggerServerEvent('feather-admin:BoosterCheck', "Invisibility", playerId)
-                end,
-                ['infStamina'] = function()
-                    TriggerServerEvent('feather-admin:BoosterCheck', "InfStam", playerId)
-                end,
-                ['heal'] = function()
-                    TriggerServerEvent('feather-admin:BoosterCheck', "Heal", playerId)
-                end,
-                ['noClip'] = function() --NoClip only works on the admin/users player no other clients
-                    if not boosters.noClip then
-                        boosters.noClip = true
-                        MenuAPI.CloseAll()
-                        boostersMenu()
-                        noClipHandler()
-                    else
-                        boosters.noClip = false
-                        MenuAPI.CloseAll()
-                        boostersMenu()
-                    end
-                end,
-                ['changePed'] = function()
-                    MenuAPI.CloseAll()
-                    if isAdmin then
-                        pedChangeMenu(playerId)
-                    else
-                        pedChangeMenu(playerId, true)
-                    end
-                end,
-                ["kill"] = function()
-                    TriggerServerEvent('feather-admin:BoosterCheck', "kill", playerId)
-                end,
-                ["disableFOW"] = function()
-                    TriggerServerEvent('feather-admin:BoosterCheck', "disableFOW", playerId)
-                end
-            }
-
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            if not isAdmin then
-                allPlayerSelectedPlayerMenu(playerId)
+        boostersPage:RegisterElement("button", {
+            label = "No Clip",
+            style = {}
+        }, function()
+            if not boosters.noClip then
+                boosters.noClip = true
+                FeatherAdminMenu:Close({})
+                boostersMenu()
+                noClipHandler()
             else
-                mainAdminMenu()
+                boosters.noClip = false
+                FeatherAdminMenu:Close({})
+                boostersMenu()
             end
         end)
+    end
+
+    FeatherAdminMenu:Open({
+        startupPage = boostersPage
+    })
 end
 
 ----- Events ----

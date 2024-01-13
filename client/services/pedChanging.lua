@@ -1,83 +1,64 @@
 local function mainPedChangeMenu(playerId, recTable, allPlayers) --Set as local as its only ever called in this file (more optimal?)
-    MenuAPI.CloseAll()
+    FeatherAdminMenu:Close({})
 
-    local elements = {}
+    local mainPedChangePage = FeatherAdminMenu:RegisterPage("feather-admin:mainPedChangePage")
+    mainPedChangePage:RegisterElement("header", {
+        value = "Ped Change Menu",
+        slot = 'header',
+        style = {}
+    })
     for k, v in pairs(recTable) do
-        elements[#elements+1] = {
+        mainPedChangePage:RegisterElement("button", {
             label = v.model,
-            value = 'ped' .. k,
-            desc = '',
-            info = v
-        }
+            style = {}
+        }, function()
+            TriggerServerEvent('feather-admin:PedChangeSender', playerId, joaat(v.model))
+        end)
     end
 
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Admin Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-
-            if data.current.value then
-                TriggerServerEvent('feather-admin:PedChangeSender', playerId, joaat(data.current.info.model))
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            if allPlayers then
-                pedChangeMenu(playerId, true)
-            else
-                pedChangeMenu(playerId)
-            end
-        end)
+    FeatherAdminMenu:Open({
+        startupPage = mainPedChangePage
+    })
 end
 
 function pedChangeMenu(playerId, allPlayers) --Main ped change menu cannot be local as its needed more than just this file
-    MenuAPI.CloseAll()
     if playerId == nil or false then
         playerId = PlayerId()
     end
-    local elements = {
-        { label = Feather.Locale.translate(0, "humanPed"), value = 'humans', desc = Feather.Locale.translate(0, "humanPed") },
-        { label = Feather.Locale.translate(0, "animalPed"), value = 'animals', desc = Feather.Locale.translate(0, "animalPed") },
-    }
 
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Ped Change Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            if data.current.value == 'humans' then
-                if allPlayers then
-                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds, true)
-                else
-                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds)
-                end
-            elseif data.current.value == 'animals' then
-                if allPlayers then
-                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds, true)
-                else
-                    mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds)
-                end
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            if allPlayers then
-                allPlayerSelectedPlayerMenu(playerId)
-            else
-                mainAdminMenu()
-            end
-        end)
+    FeatherAdminMenu:Close({})
+    local pedChangePage = FeatherAdminMenu:RegisterPage("feather-admin:pedChangePage")
+    pedChangePage:RegisterElement("header", {
+        value = "Ped Change Menu",
+        slot = 'header',
+        style = {}
+    })
+    pedChangePage:RegisterElement("button", {
+        label = "Human Peds",
+        style = {}
+    }, function()
+        FeatherAdminMenu:Close({})
+        if allPlayers then
+            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds, true)
+        else
+            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds)
+        end
+    end)
+    pedChangePage:RegisterElement("button", {
+        label = "Animal Peds",
+        style = {}
+    }, function()
+        FeatherAdminMenu:Close({})
+        if allPlayers then
+            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds, true)
+        else
+            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds)
+        end
+    end)
+
+    FeatherAdminMenu:Open({
+        startupPage = pedChangePage
+    })
 end
 
 RegisterNetEvent('feather-admin:PedChangeHandler', function(model)

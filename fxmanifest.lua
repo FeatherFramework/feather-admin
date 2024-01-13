@@ -34,7 +34,7 @@ client_scripts {
 
 dependencies {
   'feather-core',
-  'menuapi'
+  'feather-menu'
 }
 
 -- Version Checking --

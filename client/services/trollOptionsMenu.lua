@@ -9,76 +9,85 @@ local trolls = {
 }
 
 function trollMenu(playerId) --Main all players menu (Menu starts here)
-    MenuAPI.CloseAll()
+    FeatherAdminMenu:Close({})
 
-    local elements = {
-        { label = Feather.Locale.translate(0, "lightningStrike"), value = 'lightningStrike', desc = Feather.Locale.translate(0, "lightningStrike_desc") },
-        { label = Feather.Locale.translate(0, "freezePlayer"), value = 'freeze', desc = Feather.Locale.translate(0, "freezePlayer_desc") },
-        { label = Feather.Locale.translate(0, "sendToHeaven"), value = 'heaven', desc = Feather.Locale.translate(0, "sendToHeaven_desc") },
-        { label = Feather.Locale.translate(0, "cagePlayer"), value = 'cage', desc = Feather.Locale.translate(0, "cagePlayer_desc") },
-        { label = Feather.Locale.translate(0, "makePedGiant"), value = 'makePedGiant', desc = Feather.Locale.translate(0, "makePedGiant_desc") },
-        { label = Feather.Locale.translate(0, "forceCinematicCam"), value = "forceCinematicCam", desc = Feather.Locale.translate(0, "forceCinematicCam_desc") },
-        { label = Feather.Locale.translate(0, "spawnHostilePedArmy"), value = "hostilePedArmy", desc = Feather.Locale.translate(0, "spawnHostilePedArmy_desc") },
-        { label = Feather.Locale.translate(0, "kickFromVehicle"), value = "kickFromVehicle", desc = Feather.Locale.translate(0, "kickFromVehicle_desc") },
-        { label = Feather.Locale.translate(0, "handcuffPlayer"), value = "handcuffPlayer", desc = Feather.Locale.translate(0, "handcuffPlayer_desc") },
-        { label = Feather.Locale.translate(0, "spawnHostileBear"), value = "hostileBear", desc = Feather.Locale.translate(0, "spawnHostileBear_desc") },
-        { label = Feather.Locale.translate(0, "lagPlayer"), value = 'lag', desc = Feather.Locale.translate(0, "lagPlayer_desc") }
-    }
+    local mainTrollpage = FeatherAdminMenu:RegisterPage("feather-admin:mainTrollpage")
 
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Troll Options",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['lightningStrike'] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "LightningStrike", playerId)
-                end,
-                ['freeze'] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "Freeze", playerId)
-                end,
-                ['heaven'] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "TeleportToHeaven", playerId)
-                end,
-                ['cage'] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "Cage", playerId)
-                end,
-                ["forceCinematicCam"] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "forceCinematicCam", playerId)
-                end,
-                ["makePedGiant"] = function()
-                    TriggerServerEvent('feather-admin:TrollCheck', "makePedGiant", playerId)
-                end,
-                ["hostilePedArmy"] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "hostilePedArmy", playerId)
-                end,
-                ["handcuffPlayer"] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "handcuffPlayer", playerId)
-                end,
-                ["kickFromVehicle"] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "kickFromVehicle", playerId)
-                end,
-                ['hostileBear'] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "hostileBear", playerId)
-                end,
-                ['lag'] = function()
-                    TriggerServerEvent("feather-admin:TrollCheck", "lag", playerId)
-                end
-            }
+    mainTrollpage:RegisterElement("header", {
+        value = "Troll Menu",
+        slot = 'header',
+        style = {}
+    })
+    mainTrollpage:RegisterElement('button', {
+        label = "Lightning Strike",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "LightningStrike", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Freeze",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "Freeze", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Teleport To Heaven",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "TeleportToHeaven", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Cage",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "Cage", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Force Cinematic Cam",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "forceCinematicCam", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Make Ped Giant",
+        style = {}
+    }, function()
+        TriggerServerEvent('feather-admin:TrollCheck', "makePedGiant", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Spawn Hostile Ped Army",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "hostilePedArmy", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Handcuff Player",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "handcuffPlayer", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Kick From Vehicle",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "kickFromVehicle", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Spawn Hostile Bear",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "hostileBear", playerId)
+    end)
+    mainTrollpage:RegisterElement('button', {
+        label = "Lag",
+        style = {}
+    }, function()
+        TriggerServerEvent("feather-admin:TrollCheck", "lag", playerId)
+    end)
 
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            allPlayerSelectedPlayerMenu(playerId)
-        end)
+    FeatherAdminMenu:Open({
+        startupPage = mainTrollpage
+    })
 end
 
 ----- Events -----

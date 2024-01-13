@@ -6,14 +6,14 @@ CreateThread(function()
             if IsControlJustReleased(0, 0xA5BDCD3C) then
                 if not Inmenu then
                     Inmenu = true
-                    mainAdminMenu()
+                    MainAdminMenu()
                 end
             end
         end
     else
         RegisterCommand(Config.Setup.OpenMenu.commandName, function()
             Inmenu = true
-            mainAdminMenu()
+            MainAdminMenu()
         end)
     end
 end)

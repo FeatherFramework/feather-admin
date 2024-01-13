@@ -17,13 +17,12 @@ local function teleportToWaypoint()
                 break
             end
         end
-    
+
         if ground > 0.0 then
             z = ground
         end
-    
+
         SetEntityCoords(player, x, y, z)
-        SetEntityHeading(player, hospital.heading)
         Citizen.InvokeNative(0x9587913B9E772D29, player, 0)
     end
 end
@@ -37,43 +36,33 @@ end
 
 ----- Menus -----
 function teleportsMenu()
-    MenuAPI.CloseAll()
+    FeatherAdminMenu:Close({})
 
-    local elements = {
-        { label = Feather.Locale.translate(0, "autoTPM"), value = 'autoTpm', desc = Feather.Locale.translate(0, "autoTPM_desc") },
-        { label = Feather.Locale.translate(0, "TPM"), value = 'tpm', desc = Feather.Locale.translate(0, "TPM_desc") }
-    }
+    local teleportPage = FeatherAdminMenu:RegisterPage("feather-admin:teleportPage")
+    teleportPage:RegisterElement("header", {
+        value = "Teleport Menu",
+        slot = 'header',
+        style = {}
+    })
+    teleportPage:RegisterElement("button", {
+        label = "Teleport to Waypoint",
+        style = {}
+    }, function()
+        teleportToWaypoint()
+    end)
+    teleportPage:RegisterElement("button", {
+        label = "Auto Teleport to Waypoint",
+        style = {}
+    }, function()
+        if not autoTpm then
+            autoTpm = true
+            autoTpmFunct()
+        else
+            autoTpm = false
+        end
+    end)
 
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Teleport Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['autoTpm'] = function()
-                    if not autoTpm then
-                        autoTpm = true
-                        autoTpmFunct()
-                    else
-                        autoTpm = false
-                    end
-                end,
-                ['tpm'] = function()
-                    teleportToWaypoint()
-                end
-            }
-
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            menu.close()
-            mainAdminMenu()
-        end)
+    FeatherAdminMenu:Open({
+        startupPage = teleportPage
+    })
 end

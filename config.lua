@@ -2,9 +2,9 @@ Config = {}
 
 Config.Setup = {
     OpenMenu = {
-        command = false,
+        command = true,
         commandName = 'adminMenu',
-        button = true,
+        button = false,
         buttonToOpen = 0x064D1698
     },
     PedChangingMenu = {

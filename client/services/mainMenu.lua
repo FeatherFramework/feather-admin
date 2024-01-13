@@ -1,44 +1,42 @@
-function mainAdminMenu()
-    MenuAPI.CloseAll()
+function MainAdminMenu()
+    FeatherAdminMenu:Close({})
 
-    local elements = {
-        { label = Feather.Locale.translate(0, "players"), value = 'allPlayers', desc = Feather.Locale.translate(0, "players_desc") },
-        { label = Feather.Locale.translate(0, "developerTools"), value = 'devTools', desc = Feather.Locale.translate(0, "developerTools_desc") },
-        { label = Feather.Locale.translate(0, "boosters"), value = 'boosters', desc = Feather.Locale.translate(0, "boosters_desc") },
-        { label = Feather.Locale.translate(0, "teleport"), value = 'teleports', desc = Feather.Locale.translate(0, "teleport_desc") }
-    }
+    local mainMenuPage = FeatherAdminMenu:RegisterPage("feather-admin:mainMenuPage")
+    mainMenuPage:RegisterElement("header", {
+        value = "Feather Admin",
+        slot = 'header',
+        style = {}
+    })
+    mainMenuPage:RegisterElement("button", {
+        label = "Players",
+        style = {}
+    }, function()
+        FeatherAdminMenu:Close({})
+        MainAllPlayersMenu()
+    end)
+    mainMenuPage:RegisterElement("button", {
+        label = "Developer Tools",
+        style = {}
+    }, function()
+        FeatherAdminMenu:Close({})
+        devToolsMenu()
+    end)
+    mainMenuPage:RegisterElement("button", {
+        label = "Boosters",
+        style = {}
+    }, function()
+        FeatherAdminMenu:Close({})
+        boostersMenu()
+    end)
+    mainMenuPage:RegisterElement("button", {
+        label = "Teleport",
+        style = {}
+    }, function()
+        FeatherAdminMenu:Close({})
+        teleportsMenu()
+    end)
 
-    MenuAPI.Open('default', GetCurrentResourceName(), 'menuapi',
-        {
-            title = "Admin Menu",
-            align = 'top-left',
-            elements = elements
-        },
-        function(data, menu)
-            if data.current == 'backup' then
-                _G[data.trigger]()
-            end
-            local selectedOption = {
-                ['devTools'] = function()
-                    devToolsMenu()
-                end,
-                ['boosters'] = function()
-                    boostersMenu()
-                end,
-                ['teleports'] = function()
-                    teleportsMenu()
-                end,
-                ['allPlayers'] = function()
-                    mainAllPlayersMenu()
-                end
-            }
-
-            if selectedOption[data.current.value] then
-                selectedOption[data.current.value]()
-            end
-        end,
-        function(data, menu)
-            Inmenu = false
-            menu.close()
-        end)
+    FeatherAdminMenu:Open({
+        startupPage = mainMenuPage
+    })
 end
