@@ -6,7 +6,7 @@ lua54 "yes"
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
 name 'feather-admin'
-version '0.1.1'
+version '0.2.0'
 
 github_version_check 'true'
 github_version_type 'release'
