@@ -3,7 +3,7 @@ Feather = exports['feather-core'].initiate()
 FeatherMenu = exports['feather-menu'].initiate()
 
 --Global Variables
-FeatherAdminMenu = FeatherMenu:RegisterMenu('JCC-Pets:Menu', {
+FeatherAdminMenu = FeatherMenu:RegisterMenu('feather-admin:Menu', {
   top = '40%',
   left = '20%',
   ['720width'] = '500px',
