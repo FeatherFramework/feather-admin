@@ -1,3 +1,6 @@
+-- Top-level admin menu page, opened by TryOpenAdminMenu (client/main.lua)
+-- once the server has confirmed the caller is actually an admin. Routes to
+-- the Players/Developer Tools/Boosters/Teleport sub-menus.
 function MainAdminMenu()
     FeatherAdminMenu:Close({})
 

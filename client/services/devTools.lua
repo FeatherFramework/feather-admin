@@ -2,6 +2,10 @@
     bonedev by HALALsnackbar for some code snippets and data
     https://github.com/outsider31000/public-scripts/tree/main/server-data/resources/%5Bdev%5D/devgun whomever wrote this script for some code snippets
 ]]
+-- Purely local/client-side debug overlays (no server round-trip): "Dev Gun"
+-- draws the coords/heading/model hash of whatever entity the admin is free-
+-- aiming at, "Bone Dev" draws a label over every named skeleton bone on
+-- their own ped. Both are toggled on/off by re-clicking the same button.
 ----- Variables -----
 local devTools = {
     boneDev = false,

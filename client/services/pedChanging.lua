@@ -1,3 +1,7 @@
+-- Lists the actual selectable models from `recTable` (Config.Setup.
+-- PedChangingMenu.HumanPeds/AnimalPeds) and sends the chosen one to
+-- feather-admin:PedChangeSender for `playerId` (server-authorized the same
+-- way as boosters/troll).
 local function mainPedChangeMenu(playerId, recTable, allPlayers) --Set as local as its only ever called in this file (more optimal?)
     FeatherAdminMenu:Close({})
 

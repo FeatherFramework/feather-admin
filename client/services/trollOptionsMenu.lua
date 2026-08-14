@@ -8,6 +8,8 @@ local trolls = {
     lag = false
 }
 
+-- Builds the Troll page targeted at `playerId`. Every button forwards to
+-- feather-admin:TrollCheck, server-authorized the same way as boosters.lua.
 function trollMenu(playerId) --Main all players menu (Menu starts here)
     FeatherAdminMenu:Close({})
 

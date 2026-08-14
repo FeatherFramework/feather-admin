@@ -1,4 +1,13 @@
+-- (ADM-02) No authorization check existed -- any client could freeze/cage/
+-- teleport-kill/handcuff/lag any other player by server id. Now requires
+-- the caller to be an admin.
 RegisterServerEvent("feather-admin:TrollCheck", function(event, playerId)
+    local _source = source
+    if not IsAuthorizedAdmin(_source) then
+        RejectUnauthorized(_source, 'feather-admin:TrollCheck')
+        return
+    end
+
     local options = {
         ["LightningStrike"] = function()
             TriggerClientEvent("feather-admin:TrollHandler", playerId, event)

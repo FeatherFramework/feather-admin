@@ -18,6 +18,17 @@ FeatherAdminMenu = FeatherMenu:RegisterMenu('feather-admin:Menu', {
       }
   },
   draggable = true
+}, {
+  -- Resets the "menu already open" latch (Inmenu, in client/main.lua)
+  -- whenever the menu actually closes -- including the player hitting
+  -- ESC/the NUI close button, not just our own code calling :Close() to
+  -- swap pages. feather-menu calls this on every genuine close via
+  -- FeatherMenu:RegisterMenu's callbacks argument. Without this, Inmenu was
+  -- set true on open and never reset anywhere, so the admin menu could only
+  -- ever be opened once per client session.
+  closed = function()
+    Inmenu = false
+  end
 })
 
 ---- Functions ----

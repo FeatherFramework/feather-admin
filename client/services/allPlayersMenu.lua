@@ -1,3 +1,7 @@
+-- Lists every player in ClientAllPlayers (the admin-only roster synced by
+-- server/helpers/allPlayersCatch.lua -- see ADM-05 in the audit notes) and,
+-- per selected player, offers the Boosters/Troll sub-menus targeted at
+-- that player's server id.
 function MainAllPlayersMenu() --Main all players menu (Menu starts here)
     FeatherAdminMenu:Close({})
 

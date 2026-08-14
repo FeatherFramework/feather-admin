@@ -61,7 +61,17 @@ local function noClipHandler()
 end
 
 ----- Menus -----
+-- Builds the Boosters page. `playerId` nil = targeting yourself (from the
+-- main menu); non-nil = targeting another player (from
+-- allPlayersMenu.lua). Every button here just forwards to
+-- feather-admin:BoosterCheck, which the server independently re-verifies
+-- the caller is an admin for regardless of which path opened this menu.
 function boostersMenu(playerId) --catching the player id so it can be used for either the admin using the menu or if we do pass an id it can be used to modify another player allowing admins to use booster options on other players not just themselves
+    -- Despite the name, this is NOT a permission check -- it's just "am I
+    -- targeting myself" (true) vs "am I targeting someone else from the
+    -- player list" (false), used below purely to decide whether to show
+    -- the self-only "No Clip" option. Real authorization happens
+    -- server-side regardless of this value.
     local isAdmin = true --is admin is used to hide options that only works on admin client
     if playerId == nil or false then
         playerId = GetPlayerServerId(PlayerId())

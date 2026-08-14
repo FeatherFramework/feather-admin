@@ -1,3 +1,6 @@
+-- Purely local/client-side (no server round-trip): moves only the admin's
+-- own ped to their current map waypoint, one-shot or continuously
+-- (autoTpmFunct loop) while the waypoint changes.
 ---- Variables -----
 local autoTpm = false
 

@@ -36,10 +36,3 @@ dependencies {
   'feather-core',
   'feather-menu'
 }
-
--- Version Checking --
-name 'feather-admin'
-version '0.1.1'
-github_version_check 'true'
-github_version_type 'release'
-github_link 'https://github.com/FeatherFramework/feather-admin'
