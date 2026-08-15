@@ -8,7 +8,7 @@ local boosters = {
 
 ----- Local Functions ----
 local function infiniteStamina()
-    while infStamina do
+    while boosters.infStamina do
         Wait(5)
         RestorePlayerStamina(PlayerId(), 100.0)
     end
@@ -35,10 +35,10 @@ local function noClipHandler()
     --SetEntityVisible(playerPed, false) --Left off for now as first person no clip is iffy still and youll want to know where your char will spawn when exiting noclip
     SetEntityCollision(playerPed, false, true)
     FreezeEntityPosition(playerPed, true)
-    SetEveryoneIgnorePlayer(PlayerPedId(), true)
-    while noClip do
+    SetEveryoneIgnorePlayer(PlayerId(), true)
+    while boosters.noClip do
         Wait(5)
-		PromptGroup:ShowGroup("My first prompt group")
+		PromptGroup:ShowGroup(AdminTranslate("noClip"))
         if speedPrompt:HasCompleted() then
             speed = speed + 0.1
             if speed > 2 then speed = 0.1 end
@@ -57,91 +57,86 @@ local function noClipHandler()
     SetEntityVisible(playerPed, true)
     SetEntityCollision(playerPed, true, true)
     FreezeEntityPosition(playerPed, false)
-    SetEveryoneIgnorePlayer(PlayerPedId(), false)
+    SetEveryoneIgnorePlayer(PlayerId(), false)
 end
 
 ----- Menus -----
 function boostersMenu(playerId) --catching the player id so it can be used for either the admin using the menu or if we do pass an id it can be used to modify another player allowing admins to use booster options on other players not just themselves
     local isAdmin = true --is admin is used to hide options that only works on admin client
-    if playerId == nil or false then
+    if playerId == nil then
         playerId = GetPlayerServerId(PlayerId())
     else
         isAdmin = false
     end
-    FeatherAdminMenu:Close({})
+    AdminMenu:Close({})
 
-    local boostersPage = FeatherAdminMenu:RegisterPage("feather-admin:boostersPage")
+    local boostersPage = AdminMenu:RegisterPage("feather-admin:boostersPage")
     boostersPage:RegisterElement("header", {
-        value = "Boosters",
+        value = AdminTranslate("boostersHeader"),
         slot = 'header',
         style = {}
     })
     boostersPage:RegisterElement("button", {
-        label = "Toggle God Mode",
+        label = AdminTranslate("toggleGodMode"),
         style = {}
     }, function()
         TriggerServerEvent('feather-admin:BoosterCheck', "Invincibility", playerId)
     end)
     boostersPage:RegisterElement("button", {
-        label = "Toggle Invisibility",
+        label = AdminTranslate("toggleInvis"),
         style = {}
     }, function()
         TriggerServerEvent('feather-admin:BoosterCheck', "Invisibility", playerId)
     end)
     boostersPage:RegisterElement("button", {
-        label = "Toggle Infinite Stamina",
+        label = AdminTranslate("toggleInfStam"),
         style = {}
     }, function()
         TriggerServerEvent('feather-admin:BoosterCheck', "InfStam", playerId)
     end)
     boostersPage:RegisterElement("button", {
-        label = "Heal",
+        label = AdminTranslate("heal"),
         style = {}
     }, function()
         TriggerServerEvent('feather-admin:BoosterCheck', "Heal", playerId)
     end)
     boostersPage:RegisterElement("button", {
-        label = "Kill",
+        label = AdminTranslate("kill"),
         style = {}
     }, function()
         TriggerServerEvent('feather-admin:BoosterCheck', "kill", playerId)
     end)
     boostersPage:RegisterElement("button", {
-        label = "Disable FOW",
+        label = AdminTranslate("disableFOW"),
         style = {}
     }, function()
         TriggerServerEvent('feather-admin:BoosterCheck', "disableFOW", playerId)
     end)
     boostersPage:RegisterElement("button", {
-        label = "Change Ped",
+        label = AdminTranslate("changePed"),
         style = {}
     }, function()
-        FeatherAdminMenu:Close({})
-        if isAdmin then
-            pedChangeMenu(playerId)
-        else
-            pedChangeMenu(playerId, true)
-        end
+        OpenPedChanger(playerId)
     end)
     if isAdmin then
         boostersPage:RegisterElement("button", {
-            label = "No Clip",
+            label = AdminTranslate("noClip"),
             style = {}
         }, function()
             if not boosters.noClip then
                 boosters.noClip = true
-                FeatherAdminMenu:Close({})
+                AdminMenu:Close({})
                 boostersMenu()
                 noClipHandler()
             else
                 boosters.noClip = false
-                FeatherAdminMenu:Close({})
+                AdminMenu:Close({})
                 boostersMenu()
             end
         end)
     end
 
-    FeatherAdminMenu:Open({
+    AdminMenu:Open({
         startupPage = boostersPage
     })
 end
