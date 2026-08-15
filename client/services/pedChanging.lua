@@ -1,69 +1,98 @@
-local function mainPedChangeMenu(playerId, recTable, allPlayers) --Set as local as its only ever called in this file (more optimal?)
-    FeatherAdminMenu:Close({})
+local applyingModel = false
 
-    local mainPedChangePage = FeatherAdminMenu:RegisterPage("feather-admin:mainPedChangePage")
-    mainPedChangePage:RegisterElement("header", {
-        value = "Ped Change Menu",
+local function requestModel(model)
+    if not IsModelValid(model) or not IsModelInCdimage(model) then return false end
+
+    RequestModel(model)
+    local timeoutAt = GetGameTimer() + Config.pedChanger.modelLoadTimeout
+    while not HasModelLoaded(model) do
+        if GetGameTimer() >= timeoutAt then
+            SetModelAsNoLongerNeeded(model)
+            return false
+        end
+        Wait(50)
+    end
+
+    return true
+end
+
+local selectedTarget
+local categoryPage = AdminMenu:RegisterPage('feather-admin:pedCategories')
+local modelPages = {}
+
+categoryPage:RegisterElement('header', {
+    value = AdminTranslate('pedChangeHeader'),
+    slot = 'header',
+    style = {}
+})
+
+for categoryIndex, category in ipairs(Config.pedChanger.categories) do
+    local pageIndex = categoryIndex
+    local categoryEntry = category
+    local modelPage = AdminMenu:RegisterPage(('feather-admin:pedModels:%d'):format(categoryIndex))
+    modelPages[categoryIndex] = modelPage
+
+    modelPage:RegisterElement('header', {
+        value = categoryEntry.label,
         slot = 'header',
         style = {}
     })
-    for k, v in pairs(recTable) do
-        mainPedChangePage:RegisterElement("button", {
-            label = v.model,
+
+    for _, ped in ipairs(categoryEntry.models) do
+        local pedEntry = ped
+        modelPage:RegisterElement('button', {
+            label = pedEntry.label,
             style = {}
         }, function()
-            TriggerServerEvent('feather-admin:PedChangeSender', playerId, joaat(v.model))
+            if selectedTarget ~= nil then
+                TriggerServerEvent('feather-admin:ped:request', selectedTarget, pedEntry.model)
+            end
         end)
     end
 
-    FeatherAdminMenu:Open({
-        startupPage = mainPedChangePage
-    })
+    categoryPage:RegisterElement('button', {
+        label = categoryEntry.label,
+        style = {}
+    }, function()
+        modelPages[pageIndex]:RouteTo()
+    end)
 end
 
-function pedChangeMenu(playerId, allPlayers) --Main ped change menu cannot be local as its needed more than just this file
-    if playerId == nil or false then
-        playerId = PlayerId()
+function OpenPedChanger(targetPlayer)
+    selectedTarget = targetPlayer
+    AdminMenu:Close({})
+    AdminMenu:Open({ startupPage = categoryPage })
+end
+
+RegisterNetEvent('feather-admin:ped:apply', function(model)
+    if applyingModel then
+        Feather.Notify.Notify(AdminTranslate('pedChangeBusy'), 3000)
+        return
     end
+    applyingModel = true
 
-    FeatherAdminMenu:Close({})
-    local pedChangePage = FeatherAdminMenu:RegisterPage("feather-admin:pedChangePage")
-    pedChangePage:RegisterElement("header", {
-        value = "Ped Change Menu",
-        slot = 'header',
-        style = {}
-    })
-    pedChangePage:RegisterElement("button", {
-        label = "Human Peds",
-        style = {}
-    }, function()
-        FeatherAdminMenu:Close({})
-        if allPlayers then
-            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds, true)
-        else
-            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.HumanPeds)
+    CreateThread(function()
+        if not requestModel(model) then
+            Feather.Notify.Notify(AdminTranslate('pedChangeFailed'), 4000)
+            applyingModel = false
+            return
         end
-    end)
-    pedChangePage:RegisterElement("button", {
-        label = "Animal Peds",
-        style = {}
-    }, function()
-        FeatherAdminMenu:Close({})
-        if allPlayers then
-            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds, true)
-        else
-            mainPedChangeMenu(playerId, Config.Setup.PedChangingMenu.AnimalPeds)
-        end
-    end)
 
-    FeatherAdminMenu:Open({
-        startupPage = pedChangePage
-    })
-end
+        local oldPed = PlayerPedId()
+        local coords = GetEntityCoords(oldPed)
+        local heading = GetEntityHeading(oldPed)
+        local health = GetEntityHealth(oldPed)
 
-RegisterNetEvent('feather-admin:PedChangeHandler', function(model)
-    loadModel(model)
-    SetPlayerModel(PlayerId(), model) --Native only works with playerid aka source (Player ped Id will change after this runs so you have to get the player ped id again for the outfit variation)
-    Citizen.InvokeNative(0x283978A15512B2FE, PlayerPedId(), true) --Setting random outfit variation
-    SetModelAsNoLongerNeeded(model) --Setting model as no longer needed for optimization purposes first time I have used this native
+        SetPlayerModel(PlayerId(), model)
+
+        local newPed = PlayerPedId()
+        Citizen.InvokeNative(0x283978A15512B2FE, newPed, true)
+        SetEntityCoordsNoOffset(newPed, coords.x, coords.y, coords.z, false, false, false)
+        SetEntityHeading(newPed, heading)
+        SetEntityHealth(newPed, math.min(health, GetEntityMaxHealth(newPed)))
+        SetModelAsNoLongerNeeded(model)
+        Feather.Notify.Notify(AdminTranslate('pedChangeSuccess'), 3000)
+
+        applyingModel = false
+    end)
 end)
