@@ -1,5 +1,13 @@
 Feather.Locale.register("en_us", {
     ----- Main Menu ----
+    adminHeader = "Feather Admin",
+    allPlayersHeader = "All Players",
+    selectedPlayerHeader = "Selected Player",
+    teleportHeader = "Teleport Menu",
+    pedChangeHeader = "Ped Change Menu",
+    devToolsHeader = "Developer Tools",
+    boostersHeader = "Boosters",
+    trollHeader = "Troll Menu",
     players = "Players",
     players_desc = "View all players on the server.",
     developerTools = "Developer Tools",
@@ -41,8 +49,9 @@ Feather.Locale.register("en_us", {
     devGun_desc = "When aiming at an entity or object will display information about the entity or object aimed at",
 
     --- Ped Changing Menu ---
-    humanPed = "Human Peds",
-    animalPed = "Animal Peds",
+    pedChangeBusy = "A ped change is already in progress.",
+    pedChangeFailed = "The selected ped model could not be loaded.",
+    pedChangeSuccess = "Ped model changed.",
     autoTPM = "Toggle Auto TPM",
     autoTPM_desc = 'Toggle auto Tpm which while active will teleport the player to any map marker they set.',
     TPM = "TPM",
