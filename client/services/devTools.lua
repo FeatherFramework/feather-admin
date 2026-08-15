@@ -2,14 +2,13 @@
     bonedev by HALALsnackbar for some code snippets and data
     https://github.com/outsider31000/public-scripts/tree/main/server-data/resources/%5Bdev%5D/devgun whomever wrote this script for some code snippets
 ]]
------ Variables -----
-local devTools = {
+
+local DevTools = {
     boneDev = false,
     devGun = false
 }
 
------- Data ------
-local boneIndex = { --- https://github.com/femga/rdr3_discoveries/blob/master/boneNames/player_zero__boneNames.lua
+local BoneIndex = { --- https://github.com/femga/rdr3_discoveries/blob/master/boneNames/player_zero__boneNames.lua
     [21030] = {index = "skel_head"},
     [55120] = {index = "skel_l_calf"},
     [43312] = {index = "skel_r_calf"},
@@ -30,67 +29,66 @@ local boneIndex = { --- https://github.com/femga/rdr3_discoveries/blob/master/bo
     [14410] = {index = "skel_spine0"}
 }
 
----- Local functions -----
 local function devGunFunct()
-    local playerId = PlayerId()
-    while devTools.devGun do
-        Wait(5)
-        if IsPlayerFreeAiming(playerId) then
-            local bool, entity = GetEntityPlayerIsFreeAimingAt(playerId)
+    local player = PlayerId()
+    local pos = { x = 0.0, y = 0.5 }
+    local color = { r = 255, g = 255, b = 255, a = 150 }
+    while DevTools.devGun do
+        Wait(0)
+        if IsPlayerFreeAiming(player) then
+            local bool, entity = GetEntityPlayerIsFreeAimingAt(player)
             if bool then
-                local _text = ("Coords: " .. GetEntityCoords(entity) .. "\nHeading: " .. GetEntityHeading(entity) .. "\nHash: " .. GetEntityModel(entity))
-                DrawTxt(_text, 0.0, 0.5, 0.4, 0.4, true, 255, 255, 255, 150, false)
+                local text = ("Coords: " .. GetEntityCoords(entity) .. "\nHeading: " .. GetEntityHeading(entity) .. "\nHash: " .. GetEntityModel(entity))
+                Feather.Render:DrawText(pos, text, color, 0.4, true)
             end
         end
     end
 end
 
 local function showBones()
-    while devTools.boneDev do
-        Wait(5)
-        --Player Ped Bones
+    local color = { r = 255, g = 255, b = 255, a = 215 }
+    while DevTools.boneDev do
+        Wait(0)
         local playerPed = PlayerPedId()
-        for k, v in pairs(boneIndex) do
-            local boneCoords = GetWorldPositionOfEntityBone(playerPed,GetPedBoneIndex(playerPed, k))
-            DrawText3D(boneCoords.x, boneCoords.y, boneCoords.z ,v.index)
+        for boneId, bone in pairs(BoneIndex) do
+            local index = GetPedBoneIndex(playerPed, boneId)
+            if index ~= -1 then
+                local coords = GetWorldPositionOfEntityBone(playerPed, index)
+                Feather.Render:Draw3DText(coords, bone.index, 0.3, color, 1, 0)
+            end
         end
     end
 end
 
------ Menus -----
 function devToolsMenu()
-    FeatherAdminMenu:Close({})
+    AdminMenu:Close({})
 
-    local devToolsPage = FeatherAdminMenu:RegisterPage("feather-admin:devToolsPage")
+    local devToolsPage = AdminMenu:RegisterPage("feather-admin:devToolsPage")
     devToolsPage:RegisterElement("header", {
-        value = "Dev Tools",
+        value = AdminTranslate("devToolsHeader"),
         slot = 'header',
         style = {}
     })
     devToolsPage:RegisterElement("button", {
-        label = "Dev Gun",
+        label = AdminTranslate("devGun"),
         style = {}
     }, function()
-        if not devTools.devGun then
-            devTools.devGun = true
-            devGunFunct()
-        else
-            devTools.devGun = false
+        DevTools.devGun = not DevTools.devGun
+        if DevTools.devGun then
+            CreateThread(devGunFunct)
         end
     end)
     devToolsPage:RegisterElement("button", {
-        label = "Bone Dev",
+        label = AdminTranslate("boneDev"),
         style = {}
     }, function()
-        if not devTools.boneDev then
-            devTools.boneDev = true
-            showBones()
-        else
-            devTools.boneDev = false
+        DevTools.boneDev = not DevTools.boneDev
+        if DevTools.boneDev then
+            CreateThread(showBones)
         end
     end)
 
-    FeatherAdminMenu:Open({
+    AdminMenu:Open({
         startupPage = devToolsPage
     })
 end
