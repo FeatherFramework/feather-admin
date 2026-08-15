@@ -1,26 +1,43 @@
----- Handles updating all known players and passing of them to the client ----
-AllPlayers = {}
-RegisterServerEvent('feather-admin:StorePlayersInfo', function()
-    local _source = source
-    local insert  = true
-    for k, v in pairs(AllPlayers) do
-        if v == _source then
-            insert = false
-        end
+local function getPlayerIds()
+    local playerIds = {}
+    for _, playerId in ipairs(GetPlayers()) do
+        table.insert(playerIds, tonumber(playerId))
     end
-    if insert then
-        table.insert(AllPlayers, _source)
-        TriggerClientEvent('feather-admin:ClientAllPlayers', -1, true, _source) --Passes new player to all clients to store
+    return playerIds
+end
+
+local function syncPlayerList(src)
+    if FeatherAdmin.IsAuthorized(src) then
+        TriggerClientEvent('feather-admin:ClientAllPlayers', src, getPlayerIds())
     end
+end
+
+local function syncAllAdmins(excludedPlayer)
+    for _, playerId in ipairs(GetPlayers()) do
+        local adminId = tonumber(playerId)
+        if adminId ~= excludedPlayer then syncPlayerList(adminId) end
+    end
+end
+
+RegisterNetEvent('feather-admin:StorePlayersInfo', function()
+    local src = source
+    if not FeatherAdmin.RequireAuthorized(src) then return end
+    syncPlayerList(src)
 end)
 
----- Cleanup and player removal on leave ----
+RegisterNetEvent('feather-admin:RequestPlayerList', function()
+    local src = source
+    if not FeatherAdmin.RequireAuthorized(src) then return end
+    syncPlayerList(src)
+end)
+
 AddEventHandler('playerDropped', function()
-    local _source = source
-    for k, v in pairs(AllPlayers) do
-        if _source == v then
-            table.remove(AllPlayers, k) --removes source from the table
-            TriggerClientEvent('feather-admin:ClientAllPlayers', -1, true, k)
-        end
-    end
+    syncAllAdmins(source)
+end)
+
+AddEventHandler('playerJoining', function()
+    CreateThread(function()
+        Wait(1000)
+        syncAllAdmins()
+    end)
 end)
