@@ -18,7 +18,7 @@ local function teleportToWaypoint()
             end
         end
 
-        if ground > 0.0 then
+        if ground and ground > 0.0 then
             z = ground
         end
 
@@ -36,22 +36,22 @@ end
 
 ----- Menus -----
 function teleportsMenu()
-    FeatherAdminMenu:Close({})
+    AdminMenu:Close({})
 
-    local teleportPage = FeatherAdminMenu:RegisterPage("feather-admin:teleportPage")
+    local teleportPage = AdminMenu:RegisterPage("feather-admin:teleportPage")
     teleportPage:RegisterElement("header", {
-        value = "Teleport Menu",
+        value = AdminTranslate("teleportHeader"),
         slot = 'header',
         style = {}
     })
     teleportPage:RegisterElement("button", {
-        label = "Teleport to Waypoint",
+        label = AdminTranslate("TPM"),
         style = {}
     }, function()
         teleportToWaypoint()
     end)
     teleportPage:RegisterElement("button", {
-        label = "Auto Teleport to Waypoint",
+        label = AdminTranslate("autoTPM"),
         style = {}
     }, function()
         if not autoTpm then
@@ -62,7 +62,7 @@ function teleportsMenu()
         end
     end)
 
-    FeatherAdminMenu:Open({
+    AdminMenu:Open({
         startupPage = teleportPage
     })
 end
