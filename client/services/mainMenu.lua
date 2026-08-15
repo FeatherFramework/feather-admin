@@ -1,42 +1,42 @@
 function MainAdminMenu()
-    FeatherAdminMenu:Close({})
+    AdminMenu:Close({})
 
-    local mainMenuPage = FeatherAdminMenu:RegisterPage("feather-admin:mainMenuPage")
+    local mainMenuPage = AdminMenu:RegisterPage("feather-admin:mainMenuPage")
     mainMenuPage:RegisterElement("header", {
-        value = "Feather Admin",
+        value = AdminTranslate("adminHeader"),
         slot = 'header',
         style = {}
     })
     mainMenuPage:RegisterElement("button", {
-        label = "Players",
+        label = AdminTranslate("players"),
         style = {}
     }, function()
-        FeatherAdminMenu:Close({})
+        AdminMenu:Close({})
         MainAllPlayersMenu()
     end)
     mainMenuPage:RegisterElement("button", {
-        label = "Developer Tools",
+        label = AdminTranslate("developerTools"),
         style = {}
     }, function()
-        FeatherAdminMenu:Close({})
+        AdminMenu:Close({})
         devToolsMenu()
     end)
     mainMenuPage:RegisterElement("button", {
-        label = "Boosters",
+        label = AdminTranslate("boosters"),
         style = {}
     }, function()
-        FeatherAdminMenu:Close({})
+        AdminMenu:Close({})
         boostersMenu()
     end)
     mainMenuPage:RegisterElement("button", {
-        label = "Teleport",
+        label = AdminTranslate("teleport"),
         style = {}
     }, function()
-        FeatherAdminMenu:Close({})
+        AdminMenu:Close({})
         teleportsMenu()
     end)
 
-    FeatherAdminMenu:Open({
+    AdminMenu:Open({
         startupPage = mainMenuPage
     })
 end
