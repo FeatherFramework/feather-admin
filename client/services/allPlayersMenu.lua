@@ -1,46 +1,46 @@
 function MainAllPlayersMenu() --Main all players menu (Menu starts here)
-    FeatherAdminMenu:Close({})
+    AdminMenu:Close({})
 
-    local allPlayersPage = FeatherAdminMenu:RegisterPage("feather-admin:allPlayersPage")
+    local allPlayersPage = AdminMenu:RegisterPage("feather-admin:allPlayersPage")
     allPlayersPage:RegisterElement("header", {
-        value = "All Players",
+        value = AdminTranslate("allPlayersHeader"),
         slot = 'header',
         style = {}
     })
     for k, v in pairs(ClientAllPlayers) do
         allPlayersPage:RegisterElement("button", {
-            label = 'Player Id: ' .. v,
+            label = AdminTranslate("playerId") .. ': ' .. v,
             style = {}
         }, function()
-            FeatherAdminMenu:Close({})
-            local selectedPlayerPage = FeatherAdminMenu:RegisterPage("feather-admin:selectedPlayerPage")
+            AdminMenu:Close({})
+            local selectedPlayerPage = AdminMenu:RegisterPage("feather-admin:selectedPlayerPage")
             selectedPlayerPage:RegisterElement("header", {
-                value = "Selected Player",
+                value = AdminTranslate("selectedPlayerHeader"),
                 slot = 'header',
                 style = {}
             })
             selectedPlayerPage:RegisterElement("button", {
-                label = "Boosters",
+                label = AdminTranslate("boosters"),
                 style = {}
             }, function()
-                FeatherAdminMenu:Close({})
+                AdminMenu:Close({})
                 boostersMenu(v)
             end)
             selectedPlayerPage:RegisterElement("button", {
-                label = "Troll",
+                label = AdminTranslate("troll"),
                 style = {}
             }, function()
-                FeatherAdminMenu:Close({})
+                AdminMenu:Close({})
                 trollMenu(v)
             end)
 
-            FeatherAdminMenu:Open({
+            AdminMenu:Open({
                 startupPage = selectedPlayerPage
             })
         end)
     end
 
-    FeatherAdminMenu:Open({
+    AdminMenu:Open({
         startupPage = allPlayersPage
     })
 end
