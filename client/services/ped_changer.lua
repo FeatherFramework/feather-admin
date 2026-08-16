@@ -24,7 +24,7 @@ end
 
 local function applyModel(model)
     if not loadModel(model) then
-        Feather.Notify.Notify(AdminTranslate('ped_change_failed'), 4000)
+        Feather.Notify.RightNotify(AdminTranslate('ped_change_failed'), 4000)
         applyingModel = false
         return
     end
@@ -53,7 +53,7 @@ local function applyModel(model)
     end
 
     applyingModel = false
-    Feather.Notify.Notify(AdminTranslate('ped_change_success'), 3000)
+    Feather.Notify.RightNotify(AdminTranslate('ped_change_success'), 3000)
 end
 
 function AdminPedChanger.Request(targetPlayer, modelName)
@@ -63,7 +63,7 @@ end
 
 RegisterNetEvent('feather-admin:ped:apply', function(model)
     if applyingModel then
-        Feather.Notify.Notify(AdminTranslate('ped_change_busy'), 3000)
+        Feather.Notify.RightNotify(AdminTranslate('ped_change_busy'), 3000)
         return
     end
 
