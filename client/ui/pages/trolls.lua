@@ -13,22 +13,25 @@ local actions = {
 }
 
 function AdminUI.OpenTrolls()
+    if not AdminUI.CanUseAny('troll.') then return end
     local page = AdminUI.RegisterPage('trolls')
 
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('trolls_header'))
 
     for _, entry in ipairs(actions) do
         local action = entry
-        local label = AdminTranslate(action.key)
-        local buttonLabel = action.toggle and AdminUI.GetToggleLabel(label, action.action) or label
-        AdminUI.AddButton(page, buttonLabel, function(_, element)
-            local request = function() AdminTrolls.Request(action.action, AdminUI.GetTarget()) end
-            if action.toggle then
-                AdminUI.RunToggleAction(label, action.action, element, request)
-            else
-                AdminUI.RunAction(label, request)
-            end
-        end)
+        if AdminUI.CanUse(('troll.%s'):format(action.action)) then
+            local label = AdminTranslate(action.key)
+            local buttonLabel = action.toggle and AdminUI.GetToggleLabel(label, action.action) or label
+            AdminUI.AddButton(page, buttonLabel, function(_, element)
+                local request = function() AdminTrolls.Request(action.action, AdminUI.GetTarget()) end
+                if action.toggle then
+                    AdminUI.RunToggleAction(label, action.action, element, request)
+                else
+                    AdminUI.RunAction(label, request)
+                end
+            end)
+        end
     end
 
     AdminUI.AddFooter(page)
