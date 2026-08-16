@@ -28,9 +28,10 @@ CreateThread(function()
     end
 end)
 
-RegisterNetEvent('feather-admin:access:result', function(authorized)
+RegisterNetEvent('feather-admin:access:result', function(authorized, permissions)
+    AdminPermissions = type(permissions) == 'table' and permissions or {}
     if not authorized or InMenu then return end
-    TriggerServerEvent('feather-admin:players:request')
+    if AdminUI.CanUse('players.view') then TriggerServerEvent('feather-admin:players:request') end
     AdminUI.OpenMain()
 end)
 
