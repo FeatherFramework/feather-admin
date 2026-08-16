@@ -12,7 +12,7 @@ local function syncPlayerList(src)
     local playerId = math.tointeger(tonumber(src) or -1)
     if not playerId or playerId < 0 then return end
 
-    if not FeatherAdmin.IsAuthorized(playerId) then return end
+    if not FeatherAdmin.CanUse(playerId, 'players.view') then return end
 
     TriggerClientEvent('feather-admin:players:sync', playerId, getPlayerIds())
 end
@@ -26,7 +26,7 @@ end
 
 RegisterNetEvent('feather-admin:players:request', function()
     local src = source
-    if not FeatherAdmin.RequireAuthorized(src) then return end
+    if not FeatherAdmin.RequirePermission(src, 'players.view') then return end
 
     syncPlayerList(src)
 end)
