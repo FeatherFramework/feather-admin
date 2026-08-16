@@ -1,187 +1,169 @@
------ Variables -----
-local boosters = {
-    godMode = false,
-    visible = false,
-    infStamina = false,
-    noClip = false
+AdminBoosters = {}
+
+local state = {
+    invincible = false,
+    invisible = false,
+    infiniteStamina = false,
+    noclip = false,
+    noclipSession = 0,
+    noclipPed = nil,
+    noclipPrompts = nil
 }
 
------ Local Functions ----
-local function infiniteStamina()
-    while boosters.infStamina do
-        Wait(5)
+local function setNoclipPed(ped, enabled)
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return end
+    SetEntityCollision(ped, not enabled, true)
+    FreezeEntityPosition(ped, enabled)
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+end
+
+local function deletePrompts(prompts)
+    if not prompts then return end
+    for _, prompt in ipairs(prompts) do
+        prompt:DeletePrompt()
+    end
+end
+
+local function createNoclipPrompts()
+    local keys = Feather.KeyCodes
+    local group = Feather.Prompt:SetupPromptGroup()
+    local prompts = {
+        group:RegisterPrompt(AdminTranslate('change_speed'), keys.SHIFT, 1, 1, true, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_forward'), keys.MOUSE1, 1, 1, true, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_backward'), keys.MOUSE2, 1, 1, true, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_up'), keys.CTRL, 1, 1, true, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_down'), keys.LALT, 1, 1, true, 'click')
+    }
+    return group, prompts
+end
+
+local function moveNoclipPed(ped, forwardOffset, verticalOffset, speed)
+    local coords = GetOffsetFromEntityInWorldCoords(
+        ped,
+        0.0,
+        forwardOffset * (speed + 0.3),
+        verticalOffset * (speed + 0.3)
+    )
+    SetEntityVelocity(ped, 0.0, 0.0, 0.0)
+    SetEntityHeading(ped, GetGameplayCamRelativeHeading())
+    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false)
+end
+
+local function runInfiniteStamina()
+    while state.infiniteStamina do
         RestorePlayerStamina(PlayerId(), 100.0)
+        Wait(0)
     end
 end
 
-local function noClipHandler()
+local function runNoclip(session)
+    local keys = Feather.KeyCodes
     local speed = 0.1
-    local playerPed = PlayerPedId()
-    local  PromptGroup = Feather.Prompt:SetupPromptGroup()
-    local speedPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "changeSpeed"), Feather.Keys.SHIFT, 1, 1, true, 'click')
-    local forwardPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "forward"), Feather.Keys.MOUSE1, 1, 1, true, 'click')
-    local backwardPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "backward"), Feather.Keys.MOUSE2, 1, 1, true, 'click')
-    local upPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "up"), Feather.Keys.CTRL, 1, 1, true, 'click')
-    local downPrompt = PromptGroup:RegisterPrompt(Feather.Locale.translate(0, "down"), Feather.Keys.LALT, 1, 1, true, 'click')
-
-    local function noClipAction(yoff, zoff, setSpeed) --Credit to vorp admin for this function modified it to make it work
-        local newPos = GetOffsetFromEntityInWorldCoords(playerPed, 0.0, yoff * (setSpeed + 0.3), zoff * (setSpeed + 0.3))
-        SetEntityVelocity(playerPed, 0.0, 0.0, 0.0)
-        SetEntityRotation(playerPed, 0.0, 0.0, 180.0, 0, false)
-        SetEntityHeading(playerPed, GetGameplayCamRelativeHeading())
-        SetEntityCoordsNoOffset(playerPed, newPos.x, newPos.y, newPos.z, false, false, false)
-    end
-
-    --SetEntityVisible(playerPed, false) --Left off for now as first person no clip is iffy still and youll want to know where your char will spawn when exiting noclip
-    SetEntityCollision(playerPed, false, true)
-    FreezeEntityPosition(playerPed, true)
+    local promptGroup, prompts = createNoclipPrompts()
+    state.noclipPrompts = prompts
     SetEveryoneIgnorePlayer(PlayerId(), true)
-    while boosters.noClip do
-        Wait(5)
-		PromptGroup:ShowGroup(AdminTranslate("noClip"))
-        if speedPrompt:HasCompleted() then
-            speed = speed + 0.1
-            if speed > 2 then speed = 0.1 end
+
+    while state.noclip and state.noclipSession == session do
+        local ped = PlayerPedId()
+        if state.noclipPed ~= ped then
+            setNoclipPed(state.noclipPed, false)
+            state.noclipPed = ped
+            setNoclipPed(ped, true)
         end
 
-        if IsControlPressed(0, Feather.Keys.MOUSE1) then
-            noClipAction(-0.2, 0.0, speed)
-        elseif IsControlPressed(0, Feather.Keys.MOUSE2) then
-            noClipAction(0.2, 0.0, speed)
-        elseif IsControlPressed(0, Feather.Keys.CTRL) then
-            noClipAction(0, 1, speed)
-        elseif IsControlPressed(0, Feather.Keys.LALT) then
-            noClipAction(0, -1, speed)
+        promptGroup:ShowGroup(AdminTranslate('noclip_controls'))
+        if prompts[1]:HasCompleted() then
+            speed = speed + 0.1
+            if speed > 2.0 then speed = 0.1 end
         end
+
+        if IsControlPressed(0, keys.MOUSE1) then
+            moveNoclipPed(ped, -0.2, 0.0, speed)
+        elseif IsControlPressed(0, keys.MOUSE2) then
+            moveNoclipPed(ped, 0.2, 0.0, speed)
+        elseif IsControlPressed(0, keys.CTRL) then
+            moveNoclipPed(ped, 0.0, 1.0, speed)
+        elseif IsControlPressed(0, keys.LALT) then
+            moveNoclipPed(ped, 0.0, -1.0, speed)
+        end
+
+        Wait(0)
     end
-    SetEntityVisible(playerPed, true)
-    SetEntityCollision(playerPed, true, true)
-    FreezeEntityPosition(playerPed, false)
+
+    setNoclipPed(state.noclipPed, false)
     SetEveryoneIgnorePlayer(PlayerId(), false)
+    deletePrompts(prompts)
+    state.noclipPed = nil
+    state.noclipPrompts = nil
 end
 
------ Menus -----
-function boostersMenu(playerId) --catching the player id so it can be used for either the admin using the menu or if we do pass an id it can be used to modify another player allowing admins to use booster options on other players not just themselves
-    local isAdmin = true --is admin is used to hide options that only works on admin client
-    if playerId == nil then
-        playerId = GetPlayerServerId(PlayerId())
-    else
-        isAdmin = false
-    end
-    AdminMenu:Close({})
+function AdminBoosters.Request(action, targetPlayer)
+    if targetPlayer == nil then return end
+    TriggerServerEvent('feather-admin:booster:request', action, targetPlayer)
+end
 
-    local boostersPage = AdminMenu:RegisterPage("feather-admin:boostersPage")
-    boostersPage:RegisterElement("header", {
-        value = AdminTranslate("boostersHeader"),
-        slot = 'header',
-        style = {}
-    })
-    boostersPage:RegisterElement("button", {
-        label = AdminTranslate("toggleGodMode"),
-        style = {}
-    }, function()
-        TriggerServerEvent('feather-admin:BoosterCheck', "Invincibility", playerId)
-    end)
-    boostersPage:RegisterElement("button", {
-        label = AdminTranslate("toggleInvis"),
-        style = {}
-    }, function()
-        TriggerServerEvent('feather-admin:BoosterCheck', "Invisibility", playerId)
-    end)
-    boostersPage:RegisterElement("button", {
-        label = AdminTranslate("toggleInfStam"),
-        style = {}
-    }, function()
-        TriggerServerEvent('feather-admin:BoosterCheck', "InfStam", playerId)
-    end)
-    boostersPage:RegisterElement("button", {
-        label = AdminTranslate("heal"),
-        style = {}
-    }, function()
-        TriggerServerEvent('feather-admin:BoosterCheck', "Heal", playerId)
-    end)
-    boostersPage:RegisterElement("button", {
-        label = AdminTranslate("kill"),
-        style = {}
-    }, function()
-        TriggerServerEvent('feather-admin:BoosterCheck', "kill", playerId)
-    end)
-    boostersPage:RegisterElement("button", {
-        label = AdminTranslate("disableFOW"),
-        style = {}
-    }, function()
-        TriggerServerEvent('feather-admin:BoosterCheck', "disableFOW", playerId)
-    end)
-    boostersPage:RegisterElement("button", {
-        label = AdminTranslate("changePed"),
-        style = {}
-    }, function()
-        OpenPedChanger(playerId)
-    end)
-    if isAdmin then
-        boostersPage:RegisterElement("button", {
-            label = AdminTranslate("noClip"),
-            style = {}
-        }, function()
-            if not boosters.noClip then
-                boosters.noClip = true
-                AdminMenu:Close({})
-                boostersMenu()
-                noClipHandler()
-            else
-                boosters.noClip = false
-                AdminMenu:Close({})
-                boostersMenu()
-            end
+function AdminBoosters.ToggleNoClip()
+    state.noclip = not state.noclip
+    state.noclipSession = state.noclipSession + 1
+    if state.noclip then
+        local session = state.noclipSession
+        CreateThread(function()
+            runNoclip(session)
         end)
     end
-
-    AdminMenu:Open({
-        startupPage = boostersPage
-    })
 end
 
------ Events ----
-RegisterNetEvent("feather-admin:BoosterHandler", function(event)
-    local options = {
-        ["Invisibility"] = function()
-            if not boosters.visible then
-                SetEntityVisible(PlayerPedId(), false)
-                boosters.visible = true
-            else
-                SetEntityVisible(PlayerPedId(), true)
-                boosters.visible = false
-            end
-        end,
-        ["Invincibility"] = function()
-            if not boosters.godMode then
-                SetEntityInvincible(PlayerPedId(), true)
-                boosters.godMode = true
-            else
-                SetEntityInvincible(PlayerPedId(), false)
-                boosters.godMode = false
-            end
-        end,
-        ["InfStam"] = function()
-            if not boosters.infStamina then
-                boosters.infStamina = true
-                infiniteStamina()
-            else
-                boosters.infStamina = false
-            end
-        end,
-        ["Heal"] = function()
-            SetEntityHealth(PlayerPedId(), 100.0)
-        end,
-        ["kill"] = function()
-            SetEntityHealth(PlayerPedId(), 0)
-        end,
-        ["disableFOW"] = function()
-            SetMinimapHideFow(true)
-        end
-    }
-
-    if options[event] then
-        options[event]()
+function AdminBoosters.RefreshPlayerState()
+    local ped = PlayerPedId()
+    SetEntityInvincible(ped, state.invincible)
+    SetEntityVisible(ped, not state.invisible)
+    if state.noclip then
+        state.noclipPed = ped
+        setNoclipPed(ped, true)
     end
+end
+
+local actionHandlers = {
+    invisibility = function()
+        state.invisible = not state.invisible
+        SetEntityVisible(PlayerPedId(), not state.invisible)
+    end,
+    invincibility = function()
+        state.invincible = not state.invincible
+        SetEntityInvincible(PlayerPedId(), state.invincible)
+    end,
+    infinite_stamina = function()
+        state.infiniteStamina = not state.infiniteStamina
+        if state.infiniteStamina then CreateThread(runInfiniteStamina) end
+    end,
+    heal = function()
+        local ped = PlayerPedId()
+        SetEntityHealth(ped, GetEntityMaxHealth(ped))
+    end,
+    kill = function()
+        SetEntityHealth(PlayerPedId(), 0)
+    end,
+    disable_fow = function()
+        Feather.Map.setFOW(true)
+    end
+}
+
+RegisterNetEvent('feather-admin:booster:apply', function(action)
+    local handler = actionHandlers[action]
+    if handler then handler() end
+end)
+
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+
+    state.infiniteStamina = false
+    state.noclip = false
+    state.noclipSession = state.noclipSession + 1
+    setNoclipPed(state.noclipPed, false)
+    SetEveryoneIgnorePlayer(PlayerId(), false)
+    deletePrompts(state.noclipPrompts)
+
+    local ped = PlayerPedId()
+    SetEntityInvincible(ped, false)
+    SetEntityVisible(ped, true)
 end)
