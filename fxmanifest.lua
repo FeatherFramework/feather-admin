@@ -14,7 +14,8 @@ github_ui_check 'false'
 github_link 'https://github.com/FeatherFramework/feather-admin'
 
 shared_scripts {
-    'config.lua'
+    'config.lua',
+    'configs/*.lua'
 }
 
 client_scripts {
@@ -26,18 +27,23 @@ client_scripts {
     'client/ui/pages/ped_changer.lua',
     'client/ui/pages/boosters.lua',
     'client/ui/pages/developer_tools.lua',
+    'client/ui/pages/character_administration.lua',
+    'client/ui/pages/player_management.lua',
     'client/ui/pages/teleports.lua',
     'client/ui/pages/trolls.lua',
+    'client/ui/pages/moderation.lua',
     'client/ui/pages/main.lua',
     'client/core/main.lua'
 }
 
 server_scripts {
+    '@oxmysql/lib/MySQL.lua',
     'server/core/init.lua',
     'server/services/*.lua'
 }
 
 dependencies {
+    'oxmysql',
     'feather-core',
     'feather-menu'
 }
