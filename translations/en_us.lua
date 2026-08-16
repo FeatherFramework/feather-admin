@@ -28,6 +28,7 @@ Feather.Locale.register('en_us', {
     toggle_invisibility = 'Invisibility',
     toggle_infinite_stamina = 'Infinite Stamina',
     heal = 'Restore Health',
+    revive = 'Revive Player',
     kill = 'Kill Player',
     disable_fog_of_war = 'Disable Fog of War',
     change_ped = 'Change Ped Model',
@@ -44,6 +45,10 @@ Feather.Locale.register('en_us', {
     -- Developer tools
     entity_inspector = 'Entity Inspector',
     bone_viewer = 'Bone Viewer',
+    copy_vector3 = 'Copy Vector3 Coordinates',
+    copy_vector4 = 'Copy Vector4 Coordinates',
+    copy_xyz = 'Copy X, Y, Z Coordinates',
+    copy_heading = 'Copy Heading',
 
     -- Ped changer
     human_peds = 'Human Peds',
@@ -59,6 +64,10 @@ Feather.Locale.register('en_us', {
     -- Teleportation
     teleport_to_waypoint = 'Teleport to Waypoint',
     toggle_auto_waypoint = 'Automatic Waypoint Teleport',
+    coordinates = 'Coordinates',
+    coordinates_placeholder = 'vector3(x, y, z) or x, y, z',
+    teleport_to_coordinates = 'Teleport to Coordinates',
+    invalid_coordinates = 'Enter valid X, Y, and Z coordinates.',
 
     -- Player effects
     lightning_strike = 'Lightning Strike',
