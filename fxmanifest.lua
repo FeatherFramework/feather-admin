@@ -5,7 +5,7 @@ lua54 'yes'
 
 name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
-author 'BCC Team'
+author 'BCC Scripts'
 version '0.2.0'
 
 github_version_check 'true'
@@ -18,15 +18,23 @@ shared_scripts {
 }
 
 client_scripts {
-    'client/init.lua',
-    'client/main.lua',
+    'client/core/init.lua',
     'translations/*.lua',
-    'client/services/*.lua'
+    'client/ui/menu.lua',
+    'client/services/*.lua',
+    'client/ui/pages/players.lua',
+    'client/ui/pages/ped_changer.lua',
+    'client/ui/pages/boosters.lua',
+    'client/ui/pages/developer_tools.lua',
+    'client/ui/pages/teleports.lua',
+    'client/ui/pages/trolls.lua',
+    'client/ui/pages/main.lua',
+    'client/core/main.lua'
 }
 
 server_scripts {
-    'server/main.lua',
-    'server/helpers/*.lua'
+    'server/core/init.lua',
+    'server/services/*.lua'
 }
 
 dependencies {
