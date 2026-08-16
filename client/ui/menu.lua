@@ -75,6 +75,15 @@ function AdminUI.AddButton(page, label, callback, style)
     }, callback)
 end
 
+function AdminUI.AddInput(page, label, placeholder, callback)
+    return page:RegisterElement('input', {
+        label = label,
+        placeholder = placeholder,
+        slot = 'content',
+        style = {}
+    }, callback)
+end
+
 function AdminUI.AddFooter(page)
     page:RegisterElement('bottomline', {
         slot = 'footer',
@@ -130,8 +139,11 @@ function AdminUI.GetTarget()
 end
 
 function AdminUI.RunAction(label, callback)
-    callback()
-    Feather.Notify.Notify(label, 2000)
+    local succeeded = callback()
+    if succeeded ~= false then
+        Feather.Notify.Notify(label, 2000)
+    end
+    return succeeded
 end
 
 local function getToggleStateKey(action)
