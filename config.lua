@@ -5,6 +5,7 @@ Config = {
         enabled = true,    -- Set to false to disable the shortcut.
         openMenu = 'PGDN', -- Feather key name; PGDN is Page Down.
     },
+    -----------------------------------------------------
 
     -- Chat command used to open the admin menu.
     commands = {
@@ -12,6 +13,7 @@ Config = {
         openMenu = 'adminMenu',              -- Used in chat as /adminMenu.
         suggestionKey = 'command_suggestion' -- Translation key for chat help text.
     },
+    -----------------------------------------------------
 
     -- Ped models available through the Change Ped Model menu.
     pedChanger = {
