@@ -12,6 +12,7 @@ local state = {
 
 local function setNoclipPed(ped, enabled)
     if not ped or ped == 0 or not DoesEntityExist(ped) then return end
+
     SetEntityCollision(ped, not enabled, true)
     FreezeEntityPosition(ped, enabled)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
@@ -19,6 +20,7 @@ end
 
 local function deletePrompts(prompts)
     if not prompts then return end
+
     for _, prompt in ipairs(prompts) do
         prompt:DeletePrompt()
     end
