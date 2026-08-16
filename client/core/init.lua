@@ -3,6 +3,7 @@ FeatherMenu = exports['feather-menu'].initiate()
 
 InMenu = false
 ClientAllPlayers = {}
+AdminPermissions = {}
 
 function AdminTranslate(key)
     return Feather.Locale.translate(0, key)
