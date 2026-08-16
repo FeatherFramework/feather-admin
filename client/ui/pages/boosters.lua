@@ -3,6 +3,7 @@ local actions = {
     { key = 'toggle_invisibility', action = 'invisibility', toggle = true },
     { key = 'toggle_infinite_stamina', action = 'infinite_stamina', toggle = true },
     { key = 'heal', action = 'heal' },
+    { key = 'revive', action = 'revive' },
     { key = 'kill', action = 'kill', danger = true },
     { key = 'disable_fog_of_war', action = 'disable_fow' }
 }
