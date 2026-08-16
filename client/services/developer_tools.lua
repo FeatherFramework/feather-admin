@@ -89,6 +89,25 @@ function AdminDeveloperTools.ToggleBoneDisplay()
     end
 end
 
+function AdminDeveloperTools.CopyCoordinates(format)
+    local ped = PlayerPedId()
+    if ped == 0 or not DoesEntityExist(ped) then return false end
+
+    local coords = GetEntityCoords(ped)
+    local values = {
+        vector3 = ('vector3(%.3f, %.3f, %.3f)'):format(coords.x, coords.y, coords.z),
+        vector4 = ('vector4(%.3f, %.3f, %.3f, %.3f)'):format(
+            coords.x, coords.y, coords.z, GetEntityHeading(ped)
+        ),
+        xyz = ('x = %.3f, y = %.3f, z = %.3f'):format(coords.x, coords.y, coords.z),
+        heading = ('%.3f'):format(GetEntityHeading(ped))
+    }
+
+    local text = values[format]
+    if not text then return false end
+    return Feather.Clip.CopyToClipboard(text)
+end
+
 AddEventHandler('onResourceStop', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
     state.entityInspector = false
