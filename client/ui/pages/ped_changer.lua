@@ -1,4 +1,5 @@
 local function openModelPage(category, index)
+    if not AdminUI.CanUse('ped.change') then return end
     local pageKey = ('ped_models_%d'):format(index)
     local page = AdminUI.RegisterPage(pageKey)
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate(category.labelKey))
@@ -19,6 +20,7 @@ local function openModelPage(category, index)
 end
 
 function AdminUI.OpenPedCategories()
+    if not AdminUI.CanUse('ped.change') then return end
     local page = AdminUI.RegisterPage('ped_categories')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('ped_changer_header'))
 
