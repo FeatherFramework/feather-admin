@@ -27,7 +27,9 @@ local function removeCage()
 end
 
 local function trackPed(ped)
-    if ped then state.spawnedPeds[#state.spawnedPeds + 1] = ped end
+    if ped then
+        state.spawnedPeds[#state.spawnedPeds + 1] = ped
+    end
 end
 
 local function removeTrackedPed(ped)
@@ -41,7 +43,9 @@ local function removeTrackedPed(ped)
 end
 
 local function cleanupSpawnedPeds()
-    for index = #state.spawnedPeds, 1, -1 do state.spawnedPeds[index]:Remove() end
+    for index = #state.spawnedPeds, 1, -1 do
+        state.spawnedPeds[index]:Remove()
+    end
     state.spawnedPeds = {}
 end
 
@@ -49,13 +53,18 @@ local function runFreeze(session)
     while state.frozen and state.freezeSession == session do
         local ped = PlayerPedId()
         if state.frozenPed ~= ped then
-            if isValidEntity(state.frozenPed) then FreezeEntityPosition(state.frozenPed, false) end
+            if isValidEntity(state.frozenPed) then
+                FreezeEntityPosition(state.frozenPed, false)
+            end
             state.frozenPed = ped
             FreezeEntityPosition(ped, true)
         end
         Wait(250)
     end
-    if isValidEntity(state.frozenPed) then FreezeEntityPosition(state.frozenPed, false) end
+
+    if isValidEntity(state.frozenPed) then
+        FreezeEntityPosition(state.frozenPed, false)
+    end
     state.frozenPed = nil
 end
 
@@ -75,12 +84,14 @@ local function toggleCage()
         removeCage()
         return
     end
+
     local coords = GetEntityCoords(PlayerPedId())
     local cage = Feather.Object:Create('p_prisoncage02x', coords.x, coords.y, coords.z, 0.0, true, 'standard')
     if not cage then return end
+
     state.cage = cage
     state.caged = true
-    Citizen.InvokeNative(0x9587913B9E772D29, cage:GetObj(), true)
+    Citizen.InvokeNative(0x9587913B9E772D29, cage:GetObj(), true) -- PlaceEntityOnGroundProperly
 end
 
 local function runCinematic(session)
@@ -114,6 +125,7 @@ end
 local function createHostilePed(model, x, y, z, heading)
     local ped = Feather.Ped:Create(model, x, y, z, heading, 'world', false, nil, nil, true)
     if not ped then return end
+
     trackPed(ped)
     ped:AttackTarget(PlayerPedId(), 'LAW')
     CreateThread(function() monitorHostilePed(ped) end)
@@ -123,6 +135,7 @@ local function spawnHostileArmy()
     local coords = GetEntityCoords(PlayerPedId())
     for index = 1, 10 do
         if not state.running then return end
+
         local angle = math.rad((index - 1) * 36)
         createHostilePed('casp_hunting02_males_01', coords.x + math.cos(angle) * 4.0,
             coords.y + math.sin(angle) * 4.0, coords.z, math.deg(angle) + 180.0)
@@ -144,7 +157,7 @@ local function runLag(session, storedCoords)
             storedCoords = currentCoords
             SetEntityCoordsNoOffset(ped, currentCoords.x - 1.0, currentCoords.y - 1.0, currentCoords.z,
                 false, false, false)
-            Citizen.InvokeNative(0x9587913B9E772D29, ped, true)
+            Citizen.InvokeNative(0x9587913B9E772D29, ped, true) -- PlaceEntityOnGroundProperly
         end
         Wait(100)
     end
@@ -171,6 +184,7 @@ function AdminTrolls.RefreshPlayerState()
         state.frozenPed = ped
         FreezeEntityPosition(ped, true)
     end
+
     SetPedScale(ped, state.giant and 3.0 or 1.0)
     SetEnableHandcuffs(ped, state.handcuffed)
 end
@@ -180,28 +194,38 @@ local actionHandlers = {
         local coords = GetEntityCoords(PlayerPedId())
         ForceLightningFlashAtCoords(coords.x, coords.y, coords.z, -1.0)
     end,
+
     freeze = toggleFreeze,
+
     teleport_to_heaven = function()
         local ped = PlayerPedId()
         local coords = GetEntityCoords(ped)
         SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 1000.0, false, false, false)
     end,
+
     cage = toggleCage,
+
     force_cinematic_camera = toggleCinematic,
+
     make_ped_giant = function()
         state.giant = not state.giant
         SetPedScale(PlayerPedId(), state.giant and 3.0 or 1.0)
     end,
+
     hostile_ped_army = function() CreateThread(spawnHostileArmy) end,
+
     kick_from_vehicle = function()
         local ped = PlayerPedId()
-        if IsPedInAnyVehicle(ped) then TaskLeaveAnyVehicle(ped, 0, 0) end
+        if IsPedInAnyVehicle(ped, false) then TaskLeaveAnyVehicle(ped, 0, 0) end
     end,
+
     handcuff = function()
         state.handcuffed = not state.handcuffed
         SetEnableHandcuffs(PlayerPedId(), state.handcuffed)
     end,
+
     hostile_bear = function() CreateThread(spawnHostileBear) end,
+
     lag = toggleLag
 }
 
@@ -212,6 +236,7 @@ end)
 
 AddEventHandler('onResourceStop', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
+
     state.running = false
     state.frozen = false
     state.freezeSession = state.freezeSession + 1
@@ -219,10 +244,15 @@ AddEventHandler('onResourceStop', function(resourceName)
     state.cinematicSession = state.cinematicSession + 1
     state.lag = false
     state.lagSession = state.lagSession + 1
-    if isValidEntity(state.frozenPed) then FreezeEntityPosition(state.frozenPed, false) end
+
+    if isValidEntity(state.frozenPed) then
+        FreezeEntityPosition(state.frozenPed, false)
+    end
+
     SetCinematicModeActive(false)
     removeCage()
     cleanupSpawnedPeds()
+
     local ped = PlayerPedId()
     SetPedScale(ped, 1.0)
     SetEnableHandcuffs(ped, false)
