@@ -84,6 +84,24 @@ function AdminUI.AddInput(page, label, placeholder, callback)
     }, callback)
 end
 
+function AdminUI.AddText(page, value, style)
+    return page:RegisterElement('textdisplay', {
+        value = value,
+        slot = 'content',
+        style = style or AdminUI.Styles.button
+    })
+end
+
+function AdminUI.AddArrows(page, label, options, selectedIndex, callback)
+    return page:RegisterElement('arrows', {
+        label = label,
+        options = options,
+        value = selectedIndex or 0,
+        slot = 'content',
+        style = {}
+    }, callback)
+end
+
 function AdminUI.AddFooter(page)
     page:RegisterElement('bottomline', {
         slot = 'footer',
@@ -138,10 +156,21 @@ function AdminUI.GetTarget()
     return AdminUI.targetPlayer
 end
 
+function AdminUI.CanUse(action)
+    return AdminPermissions[action] == true
+end
+
+function AdminUI.CanUseAny(prefix)
+    for action, allowed in pairs(AdminPermissions) do
+        if allowed and action:sub(1, #prefix) == prefix then return true end
+    end
+    return false
+end
+
 function AdminUI.RunAction(label, callback)
     local succeeded = callback()
     if succeeded ~= false then
-        Feather.Notify.Notify(label, 2000)
+        Feather.Notify.RightNotify(label, 2000)
     end
     return succeeded
 end
