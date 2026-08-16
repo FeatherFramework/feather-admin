@@ -15,6 +15,30 @@ Config = {
     },
     -----------------------------------------------------
 
+    -- Admin action logs are always written to the server console.
+    logging = {
+        webhook = '',                  -- Optional Discord webhook URL.
+        webhookName = 'Feather Admin', -- Name shown for Discord messages.
+        webhookAvatar = ''             -- Optional image URL.
+    },
+    -----------------------------------------------------
+
+    -- Limits a single economy adjustment to a safe amount.
+    economy = {
+        maxAmount = 1000000
+    },
+    -----------------------------------------------------
+
+    -- Limits and messages used by persistent moderation tools.
+    moderation = {
+        searchLimit = 25,       -- Maximum offline results shown at once.
+        historyLimit = 50,      -- Maximum history records returned at once.
+        maxReasonLength = 200,  -- Maximum ban or warning reason length.
+        maxBanMinutes = 525600, -- Longest temporary ban (one year); use 0 for permanent.
+        banMessage = 'You are banned from this server.'
+    },
+    -----------------------------------------------------
+
     -- Ped models available through the Change Ped Model menu.
     pedChanger = {
         modelLoadTimeout = 10000, -- Maximum loading time in milliseconds.
