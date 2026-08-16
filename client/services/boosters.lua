@@ -30,11 +30,11 @@ local function createNoclipPrompts()
     local keys = Feather.KeyCodes
     local group = Feather.Prompt:SetupPromptGroup()
     local prompts = {
-        group:RegisterPrompt(AdminTranslate('change_speed'), keys.SHIFT, 1, 1, true, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_forward'), keys.MOUSE1, 1, 1, true, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_backward'), keys.MOUSE2, 1, 1, true, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_up'), keys.CTRL, 1, 1, true, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_down'), keys.LALT, 1, 1, true, 'click')
+        group:RegisterPrompt(AdminTranslate('change_speed'), keys.SHIFT, 1, 1, false, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_forward'), keys.MOUSE1, 1, 1, false, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_backward'), keys.MOUSE2, 1, 1, false, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_up'), keys.CTRL, 1, 1, false, 'click'),
+        group:RegisterPrompt(AdminTranslate('move_down'), keys.LALT, 1, 1, false, 'click')
     }
     return group, prompts
 end
