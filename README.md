@@ -1,10 +1,21 @@
 # Feather Admin
 
-Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. By default, only characters with Admin role can open the menu or use its tools.
+Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. By default, only characters with numeric role level `99` can open the menu or use its tools.
 
 ## Features
 
 - View everyone currently connected to the server
+- View character details, economy values, role level, and identifiers
+- Teleport to a player, bring them to you, or send them back
+- Spectate another player, including players outside normal streaming range
+- Kick a player with a required reason
+- Issue persistent warnings and review moderation history
+- Apply permanent or temporary account bans
+- Search for and moderate players who are currently offline
+- Revoke active bans from the in-game menu
+- Block banned accounts before they enter the server
+- Add or remove dollars, gold, tokens, and experience
+- Restore a player's saved character model, clothing, and appearance
 - Use admin tools on yourself or another player
 - Toggle god mode, invisibility, infinite stamina, and noclip
 - Heal or kill a player
@@ -15,6 +26,7 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Freeze, cage, handcuff, or remove a player from a vehicle
 - Apply several optional player effects
 - Open the menu with a key or chat command
+- Record admin actions in the server console and optionally Discord
 
 ## Dependencies
 
@@ -22,6 +34,8 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - `feather-menu`
 
 These resources must already be installed. They also need to start before Feather Admin.
+
+Feather Admin creates its moderation database tables automatically when the resource starts. No SQL import is required.
 
 ## Installation
 
@@ -42,9 +56,13 @@ These resources must already be installed. They also need to start before Feathe
 
 ## Permissions
 
-Only characters with Feather Admin role (`level 99`) can use this menu. The role check happens on the server, so hiding or changing the menu on a player's computer does not bypass it.
+Every menu action has a minimum numeric role level in `configs/permissions.lua`. All actions require level `99` by default, preserving full administrator-only access.
 
-If an administrator cannot open the menu, confirm that their active character has role level `99` in your Feather roles and character data.
+Lower individual values to give junior staff limited access. For example, changing `players.view` to `50` lets level 50 staff view connected players. Keep `menu.open` at or below the lowest staff level that should be able to open the menu.
+
+Buttons a staff member cannot use are hidden. Every player-affecting request is checked again by the server, so changing the local menu does not grant permission.
+
+If an administrator cannot open the menu, confirm that their active character meets the numeric level configured for `menu.open`.
 
 ## Configuration
 
@@ -54,6 +72,14 @@ Most server owners only need to edit `config.lua`. Open it with a text editor to
 - `controls.openMenu`: choose the key used to open the menu; the default is `PGDN` (Page Down)
 - `commands.enabled`: turn chat-command access on or off
 - `commands.openMenu`: change the menu command; the default is `adminMenu`
+- `configs/permissions.lua`: choose the minimum numeric role level for every admin action
+- `logging.webhook`: optionally send admin action logs to a Discord webhook
+- `economy.maxAmount`: limit the size of a single balance adjustment
+- `moderation.searchLimit`: limit offline search results
+- `moderation.historyLimit`: limit the history records shown
+- `moderation.maxReasonLength`: set the maximum warning or ban reason length
+- `moderation.maxBanMinutes`: set the longest allowed temporary ban
+- `moderation.banMessage`: change the message shown to banned players
 - `pedChanger.modelLoadTimeout`: set how long the game waits for a player model to load
 - `pedChanger.categories`: choose which human and animal models appear in the menu
 
@@ -80,7 +106,7 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 ### The menu does not open
 
 - Confirm that `feather-core`, `feather-menu`, and `feather-admin` are running.
-- Confirm that the administrator's active character has role level `99`.
+- Confirm that the administrator's active character meets the `permissions['menu.open']` level.
 - Check that keyboard or command access is enabled in `config.lua`.
 
 ### Feather Admin does not start
