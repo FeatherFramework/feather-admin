@@ -42,6 +42,9 @@ function AdminUI.OpenTeleports()
                 return AdminTeleports.ToCoordinates(x, y, z, heading)
             end)
         end)
+
+        AdminUI.AddLine(page)
+        AdminUI.AddText(page, AdminTranslate('coordinate_format_help'))
     end
 
     AdminUI.AddFooter(page)
