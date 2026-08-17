@@ -11,7 +11,9 @@ Config = {
     commands = {
         enabled = true,                      -- Set to false to disable the command.
         openMenu = 'adminMenu',              -- Used in chat as /adminMenu.
-        suggestionKey = 'command_suggestion' -- Translation key for chat help text.
+        suggestionKey = 'command_suggestion', -- Translation key for chat help text.
+        recoverRole = 'featherSetRole',       -- ACE-protected role recovery command.
+        recoverAce = 'feather.admin.recover'  -- ACE required to use role recovery in game.
     },
     -----------------------------------------------------
 
@@ -32,6 +34,7 @@ Config = {
     -- Limits and messages used by persistent moderation tools.
     moderation = {
         searchLimit = 25,       -- Maximum offline results shown at once.
+        minSearchLength = 2,    -- Minimum characters required for offline search.
         historyLimit = 50,      -- Maximum history records returned at once.
         maxReasonLength = 200,  -- Maximum ban or warning reason length.
         maxBanMinutes = 525600, -- Longest temporary ban (one year); use 0 for permanent.
