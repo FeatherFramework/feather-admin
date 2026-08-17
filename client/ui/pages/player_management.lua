@@ -9,44 +9,69 @@ function AdminUI.OpenPlayerInfo(info)
     local page = AdminUI.RegisterPage('player_info')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('player_info_header'))
 
-    local identifiers = type(info.identifiers) == 'table'
-        and table.concat(info.identifiers, '\n')
-        or AdminTranslate('not_available')
-    local text = table.concat({
+    local identityText = table.concat({
         ('%s: %s'):format(AdminTranslate('player_id'), displayValue(info.serverId)),
         ('%s: %s'):format(AdminTranslate('server_name'), displayValue(info.serverName)),
         ('%s: %s'):format(AdminTranslate('character_id'), displayValue(info.characterId)),
-        ('%s: %s %s'):format(AdminTranslate('character_name'), displayValue(info.firstName), displayValue(info.lastName)),
+        ('%s: %s %s'):format(AdminTranslate('character_name'), displayValue(info.firstName), displayValue(info.lastName))
+    }, '\n')
+    local roleText = table.concat({
         ('%s: %s'):format(AdminTranslate('role_name'), displayValue(info.roleName)),
-        ('%s: %s'):format(AdminTranslate('role_level'), displayValue(info.roleLevel)),
+        ('%s: %s'):format(AdminTranslate('role_level'), displayValue(info.roleLevel))
+    }, '\n')
+    local economyText = table.concat({
         ('%s: %s'):format(AdminTranslate('dollars'), displayValue(info.dollars)),
         ('%s: %s'):format(AdminTranslate('gold'), displayValue(info.gold)),
         ('%s: %s'):format(AdminTranslate('tokens'), displayValue(info.tokens)),
-        ('%s: %s'):format(AdminTranslate('xp'), displayValue(info.xp)),
-        ('%s:\n%s'):format(AdminTranslate('identifiers'), identifiers)
+        ('%s: %s'):format(AdminTranslate('xp'), displayValue(info.xp))
     }, '\n')
 
-    AdminUI.AddText(page, text)
+    AdminUI.AddText(page, identityText)
+    AdminUI.AddLine(page)
+    AdminUI.AddText(page, roleText)
+    AdminUI.AddLine(page)
+    AdminUI.AddText(page, economyText)
+    AdminUI.AddLine(page)
+    local identifiers = type(info.identifiers) == 'table' and info.identifiers or {}
+    if #identifiers == 0 then
+        AdminUI.AddText(page, AdminTranslate('identifiers'))
+        AdminUI.AddText(page, AdminTranslate('not_available'))
+    else
+        local identifierOptions = {}
+        for _, identifier in ipairs(identifiers) do
+            local value = tostring(identifier)
+            local identifierType = value:match('^([^:]+):') or AdminTranslate('identifier')
+            identifierOptions[#identifierOptions + 1] = {
+                display = identifierType,
+                value = value
+            }
+        end
+
+        local selectedIdentifier = identifierOptions[1].value
+        local identifierDisplay
+        AdminUI.AddArrows(page, AdminTranslate('identifiers'), identifierOptions, 0, function(data)
+            selectedIdentifier = data.value.value
+            if identifierDisplay then identifierDisplay:update({ value = selectedIdentifier }) end
+        end)
+        identifierDisplay = AdminUI.AddText(page, selectedIdentifier)
+        AdminUI.AddButton(page, AdminTranslate('copy_identifier'), function()
+            local copied = Feather.Clip.CopyToClipboard(selectedIdentifier)
+            if copied ~= false then
+                Feather.Notify.RightNotify(AdminTranslate('identifier_copied'), 2000)
+            end
+        end)
+    end
+
     AdminUI.AddFooter(page)
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenPlayerManagement)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenSelectedPlayer)
     AdminUI.OpenPage('player_info')
 end
 
 function AdminUI.OpenPlayerManagement()
     if not AdminUI.CanUseAny('player.') then return end
 
-    local kickReason
     local page = AdminUI.RegisterPage('player_management')
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('player_management_header'))
-
-    if AdminUI.CanUse('player.info') then
-        local label = AdminTranslate('view_player_info')
-        AdminUI.AddButton(page, label, function()
-            AdminUI.RunAction(label, function()
-                return AdminPlayerManagement.RequestInfo(AdminUI.GetTarget())
-            end)
-        end)
-    end
+    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('movement_header'))
 
     if AdminUI.CanUse('player.go_to') then
         local label = AdminTranslate('go_to_player')
@@ -82,19 +107,6 @@ function AdminUI.OpenPlayerManagement()
             })
             if enabled then AdminUI.Close() end
         end)
-    end
-
-    if AdminUI.CanUse('player.kick') then
-        AdminUI.AddInput(page, AdminTranslate('kick_reason'), AdminTranslate('kick_reason_placeholder'), function(data)
-            kickReason = data.value
-        end)
-        AdminUI.AddButton(page, AdminTranslate('kick_player'), function()
-            if not AdminPlayerManagement.Kick(AdminUI.GetTarget(), kickReason) then
-                Feather.Notify.RightNotify(AdminTranslate('invalid_kick_reason'), 3000)
-                return
-            end
-            AdminUI.Close()
-        end, AdminUI.Styles.danger)
     end
 
     AdminUI.AddFooter(page)
