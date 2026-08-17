@@ -12,8 +12,8 @@ local allowedActions = {
     lag = true
 }
 
-RegisterNetEvent('feather-admin:troll:request', function(action, playerId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:troll:request', function(params, _, src)
+    local action, playerId = params.action, params.playerId
     if allowedActions[action] ~= true then return end
     local permission = ('troll.%s'):format(action)
     local target = FeatherAdmin.RequireTarget(src, permission, playerId)
@@ -21,4 +21,4 @@ RegisterNetEvent('feather-admin:troll:request', function(action, playerId)
 
     AdminAudit.Record(src, permission, target)
     TriggerClientEvent('feather-admin:troll:apply', target, action)
-end)
+end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 256 })
