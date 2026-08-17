@@ -8,7 +8,6 @@ Config.permissions = {
     ['player.bring'] = 99,
     ['player.send_back'] = 99,
     ['player.spectate'] = 99,
-    ['player.kick'] = 99,
 
     ['moderation.view'] = 99,
     ['moderation.search'] = 99,
@@ -16,6 +15,7 @@ Config.permissions = {
     ['moderation.warn'] = 99,
     ['moderation.ban'] = 99,
     ['moderation.unban'] = 99,
+    ['moderation.kick'] = 99,
 
     ['economy.dollars.add'] = 99,
     ['economy.dollars.remove'] = 99,
