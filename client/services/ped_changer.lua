@@ -58,7 +58,7 @@ end
 
 function AdminPedChanger.Request(targetPlayer, modelName)
     if targetPlayer == nil or type(modelName) ~= 'string' then return end
-    TriggerServerEvent('feather-admin:ped:request', targetPlayer, modelName)
+    Feather.RPC.Notify('feather-admin:ped:request', { playerId = targetPlayer, modelName = modelName })
 end
 
 RegisterNetEvent('feather-admin:ped:apply', function(model)
