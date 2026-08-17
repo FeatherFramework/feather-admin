@@ -11,12 +11,11 @@ local allowedActions = {
 RegisterNetEvent('feather-admin:booster:request', function(action, playerId)
     local src = source
     if allowedActions[action] ~= true then return end
-    if not FeatherAdmin.RequirePermission(src, ('booster.%s'):format(action)) then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local permission = ('booster.%s'):format(action)
+    local target = FeatherAdmin.RequireTarget(src, permission, playerId)
     if target == nil then return end
 
-    AdminAudit.Record(src, ('booster.%s'):format(action), target)
+    AdminAudit.Record(src, permission, target)
     if action == 'revive' then
         TriggerClientEvent('Feather:Character:Revive', target)
         return
