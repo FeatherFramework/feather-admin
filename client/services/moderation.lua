@@ -38,35 +38,37 @@ end
 function AdminModeration.Ban(reason, duration)
     local valid, problem, parsedDuration = AdminModeration.ValidateBan(reason, duration)
     if not valid then return false, problem end
-    TriggerServerEvent('feather-admin:moderation:ban', AdminModeration.target, reason, parsedDuration)
+    Feather.RPC.Notify('feather-admin:moderation:ban', {
+        target = AdminModeration.target, reason = reason, durationMinutes = parsedDuration
+    })
     return true
 end
 
 function AdminModeration.Warn(reason)
     if not validReason(reason) then return false end
-    TriggerServerEvent('feather-admin:moderation:warn', AdminModeration.target, reason)
+    Feather.RPC.Notify('feather-admin:moderation:warn', { target = AdminModeration.target, reason = reason })
     return true
 end
 
 function AdminModeration.Kick(reason)
     local target = AdminModeration.target
     if not target or not target.serverId or not validReason(reason) then return false end
-    TriggerServerEvent('feather-admin:moderation:kick', target.serverId, reason)
+    Feather.RPC.Notify('feather-admin:moderation:kick', { playerId = target.serverId, reason = reason })
     return true
 end
 
 function AdminModeration.RequestHistory()
-    TriggerServerEvent('feather-admin:moderation:history', AdminModeration.target)
+    Feather.RPC.Notify('feather-admin:moderation:history', { target = AdminModeration.target })
 end
 
 function AdminModeration.Search(query)
     if type(query) ~= 'string' or query:match('^%s*$') then return false end
-    TriggerServerEvent('feather-admin:moderation:search', query)
+    Feather.RPC.Notify('feather-admin:moderation:search', { query = query })
     return true
 end
 
 function AdminModeration.Unban(banId)
-    TriggerServerEvent('feather-admin:moderation:unban', banId)
+    Feather.RPC.Notify('feather-admin:moderation:unban', { banId = banId })
 end
 
 RegisterNetEvent('feather-admin:moderation:search:result', function(results)
