@@ -11,8 +11,8 @@ for _, category in ipairs(Config.pedChanger.categories) do
     registerAllowedModels(category)
 end
 
-RegisterNetEvent('feather-admin:ped:request', function(targetPlayer, modelName)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:ped:request', function(params, _, src)
+    local targetPlayer, modelName = params.playerId, params.modelName
     local target = FeatherAdmin.RequireTarget(src, 'ped.change', targetPlayer)
     if target == nil or type(modelName) ~= 'string' or #modelName > 64 then return end
 
@@ -21,4 +21,4 @@ RegisterNetEvent('feather-admin:ped:request', function(targetPlayer, modelName)
 
     AdminAudit.Record(src, 'ped.change', target, modelName)
     TriggerClientEvent('feather-admin:ped:apply', target, model)
-end)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 256 })
