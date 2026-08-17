@@ -25,8 +25,8 @@ local function movePlayer(adminId, movedPlayer, destinationPlayer, action)
     return true
 end
 
-RegisterNetEvent('feather-admin:player:info:request', function(playerId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:player:info:request', function(params, _, src)
+    local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'player.info', playerId)
     if target == nil then return end
 
@@ -39,8 +39,8 @@ RegisterNetEvent('feather-admin:player:info:request', function(playerId)
         characterId = char.id,
         firstName = char.first_name,
         lastName = char.last_name,
-        roleName = char.name,
-        roleLevel = char.level,
+        roleName = char.role_name,
+        roleLevel = char.role_level,
         dollars = char.dollars,
         gold = char.gold,
         tokens = char.tokens,
@@ -50,10 +50,10 @@ RegisterNetEvent('feather-admin:player:info:request', function(playerId)
 
     TriggerClientEvent('feather-admin:player:info', src, info)
     AdminAudit.Record(src, 'player.info', target)
-end)
+end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 128 })
 
-RegisterNetEvent('feather-admin:player:go_to', function(playerId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:player:go_to', function(params, _, src)
+    local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'player.go_to', playerId)
     if target == nil or target == src then return end
     if movePlayer(src, src, target, 'player.go_to') then
@@ -61,10 +61,10 @@ RegisterNetEvent('feather-admin:player:go_to', function(playerId)
     else
         notify(src, 'Unable to find the player location.')
     end
-end)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 128 })
 
-RegisterNetEvent('feather-admin:player:bring', function(playerId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:player:bring', function(params, _, src)
+    local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'player.bring', playerId)
     if target == nil or target == src then return end
     if movePlayer(src, target, src, 'player.bring') then
@@ -72,10 +72,10 @@ RegisterNetEvent('feather-admin:player:bring', function(playerId)
     else
         notify(src, 'Unable to move the player.')
     end
-end)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 128 })
 
-RegisterNetEvent('feather-admin:player:send_back', function(playerId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:player:send_back', function(params, _, src)
+    local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'player.send_back', playerId)
     local destination = target and returnLocations[target] or nil
     if destination == nil then
@@ -87,10 +87,10 @@ RegisterNetEvent('feather-admin:player:send_back', function(playerId)
     TriggerClientEvent('feather-admin:player:teleport', target, destination)
     AdminAudit.Record(src, 'player.send_back', target)
     notify(src, 'Player sent back.')
-end)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 128 })
 
-RegisterNetEvent('feather-admin:player:spectate', function(playerId, enabled)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:player:spectate', function(params, _, src)
+    local playerId, enabled = params.playerId, params.enabled
 
     if enabled ~= true then
         if not FeatherAdmin.RequirePermission(src, 'player.spectate') then return end
@@ -109,17 +109,28 @@ RegisterNetEvent('feather-admin:player:spectate', function(playerId, enabled)
     TriggerClientEvent('feather-admin:player:spectate', src, target, true, targetCoords)
     spectateTargets[src] = target
     AdminAudit.Record(src, 'player.spectate.start', target)
-end)
+end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 128 })
 
-AddEventHandler('playerDropped', function()
-    local droppedPlayer = source
-    returnLocations[droppedPlayer] = nil
-    spectateTargets[droppedPlayer] = nil
+local function clearPlayerState(playerId)
+    if spectateTargets[playerId] ~= nil then
+        TriggerClientEvent('feather-admin:player:spectate', playerId, nil, false)
+    end
+    returnLocations[playerId] = nil
+    spectateTargets[playerId] = nil
 
     for adminId, targetId in pairs(spectateTargets) do
-        if targetId == droppedPlayer then
+        if targetId == playerId then
             spectateTargets[adminId] = nil
             TriggerClientEvent('feather-admin:player:spectate', adminId, nil, false)
         end
     end
+end
+
+AddEventHandler('Feather:Character:Logout', function(playerId)
+    playerId = tonumber(playerId)
+    if playerId then clearPlayerState(playerId) end
+end)
+
+AddEventHandler('playerDropped', function()
+    clearPlayerState(source)
 end)
