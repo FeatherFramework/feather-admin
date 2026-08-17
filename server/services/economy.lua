@@ -12,8 +12,8 @@ local function validAmount(value)
     return amount
 end
 
-RegisterNetEvent('feather-admin:economy:adjust', function(playerId, field, operation, value)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:economy:adjust', function(params, _, src)
+    local playerId, field, operation, value = params.playerId, params.field, params.operation, params.value
     if economyFields[field] ~= true or (operation ~= 'add' and operation ~= 'remove') then return end
 
     local permission = ('economy.%s.%s'):format(field, operation)
@@ -37,10 +37,9 @@ RegisterNetEvent('feather-admin:economy:adjust', function(playerId, field, opera
         return
     end
 
-    -- Character API objects cross a resource boundary. The object above is
-    -- a snapshot, so its nested `char` table can still contain the balance
-    -- from before Add/Subtract even though Feather Core updated its cache.
-    -- Fetch the character again and report the authoritative cached value.
+    -- The mutation calculates from Feather Core's authoritative cache, but
+    -- this cross-resource object remains a snapshot. Fetch again to report
+    -- the final authoritative balance after the operation.
     local updatedCharacter = FeatherAdmin.Core.Character.GetCharacter({ src = target })
     local balance = updatedCharacter and updatedCharacter.char and updatedCharacter.char[field]
     if balance == nil then
@@ -54,10 +53,10 @@ RegisterNetEvent('feather-admin:economy:adjust', function(playerId, field, opera
     if target ~= src then
         TriggerClientEvent('feather-admin:economy:adjusted', target, field, operation, amount, balance)
     end
-end)
+end, { windowMs = 2000, maxCalls = 5, maxPayloadBytes = 256 })
 
-RegisterNetEvent('feather-admin:character:restore', function(playerId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:character:restore', function(params, _, src)
+    local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'character.restore_model', playerId)
     if target == nil then return end
     if GetResourceState('feather-character') ~= 'started' then
@@ -68,4 +67,4 @@ RegisterNetEvent('feather-admin:character:restore', function(playerId)
     AdminAudit.Record(src, 'character.restore_model', target)
     TriggerClientEvent('feather-admin:character:restore', target)
     FeatherAdmin.Core.Notify.RightNotify(src, 'Character appearance restore requested.', 2500)
-end)
+end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 128 })
