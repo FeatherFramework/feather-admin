@@ -1,22 +1,26 @@
 local actions = {
     { key = 'lightning_strike',        action = 'lightning_strike' },
-    { key = 'toggle_freeze',           action = 'freeze',                 toggle = true },
     { key = 'teleport_to_sky',         action = 'teleport_to_heaven' },
     { key = 'toggle_cage',             action = 'cage',                   toggle = true },
     { key = 'toggle_cinematic_camera', action = 'force_cinematic_camera', toggle = true },
-    { key = 'toggle_giant_ped',        action = 'make_ped_giant',         toggle = true },
     { key = 'spawn_hostile_group',     action = 'hostile_ped_army' },
-    { key = 'toggle_handcuffs',        action = 'handcuff',               toggle = true },
     { key = 'remove_from_vehicle',     action = 'kick_from_vehicle' },
     { key = 'spawn_hostile_bear',      action = 'hostile_bear' },
     { key = 'toggle_lag',              action = 'lag',                    toggle = true }
 }
 
+function AdminUI.CanUseSpecialEffects()
+    for _, action in ipairs(actions) do
+        if AdminUI.CanUse(('troll.%s'):format(action.action)) then return true end
+    end
+    return false
+end
+
 function AdminUI.OpenTrolls()
-    if not AdminUI.CanUseAny('troll.') then return end
+    if not AdminUI.CanUseSpecialEffects() then return end
     local page = AdminUI.RegisterPage('trolls')
 
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('trolls_header'))
+    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('special_effects_header'))
 
     for _, entry in ipairs(actions) do
         local action = entry
