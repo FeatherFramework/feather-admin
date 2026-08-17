@@ -8,9 +8,17 @@ local function openModelPage(category, index)
         local labelKey, model = ped.labelKey, ped.model
         local label = AdminTranslate(labelKey)
         AdminUI.AddButton(page, label, function()
-            AdminUI.RunAction(label, function()
-                AdminPedChanger.Request(AdminUI.GetTarget(), model)
-            end)
+            local target = AdminUI.GetTarget()
+            -- The target receives the ped-change result notification. Only
+            -- show the generic request message when another player is the
+            -- target, otherwise a self-change would display both messages.
+            if target == GetPlayerServerId(PlayerId()) then
+                AdminPedChanger.Request(target, model)
+            else
+                AdminUI.RunAction(label, function()
+                    AdminPedChanger.Request(target, model)
+                end)
+            end
         end)
     end
 
