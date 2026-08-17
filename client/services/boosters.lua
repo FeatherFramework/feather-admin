@@ -107,7 +107,7 @@ end
 
 function AdminBoosters.Request(action, targetPlayer)
     if targetPlayer == nil then return end
-    TriggerServerEvent('feather-admin:booster:request', action, targetPlayer)
+    Feather.RPC.Notify('feather-admin:booster:request', { action = action, playerId = targetPlayer })
 end
 
 function AdminBoosters.ToggleNoClip(enabled)
