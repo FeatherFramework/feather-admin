@@ -1,6 +1,6 @@
 # Feather Admin
 
-Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. By default, only characters with numeric role level `99` can open the menu or use its tools.
+Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Its default permissions use numeric staff levels `50`, `75`, and `99`.
 
 ## Features
 
@@ -56,9 +56,27 @@ Feather Admin creates its moderation and durable action-audit database tables au
 
 ## Permissions
 
-Every menu action has a minimum numeric role level in `configs/permissions.lua`. All actions require level `99` by default, preserving full administrator-only access.
+Every menu action has a minimum numeric role level in `configs/permissions.lua`. The default tiers are:
 
-Lower individual values to give junior staff limited access. For example, changing `players.view` to `50` lets level 50 staff view connected players. Keep `menu.open` at or below the lowest staff level that should be able to open the menu.
+- Level `50` — Moderator: player support, warnings, kicks, spectating, travel, healing, and reviving
+- Level `75` — Senior Admin: bans, unbans, identifier searches, character repair, advanced status tools, appearance tools, and reversible player effects
+- Level `99` — Owner: economy adjustments and the most disruptive special effects
+
+These are numeric checks; the role names are only friendly labels. You can rename the roles without changing permission behavior.
+
+For an existing Feather database, add the two staff levels once:
+
+```sql
+INSERT INTO roles (name, level)
+SELECT 'moderator', 50
+WHERE NOT EXISTS (SELECT 1 FROM roles WHERE level = 50);
+
+INSERT INTO roles (name, level)
+SELECT 'senior_admin', 75
+WHERE NOT EXISTS (SELECT 1 FROM roles WHERE level = 75);
+```
+
+Adjust individual values to fit your staff structure. Keep `menu.open` at or below the lowest staff level that should be able to open the menu.
 
 Buttons a staff member cannot use are hidden. Every player-affecting request is checked again by the server, so changing the local menu does not grant permission.
 
@@ -84,7 +102,7 @@ This ACE permits only the recovery command. It does not grant access to the admi
 
 ## Configuration
 
-Most server owners only need to edit `config.lua`. Open it with a text editor to change the following settings:
+Most server owners only need to edit `configs/config.lua`. Open it with a text editor to change the following settings:
 
 - `controls.enabled`: turn keyboard access on or off
 - `controls.openMenu`: choose the key used to open the menu; the default is `PGDN` (Page Down)
@@ -105,11 +123,11 @@ Most server owners only need to edit `config.lua`. Open it with a text editor to
 - `pedChanger.modelLoadTimeout`: set how long the game waits for a player model to load
 - `pedChanger.categories`: choose which human and animal models appear in the menu
 
-Only ped models listed in `config.lua` can be used. This prevents players from requesting unapproved models.
+Only ped models listed in `configs/config.lua` can be used. This prevents players from requesting unapproved models.
 
 ## Usage
 
-With the default settings, an authorized administrator can open the menu by pressing **Page Down** or entering this command in chat:
+With the default settings, a staff character at level `50` or higher can open the menu by pressing **Page Down** or entering this command in chat:
 
 ```text
 /adminMenu
@@ -131,7 +149,7 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 
 - Confirm that `feather-core`, `feather-menu`, and `feather-admin` are running.
 - Confirm that the administrator's active character meets the `permissions['menu.open']` level.
-- Check that keyboard or command access is enabled in `config.lua`.
+- Check that keyboard or command access is enabled in `configs/config.lua`.
 
 ### Feather Admin does not start
 
@@ -141,7 +159,7 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 
 ### A ped model does not appear
 
-- Confirm that the model is listed under `pedChanger.categories` in `config.lua`.
+- Confirm that the model is listed under `pedChanger.categories` in `configs/config.lua`.
 - Check the model name for spelling mistakes.
 
 ## Development
