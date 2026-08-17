@@ -73,8 +73,14 @@ local function runNoclip(session)
             setNoclipPed(ped, true)
         end
 
-        promptGroup:ShowGroup(AdminTranslate('noclip_controls'))
-        if prompts[1]:HasCompleted() then
+        -- Prompt groups compete with menu/pause frontends for the active UI
+        -- context. Only activate noclip prompts while gameplay has focus.
+        if not InMenu and not IsPauseMenuActive() then
+            promptGroup:ShowGroup(AdminTranslate('noclip_controls'))
+        end
+        -- Poll the control directly so this frame-critical loop never enters
+        -- a prompt completion helper that may perform a blocking wait.
+        if IsControlJustPressed(0, keys.SHIFT) then
             speed = speed + 0.1
             if speed > 2.0 then speed = 0.1 end
         end
@@ -104,8 +110,12 @@ function AdminBoosters.Request(action, targetPlayer)
     TriggerServerEvent('feather-admin:booster:request', action, targetPlayer)
 end
 
-function AdminBoosters.ToggleNoClip()
-    state.noclip = not state.noclip
+function AdminBoosters.ToggleNoClip(enabled)
+    if type(enabled) == 'boolean' then
+        state.noclip = enabled
+    else
+        state.noclip = not state.noclip
+    end
     state.noclipSession = state.noclipSession + 1
     if state.noclip then
         local session = state.noclipSession
@@ -113,6 +123,7 @@ function AdminBoosters.ToggleNoClip()
             runNoclip(session)
         end)
     end
+    return state.noclip
 end
 
 function AdminBoosters.RefreshPlayerState()
