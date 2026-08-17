@@ -119,20 +119,6 @@ RegisterNetEvent('feather-admin:player:spectate', function(playerId, enabled)
     AdminAudit.Record(src, 'player.spectate.start', target)
 end)
 
-RegisterNetEvent('feather-admin:player:kick', function(playerId, reason)
-    local src = source
-    if not FeatherAdmin.RequirePermission(src, 'player.kick') then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
-    if target == nil or target == src or type(reason) ~= 'string' then return end
-
-    reason = reason:match('^%s*(.-)%s*$')
-    if reason == '' or #reason > 200 then return end
-
-    AdminAudit.Record(src, 'player.kick', target, reason)
-    DropPlayer(target, reason)
-end)
-
 AddEventHandler('playerDropped', function()
     local droppedPlayer = source
     returnLocations[droppedPlayer] = nil
