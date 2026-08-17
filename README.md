@@ -4,11 +4,11 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 
 ## Features
 
-- View everyone currently connected to the server
+- Browse everyone currently connected through the Player List
 - View character details, economy values, role level, and identifiers
 - Teleport to a player, bring them to you, or send them back
 - Spectate another player, including players outside normal streaming range
-- Kick a player with a required reason
+- Kick an online player from the Moderation page with a required reason
 - Issue persistent warnings and review moderation history
 - Apply permanent or temporary account bans
 - Search for and moderate players who are currently offline
@@ -16,7 +16,7 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Block banned accounts before they enter the server
 - Add or remove dollars, gold, tokens, and experience
 - Restore a player's saved character model, clothing, and appearance
-- Use admin tools on yourself or another player
+- Use clearly grouped Movement, Player Status, Appearance, and Special Effects tools
 - Toggle god mode, invisibility, infinite stamina, and noclip
 - Heal or kill a player
 - Teleport to a map waypoint
@@ -93,7 +93,9 @@ With the default settings, an authorized administrator can open the menu by pres
 /adminMenu
 ```
 
-Choose **Players** to select another connected player. Tools opened directly from the main menu apply to the administrator when appropriate.
+Choose **Player List** to select another connected player. Selected-player tools are grouped under Player Information, Moderation, Movement, Character & Economy, Player Status, Appearance, and Special Effects.
+
+Use **Offline Players** to search moderation records for someone who is not connected. Use **Self Tools** for status and appearance actions that apply to your own character.
 
 Every page has a **Back** button. Use **Close** on the main page or tap **ESC** to exit the menu.
 
