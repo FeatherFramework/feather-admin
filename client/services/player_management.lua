@@ -62,12 +62,6 @@ function AdminPlayerManagement.StopSpectating()
     return true
 end
 
-function AdminPlayerManagement.Kick(target, reason)
-    if type(reason) ~= 'string' or reason:match('^%s*$') or #reason > 200 then return false end
-    TriggerServerEvent('feather-admin:player:kick', target, reason)
-    return true
-end
-
 RegisterNetEvent('feather-admin:player:teleport', function(coords)
     CreateThread(function() teleportToPlayerCoords(coords) end)
 end)
