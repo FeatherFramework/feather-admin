@@ -15,11 +15,10 @@ local allowedActions = {
 RegisterNetEvent('feather-admin:troll:request', function(action, playerId)
     local src = source
     if allowedActions[action] ~= true then return end
-    if not FeatherAdmin.RequirePermission(src, ('troll.%s'):format(action)) then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local permission = ('troll.%s'):format(action)
+    local target = FeatherAdmin.RequireTarget(src, permission, playerId)
     if target == nil then return end
 
-    AdminAudit.Record(src, ('troll.%s'):format(action), target)
+    AdminAudit.Record(src, permission, target)
     TriggerClientEvent('feather-admin:troll:apply', target, action)
 end)
