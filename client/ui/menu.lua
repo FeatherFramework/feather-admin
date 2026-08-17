@@ -8,8 +8,14 @@ AdminUI = {
 AdminUI.Styles = {
     header = { ['color'] = '#999' },
     subheader = { ['font-size'] = '1.778vmin', ['color'] = '#CC9900' },
-    button = { ['color'] = '#E0E0E0' },
-    danger = { ['color'] = '#CC3333' }
+    text = {
+        ['color'] = '#C0C0C0',
+        ['font-size'] = '1.481vmin',
+        ['font-variant'] = 'small-caps',
+        ['line-height'] = '1.8',
+        ['white-space'] = 'pre-line',
+    },
+    button = { ['color'] = '#E0E0E0' }
 }
 
 AdminMenu = FeatherMenu:RegisterMenu('feather-admin:AdminMenu', {
@@ -22,8 +28,8 @@ AdminMenu = FeatherMenu:RegisterMenu('feather-admin:AdminMenu', {
     style = {},
     contentslot = {
         style = {
-            ['height'] = '350px',
-            ['min-height'] = '300px'
+            ['height'] = '450px',
+            ['min-height'] = '325px'
         }
     },
     draggable = true,
@@ -75,9 +81,19 @@ function AdminUI.AddButton(page, label, callback, style)
     }, callback)
 end
 
-function AdminUI.AddInput(page, label, placeholder, callback)
+function AdminUI.AddInput(page, label, placeholder, callback, value)
     return page:RegisterElement('input', {
         label = label,
+        placeholder = placeholder,
+        value = value or '',
+        slot = 'content',
+        style = {}
+    }, callback)
+end
+
+function AdminUI.AddDropdown(page, options, placeholder, callback)
+    return page:RegisterElement('dropdown', {
+        options = options,
         placeholder = placeholder,
         slot = 'content',
         style = {}
@@ -88,7 +104,14 @@ function AdminUI.AddText(page, value, style)
     return page:RegisterElement('textdisplay', {
         value = value,
         slot = 'content',
-        style = style or AdminUI.Styles.button
+        style = style or AdminUI.Styles.text
+    })
+end
+
+function AdminUI.AddLine(page)
+    return page:RegisterElement('line', {
+        slot = 'content',
+        style = {}
     })
 end
 
@@ -200,6 +223,5 @@ function AdminUI.Close()
 end
 
 function AdminUI.OpenPedParent()
-    local selfId = GetPlayerServerId(PlayerId())
-    AdminUI.OpenBoosters(AdminUI.GetTarget() == selfId)
+    AdminUI.OpenAppearance()
 end
