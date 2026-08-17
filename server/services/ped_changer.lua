@@ -13,9 +13,7 @@ end
 
 RegisterNetEvent('feather-admin:ped:request', function(targetPlayer, modelName)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'ped.change') then return end
-
-    local target = FeatherAdmin.ValidTarget(targetPlayer)
+    local target = FeatherAdmin.RequireTarget(src, 'ped.change', targetPlayer)
     if target == nil or type(modelName) ~= 'string' or #modelName > 64 then return end
 
     local model = allowedModels[string.lower(modelName)]
