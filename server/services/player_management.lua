@@ -27,9 +27,7 @@ end
 
 RegisterNetEvent('feather-admin:player:info:request', function(playerId)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'player.info') then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local target = FeatherAdmin.RequireTarget(src, 'player.info', playerId)
     if target == nil then return end
 
     local character = FeatherAdmin.Core.Character.GetCharacter({ src = target })
@@ -56,9 +54,7 @@ end)
 
 RegisterNetEvent('feather-admin:player:go_to', function(playerId)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'player.go_to') then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local target = FeatherAdmin.RequireTarget(src, 'player.go_to', playerId)
     if target == nil or target == src then return end
     if movePlayer(src, src, target, 'player.go_to') then
         notify(src, 'Teleported to player.')
@@ -69,9 +65,7 @@ end)
 
 RegisterNetEvent('feather-admin:player:bring', function(playerId)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'player.bring') then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local target = FeatherAdmin.RequireTarget(src, 'player.bring', playerId)
     if target == nil or target == src then return end
     if movePlayer(src, target, src, 'player.bring') then
         notify(src, 'Player brought to your location.')
@@ -82,9 +76,7 @@ end)
 
 RegisterNetEvent('feather-admin:player:send_back', function(playerId)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'player.send_back') then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local target = FeatherAdmin.RequireTarget(src, 'player.send_back', playerId)
     local destination = target and returnLocations[target] or nil
     if destination == nil then
         notify(src, 'No return location is saved for this player.')
@@ -99,16 +91,16 @@ end)
 
 RegisterNetEvent('feather-admin:player:spectate', function(playerId, enabled)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'player.spectate') then return end
 
     if enabled ~= true then
+        if not FeatherAdmin.RequirePermission(src, 'player.spectate') then return end
         spectateTargets[src] = nil
         TriggerClientEvent('feather-admin:player:spectate', src, nil, false)
         AdminAudit.Record(src, 'player.spectate.stop', playerId)
         return
     end
 
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local target = FeatherAdmin.RequireTarget(src, 'player.spectate', playerId)
     if target == nil or target == src then return end
 
     local targetCoords = getPlayerCoords(target)
