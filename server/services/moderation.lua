@@ -5,13 +5,15 @@ local function trim(value)
 end
 
 local function licenseForSource(src)
-    for _, identifier in ipairs(GetPlayerIdentifiers(src)) do
-        if identifier:sub(1, 8) == 'license:' then return identifier end
-    end
+    return FeatherAdmin.Core.User.GetLicense(src)
 end
 
 local function adminIdentity(src)
-    return licenseForSource(src), GetPlayerName(src) or ('Source %s'):format(src)
+    local character = FeatherAdmin.Core.Character.GetCharacter({ src = src })
+    local char = character and character.char or {}
+    local characterName = char.first_name and (('%s %s'):format(char.first_name, char.last_name or '')) or nil
+    return licenseForSource(src), GetPlayerName(src) or ('Source %s'):format(src),
+        tonumber(char.id), characterName
 end
 
 local function resolveTarget(target)
@@ -34,16 +36,37 @@ local function resolveTarget(target)
 
     local license = trim(target.license)
     if license == '' then return nil end
-    local rows = MySQL.query.await([[
-        SELECT u.license, u.username, c.id AS character_id,
-               CONCAT(c.first_name, ' ', c.last_name) AS character_name
-        FROM users u
-        LEFT JOIN characters c ON c.user_id = u.id
-        WHERE u.license = ?
-        ORDER BY c.id ASC
-        LIMIT 1
-    ]], { license })
-    local row = rows and rows[1]
+
+    local requestedCharacterId = target.characterId
+    local row
+    if requestedCharacterId ~= nil then
+        requestedCharacterId = tonumber(requestedCharacterId)
+        if not requestedCharacterId or requestedCharacterId < 1 or requestedCharacterId % 1 ~= 0 then return nil end
+
+        -- Both values came from the client. The join proves that the chosen
+        -- character actually belongs to the supplied account before its
+        -- identity is written into moderation history.
+        row = MySQL.single.await([[
+            SELECT u.license, u.username, c.id AS character_id,
+                   CONCAT(c.first_name, ' ', c.last_name) AS character_name
+            FROM users u
+            INNER JOIN characters c ON c.user_id = u.id
+            WHERE u.license = ? AND c.id = ?
+            LIMIT 1
+        ]], { license, requestedCharacterId })
+    else
+        -- A license identifies the account, not one of its characters. When
+        -- no character was selected, leave character attribution empty
+        -- instead of guessing the oldest or newest character.
+        row = MySQL.single.await([[
+            SELECT u.license, u.username,
+                   NULL AS character_id, NULL AS character_name
+            FROM users u
+            WHERE u.license = ?
+            LIMIT 1
+        ]], { license })
+    end
+
     if not row then return nil end
     return {
         license = row.license,
@@ -77,7 +100,11 @@ MySQL.ready(function()
             active TINYINT(1) NOT NULL DEFAULT 1,
             admin_license VARCHAR(100) NULL,
             admin_name VARCHAR(100) NOT NULL,
+            admin_character_id INT NULL,
+            admin_character_name VARCHAR(150) NULL,
             revoked_by VARCHAR(100) NULL,
+            revoked_by_character_id INT NULL,
+            revoked_by_character_name VARCHAR(150) NULL,
             revoked_at DATETIME NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
@@ -95,6 +122,8 @@ MySQL.ready(function()
             reason VARCHAR(200) NOT NULL,
             admin_license VARCHAR(100) NULL,
             admin_name VARCHAR(100) NOT NULL,
+            admin_character_id INT NULL,
+            admin_character_name VARCHAR(150) NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             INDEX idx_fa_warnings_license (license)
@@ -110,6 +139,8 @@ MySQL.ready(function()
             reason VARCHAR(200) NOT NULL,
             admin_license VARCHAR(100) NULL,
             admin_name VARCHAR(100) NOT NULL,
+            admin_character_id INT NULL,
+            admin_character_name VARCHAR(150) NULL,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             INDEX idx_fa_kicks_license (license)
@@ -118,20 +149,14 @@ MySQL.ready(function()
     schemaReady = true
 end)
 
-AddEventHandler('playerConnecting', function(playerName, _, deferrals)
-    local src = source
+local function checkConnectionBan(src, playerName)
     local license = licenseForSource(src)
-    if not license then return end
-
-    deferrals.defer()
-    Wait(0)
-    deferrals.update('Checking moderation status...')
+    if not license then return nil end
 
     local schemaDeadline = GetGameTimer() + 10000
     while not schemaReady and GetGameTimer() < schemaDeadline do Wait(100) end
     if not schemaReady then
-        deferrals.done('The moderation service is still starting. Please try again shortly.')
-        return
+        return 'The moderation service is still starting. Please try again shortly.'
     end
 
     local ban = MySQL.single.await([[
@@ -141,12 +166,7 @@ AddEventHandler('playerConnecting', function(playerName, _, deferrals)
           AND (expires_at IS NULL OR expires_at > NOW())
         ORDER BY id DESC LIMIT 1
     ]], { license })
-    Wait(0)
-
-    if not ban then
-        deferrals.done()
-        return
-    end
+    if not ban then return nil end
 
     local message = tostring(Config.moderation.banMessage or 'You are banned from this server.')
     message = ('%s\nReason: %s'):format(message, ban.reason)
@@ -159,45 +179,87 @@ AddEventHandler('playerConnecting', function(playerName, _, deferrals)
         tostring(ban.expires_at or 'permanent')
     ))
 
-    deferrals.done(message)
-end)
+    return message
+end
 
-RegisterNetEvent('feather-admin:moderation:search', function(query)
-    local src = source
+exports('checkConnectionBan', checkConnectionBan)
+
+FeatherAdmin.Core.Connection.RegisterGate('feather-admin:moderation', {
+    resource = GetCurrentResourceName(),
+    export = 'checkConnectionBan'
+}, {
+    priority = 50,
+    timeoutMs = 12000,
+    failClosed = true,
+    label = 'moderation status',
+    failureMessage = 'The moderation service could not verify your account. Please try again shortly.'
+})
+
+FeatherAdmin.RegisterRPC('feather-admin:moderation:search', function(params, _, src)
+    local query = params.query
     if not FeatherAdmin.RequirePermission(src, 'moderation.search') or not schemaReady then return end
     query = trim(query)
-    if query == '' or #query > 100 then return end
+    local minimum = math.max(1, tonumber(Config.moderation.minSearchLength) or 2)
+    if #query < minimum or #query > 100 then return end
 
-    local pattern = ('%%%s%%'):format(query)
     local limit = math.max(1, math.min(tonumber(Config.moderation.searchLimit) or 25, 100))
-    local rows = MySQL.query.await(([=[
+    local rows
+    if query:sub(1, 8):lower() == 'license:' then
+        if not FeatherAdmin.RequirePermission(src, 'moderation.search_identifiers') then return end
+        rows = MySQL.query.await(([=[
+            SELECT u.license, u.username AS playerName, c.id AS characterId,
+                   CONCAT(c.first_name, ' ', c.last_name) AS characterName
+            FROM users u
+            LEFT JOIN characters c ON c.user_id = u.id
+            WHERE u.license = ?
+            ORDER BY u.username, c.id
+            LIMIT %d
+        ]=]):format(limit), { query })
+    else
+        local first, last = query:match('^(%S+)%s+(.+)$')
+        local queryPrefix = query .. '%'
+        if first and last then
+            rows = MySQL.query.await(([=[
+                SELECT u.license, u.username AS playerName, c.id AS characterId,
+                       CONCAT(c.first_name, ' ', c.last_name) AS characterName
+                FROM users u
+                LEFT JOIN characters c ON c.user_id = u.id
+                WHERE u.username LIKE ?
+                   OR (c.first_name LIKE ? AND c.last_name LIKE ?)
+                ORDER BY u.username, c.id
+                LIMIT %d
+            ]=]):format(limit), { queryPrefix, first .. '%', last .. '%' })
+        else
+            rows = MySQL.query.await(([=[
         SELECT u.license, u.username AS playerName, c.id AS characterId,
                CONCAT(c.first_name, ' ', c.last_name) AS characterName
         FROM users u
         LEFT JOIN characters c ON c.user_id = u.id
-        WHERE u.username LIKE ? OR u.license LIKE ?
-           OR c.first_name LIKE ? OR c.last_name LIKE ?
-           OR CONCAT(c.first_name, ' ', c.last_name) LIKE ?
+        WHERE u.username LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?
         ORDER BY u.username, c.id
         LIMIT %d
-    ]=]):format(limit), { pattern, pattern, pattern, pattern, pattern })
+            ]=]):format(limit), { queryPrefix, queryPrefix, queryPrefix })
+        end
+    end
     TriggerClientEvent('feather-admin:moderation:search:result', src, rows or {})
     AdminAudit.Record(src, 'moderation.search', nil, query)
-end)
+end, { windowMs = 3000, maxCalls = 1, maxPayloadBytes = 256 })
 
-RegisterNetEvent('feather-admin:moderation:warn', function(targetData, reason)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:moderation:warn', function(params, _, src)
+    local targetData, reason = params.target, params.reason
     if not FeatherAdmin.RequirePermission(src, 'moderation.warn') or not schemaReady then return end
     local target, cleanReason = resolveTarget(targetData), validReason(reason)
     if not target or not cleanReason then return end
     if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.warn', target.license, target.serverId) then return end
-    local adminLicense, adminName = adminIdentity(src)
+    local adminLicense, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
 
     MySQL.insert.await([[
         INSERT INTO feather_admin_warnings
-            (license, player_name, character_id, character_name, reason, admin_license, admin_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason, adminLicense, adminName })
+            (license, player_name, character_id, character_name, reason, admin_license, admin_name,
+             admin_character_id, admin_character_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason,
+        adminLicense, adminName, adminCharacterId, adminCharacterName })
     AdminAudit.Record(src, 'moderation.warn', target.serverId, ('license=%s reason=%s'):format(target.license, cleanReason))
     -- When an admin warns themselves, the admin result below is sufficient;
     -- sending the target warning too would notify the same client twice.
@@ -205,10 +267,10 @@ RegisterNetEvent('feather-admin:moderation:warn', function(targetData, reason)
         FeatherAdmin.Core.Notify.RightNotify(target.serverId, ('Warning: %s'):format(cleanReason), 5000)
     end
     notify(src, 'player_warned')
-end)
+end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 1024 })
 
-RegisterNetEvent('feather-admin:moderation:kick', function(playerId, reason)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:moderation:kick', function(params, _, src)
+    local playerId, reason = params.playerId, params.reason
     if not schemaReady then return end
     local targetId = FeatherAdmin.RequireTarget(src, 'moderation.kick', playerId)
     local cleanReason = validReason(reason)
@@ -216,27 +278,29 @@ RegisterNetEvent('feather-admin:moderation:kick', function(playerId, reason)
 
     local target = resolveTarget({ serverId = targetId })
     if not target then return end
-    local adminLicense, adminName = adminIdentity(src)
+    local adminLicense, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
 
     MySQL.insert.await([[
         INSERT INTO feather_admin_kicks
-            (license, player_name, character_id, character_name, reason, admin_license, admin_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason, adminLicense, adminName })
+            (license, player_name, character_id, character_name, reason, admin_license, admin_name,
+             admin_character_id, admin_character_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason,
+        adminLicense, adminName, adminCharacterId, adminCharacterName })
     AdminAudit.Record(src, 'moderation.kick', targetId, ('license=%s reason=%s'):format(target.license, cleanReason))
     notify(src, 'player_kicked')
     DropPlayer(targetId, cleanReason)
-end)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 512 })
 
-RegisterNetEvent('feather-admin:moderation:ban', function(targetData, reason, durationMinutes)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:moderation:ban', function(params, _, src)
+    local targetData, reason, durationMinutes = params.target, params.reason, params.durationMinutes
     if not FeatherAdmin.RequirePermission(src, 'moderation.ban') or not schemaReady then return end
     local target, cleanReason = resolveTarget(targetData), validReason(reason)
     local duration = tonumber(durationMinutes)
     local maximumDuration = tonumber(Config.moderation.maxBanMinutes) or 525600
     if not target or not cleanReason or not duration or duration < 0
         or duration > maximumDuration or duration % 1 ~= 0 then return end
-    local adminLicense, adminName = adminIdentity(src)
+    local adminLicense, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
     if target.serverId == src or target.license == adminLicense then
         notify(src, 'cannot_ban_self')
         return
@@ -246,18 +310,19 @@ RegisterNetEvent('feather-admin:moderation:ban', function(targetData, reason, du
     MySQL.update.await('UPDATE feather_admin_bans SET active = 0 WHERE license = ? AND active = 1', { target.license })
     MySQL.insert.await([[
         INSERT INTO feather_admin_bans
-            (license, player_name, character_id, character_name, reason, expires_at, admin_license, admin_name)
-        VALUES (?, ?, ?, ?, ?, IF(? > 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), NULL), ?, ?)
+            (license, player_name, character_id, character_name, reason, expires_at, admin_license, admin_name,
+             admin_character_id, admin_character_name)
+        VALUES (?, ?, ?, ?, ?, IF(? > 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), NULL), ?, ?, ?, ?)
     ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason,
-        duration, duration, adminLicense, adminName })
+        duration, duration, adminLicense, adminName, adminCharacterId, adminCharacterName })
     AdminAudit.Record(src, 'moderation.ban', target.serverId,
         ('license=%s duration=%s reason=%s'):format(target.license, duration == 0 and 'permanent' or duration, cleanReason))
     notify(src, 'player_banned')
     if target.serverId and target.serverId ~= src then DropPlayer(target.serverId, cleanReason) end
-end)
+end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 1024 })
 
-RegisterNetEvent('feather-admin:moderation:history', function(targetData)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:moderation:history', function(params, _, src)
+    local targetData = params.target
     if not FeatherAdmin.RequirePermission(src, 'moderation.history') or not schemaReady then return end
     local target = resolveTarget(targetData)
     if not target then
@@ -270,9 +335,10 @@ RegisterNetEvent('feather-admin:moderation:history', function(targetData)
     local limit = math.max(1, math.min(tonumber(Config.moderation.historyLimit) or 50, 100))
     local bans = MySQL.query.await(([=[
         SELECT id, 'ban' AS kind, reason, admin_name AS adminName,
+               admin_character_name AS adminCharacterName,
                DATE_FORMAT(expires_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS expiresAt,
                DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
-               revoked_by AS revokedBy,
+               revoked_by AS revokedBy, revoked_by_character_name AS revokedByCharacterName,
                DATE_FORMAT(revoked_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS revokedAt,
                CASE WHEN active = 0 THEN 'revoked'
                     WHEN expires_at IS NOT NULL AND expires_at <= NOW() THEN 'expired'
@@ -281,17 +347,19 @@ RegisterNetEvent('feather-admin:moderation:history', function(targetData)
     ]=]):format(limit), { target.license }) or {}
     local warnings = MySQL.query.await(([=[
         SELECT id, 'warning' AS kind, reason, admin_name AS adminName,
+               admin_character_name AS adminCharacterName,
                NULL AS expiresAt,
                DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
-               NULL AS revokedBy, NULL AS revokedAt,
+               NULL AS revokedBy, NULL AS revokedByCharacterName, NULL AS revokedAt,
                'warning' AS status
         FROM feather_admin_warnings WHERE license = ? ORDER BY id DESC LIMIT %d
     ]=]):format(limit), { target.license }) or {}
     local kicks = MySQL.query.await(([=[
         SELECT id, 'kick' AS kind, reason, admin_name AS adminName,
+               admin_character_name AS adminCharacterName,
                NULL AS expiresAt,
                DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
-               NULL AS revokedBy, NULL AS revokedAt,
+               NULL AS revokedBy, NULL AS revokedByCharacterName, NULL AS revokedAt,
                'kick' AS status
         FROM feather_admin_kicks WHERE license = ? ORDER BY id DESC LIMIT %d
     ]=]):format(limit), { target.license }) or {}
@@ -301,22 +369,23 @@ RegisterNetEvent('feather-admin:moderation:history', function(targetData)
     table.sort(records, function(a, b) return tostring(a.createdAt) > tostring(b.createdAt) end)
     while #records > limit do table.remove(records) end
     TriggerClientEvent('feather-admin:moderation:history:result', src, records)
-end)
+end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 512 })
 
-RegisterNetEvent('feather-admin:moderation:unban', function(banId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:moderation:unban', function(params, _, src)
+    local banId = params.banId
     if not FeatherAdmin.RequirePermission(src, 'moderation.unban') or not schemaReady then return end
     banId = tonumber(banId)
     if not banId or banId % 1 ~= 0 then return end
     local ban = MySQL.single.await('SELECT license FROM feather_admin_bans WHERE id = ? AND active = 1', { banId })
     if not ban or not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.unban', ban.license, nil) then return end
-    local _, adminName = adminIdentity(src)
+    local _, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
     local changed = MySQL.update.await([[
         UPDATE feather_admin_bans
-        SET active = 0, revoked_by = ?, revoked_at = NOW()
+        SET active = 0, revoked_by = ?, revoked_by_character_id = ?,
+            revoked_by_character_name = ?, revoked_at = NOW()
         WHERE id = ? AND active = 1
-    ]], { adminName, banId })
+    ]], { adminName, adminCharacterId, adminCharacterName, banId })
     if not changed or changed < 1 then return end
     AdminAudit.Record(src, 'moderation.unban', nil, ('ban_id=%s'):format(banId))
     notify(src, 'ban_revoked')
-end)
+end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 128 })
