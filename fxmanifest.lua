@@ -14,8 +14,9 @@ github_ui_check 'false'
 github_link 'https://github.com/FeatherFramework/feather-admin'
 
 shared_scripts {
-    'config.lua',
-    'configs/*.lua'
+    'configs/config.lua',
+    'configs/hierarchy.lua',
+    'configs/permissions.lua'
 }
 
 client_scripts {
