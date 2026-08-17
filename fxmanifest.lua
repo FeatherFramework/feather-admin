@@ -1,11 +1,11 @@
-fx_version "adamant"
-games { "rdr3" }
-rdr3_warning "I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships."
-lua54 "yes"
+fx_version 'cerulean'
+rdr3_warning 'I acknowledge that this is a prerelease build of RedM, and I am aware my resources *will* become incompatible once RedM ships.'
+game 'rdr3'
+lua54 'yes'
 
+name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
-name 'feather-admin'
 version '0.2.0'
 
 github_version_check 'true'
@@ -14,32 +14,38 @@ github_ui_check 'false'
 github_link 'https://github.com/FeatherFramework/feather-admin'
 
 shared_scripts {
-  "config.lua"
-}
-
-server_scripts {
-  '/server/helpers/allPlayersCatch.lua',
-  '/server/helpers/*.lua',
-  '/server/services/*.lua',
-  "/server/main.lua"
+    'config.lua',
+    'configs/*.lua'
 }
 
 client_scripts {
-  "/client/helpers/functions.lua",
-  '/client/helpers/*.lua',
-  "/client/main.lua",
-  "/client/services/*.lua",
-  "/translations/*.lua"
+    'client/core/init.lua',
+    'translations/*.lua',
+    'client/ui/menu.lua',
+    'client/services/*.lua',
+    'client/ui/pages/players.lua',
+    'client/ui/pages/ped_changer.lua',
+    'client/ui/pages/boosters.lua',
+    'client/ui/pages/developer_tools.lua',
+    'client/ui/pages/character_administration.lua',
+    'client/ui/pages/player_management.lua',
+    'client/ui/pages/teleports.lua',
+    'client/ui/pages/trolls.lua',
+    'client/ui/pages/appearance.lua',
+    'client/ui/pages/self_tools.lua',
+    'client/ui/pages/moderation.lua',
+    'client/ui/pages/main.lua',
+    'client/core/main.lua'
+}
+
+server_scripts {
+    '@oxmysql/lib/MySQL.lua',
+    'server/core/init.lua',
+    'server/services/*.lua'
 }
 
 dependencies {
-  'feather-core',
-  'feather-menu'
+    'oxmysql',
+    'feather-core',
+    'feather-menu'
 }
-
--- Version Checking --
-name 'feather-admin'
-version '0.1.1'
-github_version_check 'true'
-github_version_type 'release'
-github_link 'https://github.com/FeatherFramework/feather-admin'
