@@ -28,27 +28,27 @@ local function teleportToPlayerCoords(coords)
 end
 
 function AdminPlayerManagement.RequestInfo(target)
-    TriggerServerEvent('feather-admin:player:info:request', target)
+    Feather.RPC.Notify('feather-admin:player:info:request', { playerId = target })
     return true
 end
 
 function AdminPlayerManagement.GoTo(target)
-    TriggerServerEvent('feather-admin:player:go_to', target)
+    Feather.RPC.Notify('feather-admin:player:go_to', { playerId = target })
     return true
 end
 
 function AdminPlayerManagement.Bring(target)
-    TriggerServerEvent('feather-admin:player:bring', target)
+    Feather.RPC.Notify('feather-admin:player:bring', { playerId = target })
     return true
 end
 
 function AdminPlayerManagement.SendBack(target)
-    TriggerServerEvent('feather-admin:player:send_back', target)
+    Feather.RPC.Notify('feather-admin:player:send_back', { playerId = target })
     return true
 end
 
 function AdminPlayerManagement.Spectate(target, enabled)
-    TriggerServerEvent('feather-admin:player:spectate', target, enabled)
+    Feather.RPC.Notify('feather-admin:player:spectate', { playerId = target, enabled = enabled })
     return true
 end
 
@@ -58,7 +58,7 @@ end
 
 function AdminPlayerManagement.StopSpectating()
     if not spectating then return false end
-    TriggerServerEvent('feather-admin:player:spectate', spectateTarget, false)
+    Feather.RPC.Notify('feather-admin:player:spectate', { playerId = spectateTarget, enabled = false })
     return true
 end
 
