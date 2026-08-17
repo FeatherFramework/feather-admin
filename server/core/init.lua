@@ -50,6 +50,61 @@ function FeatherAdmin.ValidTarget(playerId)
     return target
 end
 
+local function hierarchyConfig()
+    return type(Config.hierarchy) == 'table' and Config.hierarchy or {}
+end
+
+local function targetDenied(src, action, targetId, targetLicense, reason)
+    FeatherAdmin.Core.Notify.RightNotify(src, 'You cannot target a player of equal or higher rank.', 4000)
+    AdminAudit.Record(src, ('%s.blocked'):format(action), targetId,
+        ('reason=%s license=%s'):format(reason, tostring(targetLicense or 'unknown')))
+end
+
+function FeatherAdmin.CanActOnLicense(src, targetLicense, action)
+    local actorLevel = FeatherAdmin.GetRoleLevel(src)
+    local actorLicense = FeatherAdmin.Core.User.GetLicense(src)
+    if actorLevel == nil or actorLicense == nil or type(targetLicense) ~= 'string' then
+        return false, 'unresolved_role'
+    end
+
+    local settings = hierarchyConfig()
+    local allowSelf = type(settings.allowSelf) == 'table' and settings.allowSelf or {}
+    if actorLicense == targetLicense then
+        return allowSelf[action] == true, 'self'
+    end
+
+    local exempt = type(settings.exempt) == 'table' and settings.exempt or {}
+    if exempt[action] == true then return true end
+
+    local targetLevel = FeatherAdmin.Core.User.GetHighestRoleLevel({ license = targetLicense })
+    if targetLevel == nil then return false, 'unresolved_role' end
+
+    if settings.strict == false then
+        return actorLevel >= targetLevel, 'rank'
+    end
+    return actorLevel > targetLevel, 'rank'
+end
+
+function FeatherAdmin.RequireTarget(src, action, playerId)
+    if not FeatherAdmin.RequirePermission(src, action) then return nil end
+
+    local target = FeatherAdmin.ValidTarget(playerId)
+    if target == nil then return nil end
+
+    local license = FeatherAdmin.Core.User.GetLicense(target)
+    if not FeatherAdmin.CheckTargetHierarchy(src, action, license, target) then return nil end
+    return target
+end
+
+function FeatherAdmin.CheckTargetHierarchy(src, action, targetLicense, targetId)
+    local allowed, reason = FeatherAdmin.CanActOnLicense(src, targetLicense, action)
+    if not allowed then
+        targetDenied(src, action, targetId, targetLicense, reason)
+        return false
+    end
+    return true
+end
+
 RegisterNetEvent('feather-admin:access:request', function()
     local src = source
     local authorized = FeatherAdmin.IsAuthorized(src)
