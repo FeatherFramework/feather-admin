@@ -24,12 +24,11 @@ local function syncAllAdmins(excludedPlayer)
     end
 end
 
-RegisterNetEvent('feather-admin:players:request', function()
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:players:request', function(_, _, src)
     if not FeatherAdmin.RequirePermission(src, 'players.view') then return end
 
     syncPlayerList(src)
-end)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 64 })
 
 AddEventHandler('playerDropped', function()
     syncAllAdmins(source)
