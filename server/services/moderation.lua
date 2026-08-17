@@ -100,10 +100,25 @@ MySQL.ready(function()
             INDEX idx_fa_warnings_license (license)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ]])
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS feather_admin_kicks (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            license VARCHAR(100) NOT NULL,
+            player_name VARCHAR(100) NULL,
+            character_id INT NULL,
+            character_name VARCHAR(150) NULL,
+            reason VARCHAR(200) NOT NULL,
+            admin_license VARCHAR(100) NULL,
+            admin_name VARCHAR(100) NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            INDEX idx_fa_kicks_license (license)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ]])
     schemaReady = true
 end)
 
-AddEventHandler('playerConnecting', function(_, _, deferrals)
+AddEventHandler('playerConnecting', function(playerName, _, deferrals)
     local src = source
     local license = licenseForSource(src)
     if not license then return end
@@ -136,6 +151,14 @@ AddEventHandler('playerConnecting', function(_, _, deferrals)
     local message = tostring(Config.moderation.banMessage or 'You are banned from this server.')
     message = ('%s\nReason: %s'):format(message, ban.reason)
     if ban.expires_at then message = ('%s\nExpires: %s'):format(message, ban.expires_at) end
+
+    print(('[feather-admin] Blocked banned player connection: player=%s license=%s reason=%s expires=%s'):format(
+        tostring(playerName or 'unknown'):gsub('[%c]', ' '),
+        tostring(license),
+        tostring(ban.reason):gsub('[%c]', ' '),
+        tostring(ban.expires_at or 'permanent')
+    ))
+
     deferrals.done(message)
 end)
 
@@ -175,10 +198,33 @@ RegisterNetEvent('feather-admin:moderation:warn', function(targetData, reason)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason, adminLicense, adminName })
     AdminAudit.Record(src, 'moderation.warn', target.serverId, ('license=%s reason=%s'):format(target.license, cleanReason))
-    if target.serverId then
+    -- When an admin warns themselves, the admin result below is sufficient;
+    -- sending the target warning too would notify the same client twice.
+    if target.serverId and target.serverId ~= src then
         FeatherAdmin.Core.Notify.RightNotify(target.serverId, ('Warning: %s'):format(cleanReason), 5000)
     end
     notify(src, 'player_warned')
+end)
+
+RegisterNetEvent('feather-admin:moderation:kick', function(playerId, reason)
+    local src = source
+    if not FeatherAdmin.RequirePermission(src, 'moderation.kick') or not schemaReady then return end
+    local targetId = FeatherAdmin.ValidTarget(playerId)
+    local cleanReason = validReason(reason)
+    if not targetId or targetId == src or not cleanReason then return end
+
+    local target = resolveTarget({ serverId = targetId })
+    if not target then return end
+    local adminLicense, adminName = adminIdentity(src)
+
+    MySQL.insert.await([[
+        INSERT INTO feather_admin_kicks
+            (license, player_name, character_id, character_name, reason, admin_license, admin_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason, adminLicense, adminName })
+    AdminAudit.Record(src, 'moderation.kick', targetId, ('license=%s reason=%s'):format(target.license, cleanReason))
+    notify(src, 'player_kicked')
+    DropPlayer(targetId, cleanReason)
 end)
 
 RegisterNetEvent('feather-admin:moderation:ban', function(targetData, reason, durationMinutes)
@@ -212,7 +258,12 @@ RegisterNetEvent('feather-admin:moderation:history', function(targetData)
     local src = source
     if not FeatherAdmin.RequirePermission(src, 'moderation.history') or not schemaReady then return end
     local target = resolveTarget(targetData)
-    if not target then return end
+    if not target then
+        if type(targetData) == 'table' and targetData.serverId ~= nil then
+            notify(src, 'player_not_online')
+        end
+        return
+    end
     local limit = math.max(1, math.min(tonumber(Config.moderation.historyLimit) or 50, 100))
     local bans = MySQL.query.await(([=[
         SELECT id, 'ban' AS kind, reason, admin_name AS adminName,
@@ -233,10 +284,20 @@ RegisterNetEvent('feather-admin:moderation:history', function(targetData)
                'warning' AS status
         FROM feather_admin_warnings WHERE license = ? ORDER BY id DESC LIMIT %d
     ]=]):format(limit), { target.license }) or {}
-    for _, warning in ipairs(warnings) do bans[#bans + 1] = warning end
-    table.sort(bans, function(a, b) return tostring(a.createdAt) > tostring(b.createdAt) end)
-    while #bans > limit do table.remove(bans) end
-    TriggerClientEvent('feather-admin:moderation:history:result', src, bans)
+    local kicks = MySQL.query.await(([=[
+        SELECT id, 'kick' AS kind, reason, admin_name AS adminName,
+               NULL AS expiresAt,
+               DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
+               NULL AS revokedBy, NULL AS revokedAt,
+               'kick' AS status
+        FROM feather_admin_kicks WHERE license = ? ORDER BY id DESC LIMIT %d
+    ]=]):format(limit), { target.license }) or {}
+    local records = bans
+    for _, warning in ipairs(warnings) do records[#records + 1] = warning end
+    for _, kick in ipairs(kicks) do records[#records + 1] = kick end
+    table.sort(records, function(a, b) return tostring(a.createdAt) > tostring(b.createdAt) end)
+    while #records > limit do table.remove(records) end
+    TriggerClientEvent('feather-admin:moderation:history:result', src, records)
 end)
 
 RegisterNetEvent('feather-admin:moderation:unban', function(banId)
