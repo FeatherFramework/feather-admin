@@ -175,7 +175,7 @@ end
 
 function AdminTrolls.Request(action, targetPlayer)
     if targetPlayer == nil then return end
-    TriggerServerEvent('feather-admin:troll:request', action, targetPlayer)
+    Feather.RPC.Notify('feather-admin:troll:request', { action = action, playerId = targetPlayer })
 end
 
 function AdminTrolls.RefreshPlayerState()
