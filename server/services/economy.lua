@@ -39,7 +39,17 @@ RegisterNetEvent('feather-admin:economy:adjust', function(playerId, field, opera
         return
     end
 
-    local balance = character.char[field]
+    -- Character API objects cross a resource boundary. The object above is
+    -- a snapshot, so its nested `char` table can still contain the balance
+    -- from before Add/Subtract even though Feather Core updated its cache.
+    -- Fetch the character again and report the authoritative cached value.
+    local updatedCharacter = FeatherAdmin.Core.Character.GetCharacter({ src = target })
+    local balance = updatedCharacter and updatedCharacter.char and updatedCharacter.char[field]
+    if balance == nil then
+        FeatherAdmin.Core.Notify.RightNotify(src, 'The balance was updated, but the new balance could not be read.', 3000)
+        return
+    end
+
     local details = ('field=%s operation=%s amount=%s balance=%s'):format(field, operation, amount, balance)
     AdminAudit.Record(src, permission, target, details)
     TriggerClientEvent('feather-admin:economy:result', src, field, operation, amount, balance)
