@@ -6,7 +6,7 @@ function AdminUI.OpenMain()
 
     if AdminUI.CanUse('players.view') then
         AdminUI.AddButton(page, AdminTranslate('player_list'), function()
-            TriggerServerEvent('feather-admin:players:request')
+            Feather.RPC.Notify('feather-admin:players:request', {})
             AdminUI.OpenPlayers()
         end)
     end
