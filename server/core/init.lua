@@ -3,10 +3,17 @@ FeatherAdmin = {}
 local Feather = exports['feather-core'].initiate()
 FeatherAdmin.Core = Feather
 
+function FeatherAdmin.RegisterRPC(name, callback, options)
+    return FeatherAdmin.Core.RPC.Register(name, function(params, respond, src)
+        if type(params) ~= 'table' then return end
+        return callback(params, respond, src)
+    end, options)
+end
+
 function FeatherAdmin.GetRoleLevel(src)
     local character = Feather.Character.GetCharacter({ src = src })
     if character == nil or character.char == nil then return nil end
-    return tonumber(character.char.level)
+    return tonumber(character.char.role_level)
 end
 
 function FeatherAdmin.CanUse(src, action)
@@ -105,10 +112,15 @@ function FeatherAdmin.CheckTargetHierarchy(src, action, targetLicense, targetId)
     return true
 end
 
-RegisterNetEvent('feather-admin:access:request', function()
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:access:request', function(_, _, src)
     local authorized = FeatherAdmin.IsAuthorized(src)
     if not authorized then FeatherAdmin.Deny(src) end
 
     TriggerClientEvent('feather-admin:access:result', src, authorized, authorized and FeatherAdmin.GetPermissions(src) or {})
-end)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 64 })
+
+FeatherAdmin.RegisterRPC('feather-admin:access:refresh', function(_, _, src)
+    local authorized = FeatherAdmin.IsAuthorized(src)
+    TriggerClientEvent('feather-admin:access:permissions', src,
+        authorized, authorized and FeatherAdmin.GetPermissions(src) or {})
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 64 })
