@@ -8,8 +8,8 @@ local allowedActions = {
     kill = true
 }
 
-RegisterNetEvent('feather-admin:booster:request', function(action, playerId)
-    local src = source
+FeatherAdmin.RegisterRPC('feather-admin:booster:request', function(params, _, src)
+    local action, playerId = params.action, params.playerId
     if allowedActions[action] ~= true then return end
     local permission = ('booster.%s'):format(action)
     local target = FeatherAdmin.RequireTarget(src, permission, playerId)
@@ -22,4 +22,4 @@ RegisterNetEvent('feather-admin:booster:request', function(action, playerId)
     end
 
     TriggerClientEvent('feather-admin:booster:apply', target, action)
-end)
+end, { windowMs = 1000, maxCalls = 5, maxPayloadBytes = 256 })
