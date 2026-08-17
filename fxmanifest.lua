@@ -31,6 +31,8 @@ client_scripts {
     'client/ui/pages/player_management.lua',
     'client/ui/pages/teleports.lua',
     'client/ui/pages/trolls.lua',
+    'client/ui/pages/appearance.lua',
+    'client/ui/pages/self_tools.lua',
     'client/ui/pages/moderation.lua',
     'client/ui/pages/main.lua',
     'client/core/main.lua'
