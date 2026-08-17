@@ -35,6 +35,15 @@ Config = {
         historyLimit = 50,      -- Maximum history records returned at once.
         maxReasonLength = 200,  -- Maximum ban or warning reason length.
         maxBanMinutes = 525600, -- Longest temporary ban (one year); use 0 for permanent.
+        banDurations = {        -- Options shown in the ban duration dropdown.
+            { label = 'Permanent', minutes = 0 },
+            { label = '1 Hour', minutes = 60 },
+            { label = '6 Hours', minutes = 360 },
+            { label = '1 Day', minutes = 1440 },
+            { label = '3 Days', minutes = 4320 },
+            { label = '7 Days', minutes = 10080 },
+            { label = '30 Days', minutes = 43200 }
+        },
         banMessage = 'You are banned from this server.'
     },
     -----------------------------------------------------
