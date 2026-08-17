@@ -190,6 +190,7 @@ RegisterNetEvent('feather-admin:moderation:warn', function(targetData, reason)
     if not FeatherAdmin.RequirePermission(src, 'moderation.warn') or not schemaReady then return end
     local target, cleanReason = resolveTarget(targetData), validReason(reason)
     if not target or not cleanReason then return end
+    if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.warn', target.license, target.serverId) then return end
     local adminLicense, adminName = adminIdentity(src)
 
     MySQL.insert.await([[
@@ -208,8 +209,8 @@ end)
 
 RegisterNetEvent('feather-admin:moderation:kick', function(playerId, reason)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'moderation.kick') or not schemaReady then return end
-    local targetId = FeatherAdmin.ValidTarget(playerId)
+    if not schemaReady then return end
+    local targetId = FeatherAdmin.RequireTarget(src, 'moderation.kick', playerId)
     local cleanReason = validReason(reason)
     if not targetId or targetId == src or not cleanReason then return end
 
@@ -240,6 +241,7 @@ RegisterNetEvent('feather-admin:moderation:ban', function(targetData, reason, du
         notify(src, 'cannot_ban_self')
         return
     end
+    if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.ban', target.license, target.serverId) then return end
 
     MySQL.update.await('UPDATE feather_admin_bans SET active = 0 WHERE license = ? AND active = 1', { target.license })
     MySQL.insert.await([[
@@ -264,6 +266,7 @@ RegisterNetEvent('feather-admin:moderation:history', function(targetData)
         end
         return
     end
+    if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.history', target.license, target.serverId) then return end
     local limit = math.max(1, math.min(tonumber(Config.moderation.historyLimit) or 50, 100))
     local bans = MySQL.query.await(([=[
         SELECT id, 'ban' AS kind, reason, admin_name AS adminName,
@@ -305,6 +308,8 @@ RegisterNetEvent('feather-admin:moderation:unban', function(banId)
     if not FeatherAdmin.RequirePermission(src, 'moderation.unban') or not schemaReady then return end
     banId = tonumber(banId)
     if not banId or banId % 1 ~= 0 then return end
+    local ban = MySQL.single.await('SELECT license FROM feather_admin_bans WHERE id = ? AND active = 1', { banId })
+    if not ban or not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.unban', ban.license, nil) then return end
     local _, adminName = adminIdentity(src)
     local changed = MySQL.update.await([[
         UPDATE feather_admin_bans
