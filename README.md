@@ -35,7 +35,7 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 
 These resources must already be installed. They also need to start before Feather Admin.
 
-Feather Admin creates its moderation database tables automatically when the resource starts. No SQL import is required.
+Feather Admin creates its moderation and durable action-audit database tables automatically when the resource starts. No SQL import is required.
 
 ## Installation
 
@@ -62,7 +62,25 @@ Lower individual values to give junior staff limited access. For example, changi
 
 Buttons a staff member cannot use are hidden. Every player-affecting request is checked again by the server, so changing the local menu does not grant permission.
 
+Staff also cannot target an account with an equal or higher role level. This hierarchy is configured in `configs/hierarchy.lua`. The active character controls a staff member's authority, while the highest role held anywhere on the target account controls its protection.
+
 If an administrator cannot open the menu, confirm that their active character meets the numeric level configured for `menu.open`.
+
+### Emergency role recovery
+
+The server console can restore a character's role without an active admin character:
+
+```text
+featherSetRole <characterId> <roleLevel>
+```
+
+To allow a trusted server administrator to run the same command in game, add this ACE permission in `server.cfg`:
+
+```cfg
+add_ace group.admin feather.admin.recover allow
+```
+
+This ACE permits only the recovery command. It does not grant access to the admin menu on civilian characters. The selected numeric role level must identify exactly one row in the `roles` table.
 
 ## Configuration
 
@@ -72,10 +90,14 @@ Most server owners only need to edit `config.lua`. Open it with a text editor to
 - `controls.openMenu`: choose the key used to open the menu; the default is `PGDN` (Page Down)
 - `commands.enabled`: turn chat-command access on or off
 - `commands.openMenu`: change the menu command; the default is `adminMenu`
+- `commands.recoverRole`: change the emergency role recovery command
+- `commands.recoverAce`: change the ACE permission required for in-game recovery
 - `configs/permissions.lua`: choose the minimum numeric role level for every admin action
+- `configs/hierarchy.lua`: control staff hierarchy, helpful exemptions, and allowed self-actions
 - `logging.webhook`: optionally send admin action logs to a Discord webhook
 - `economy.maxAmount`: limit the size of a single balance adjustment
 - `moderation.searchLimit`: limit offline search results
+- `moderation.minSearchLength`: require a minimum offline-search length
 - `moderation.historyLimit`: limit the history records shown
 - `moderation.maxReasonLength`: set the maximum warning or ban reason length
 - `moderation.maxBanMinutes`: set the longest allowed temporary ban
@@ -95,7 +117,7 @@ With the default settings, an authorized administrator can open the menu by pres
 
 Choose **Player List** to select another connected player. Selected-player tools are grouped under Player Information, Moderation, Movement, Character & Economy, Player Status, Appearance, and Special Effects.
 
-Use **Offline Players** to search moderation records for someone who is not connected. Use **Self Tools** for status and appearance actions that apply to your own character.
+Use **Offline Players** to search moderation records for someone who is not connected. Names use prefix matching; license searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for status and appearance actions that apply to your own character.
 
 Every page has a **Back** button. Use **Close** on the main page or tap **ESC** to exit the menu.
 
