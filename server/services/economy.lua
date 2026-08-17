@@ -17,9 +17,7 @@ RegisterNetEvent('feather-admin:economy:adjust', function(playerId, field, opera
     if economyFields[field] ~= true or (operation ~= 'add' and operation ~= 'remove') then return end
 
     local permission = ('economy.%s.%s'):format(field, operation)
-    if not FeatherAdmin.RequirePermission(src, permission) then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local target = FeatherAdmin.RequireTarget(src, permission, playerId)
     local amount = validAmount(value)
     if target == nil or amount == nil then return end
 
@@ -60,9 +58,7 @@ end)
 
 RegisterNetEvent('feather-admin:character:restore', function(playerId)
     local src = source
-    if not FeatherAdmin.RequirePermission(src, 'character.restore_model') then return end
-
-    local target = FeatherAdmin.ValidTarget(playerId)
+    local target = FeatherAdmin.RequireTarget(src, 'character.restore_model', playerId)
     if target == nil then return end
     if GetResourceState('feather-character') ~= 'started' then
         FeatherAdmin.Core.Notify.RightNotify(src, 'Feather Character is not running.', 3000)
