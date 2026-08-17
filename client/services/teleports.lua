@@ -2,8 +2,7 @@ AdminTeleports = {}
 
 local state = {
     autoWaypoint = false,
-    autoWaypointSession = 0,
-    teleporting = false
+    autoWaypointSession = 0
 }
 
 local function sameWaypoint(first, second)
@@ -11,67 +10,8 @@ local function sameWaypoint(first, second)
     return Feather.Math.GetDistanceBetween(first, second) < 1.0
 end
 
-local function findGroundZ(x, y)
-    RequestCollisionAtCoord(x, y, 1000.0)
-    for height = 1000, 0, -25 do
-        local found, groundZ = GetGroundZAndNormalFor_3dCoord(x, y, height + 0.0)
-        if found then return groundZ end
-        Wait(0)
-    end
-    return nil
-end
-
-local function findSurfaceZ(x, y)
-    local ray = StartShapeTestRay(x, y, 1000.0, x, y, -100.0, -1, PlayerPedId(), 7)
-    local timeoutAt = GetGameTimer() + 1000
-
-    while GetGameTimer() < timeoutAt do
-        local status, hit, hitCoords = GetShapeTestResult(ray)
-        if status == 2 then
-            if hit then return hitCoords.z end
-            return nil
-        end
-        Wait(0)
-    end
-
-    return nil
-end
-
-local function teleportToCoordinates(x, y, fallbackZ, heading)
-    if state.teleporting then return false end
-    state.teleporting = true
-
-    DoScreenFadeOut(500)
-    local fadeTimeout = GetGameTimer() + 2000
-    while not IsScreenFadedOut() and GetGameTimer() < fadeTimeout do Wait(0) end
-
-    RequestCollisionAtCoord(x, y, 1000.0)
-    local surfaceZ = findSurfaceZ(x, y)
-    local groundZ = surfaceZ and nil or findGroundZ(x, y)
-    local destinationZ = surfaceZ or groundZ or fallbackZ
-    if not destinationZ then
-        state.teleporting = false
-        DoScreenFadeIn(500)
-        return false
-    end
-
-    local ped = PlayerPedId()
-    SetEntityCoordsNoOffset(ped, x, y, destinationZ + 0.1, false, false, false)
-    if heading then SetEntityHeading(ped, heading) end
-
-    RequestCollisionAtCoord(x, y, destinationZ)
-    local collisionTimeout = GetGameTimer() + 2000
-    while not HasCollisionLoadedAroundEntity(ped) and GetGameTimer() < collisionTimeout do Wait(0) end
-
-    state.teleporting = false
-    DoScreenFadeIn(500)
-    return true
-end
-
-local function teleportToWaypoint()
-    if not IsWaypointActive() then return false end
-    local waypoint = GetWaypointCoords()
-    return teleportToCoordinates(waypoint.x, waypoint.y, waypoint.z)
+local function succeeded(result)
+    return type(result) == 'table' and result.success == true
 end
 
 local function runAutoWaypoint(session)
@@ -80,8 +20,8 @@ local function runAutoWaypoint(session)
         if IsWaypointActive() then
             local waypoint = GetWaypointCoords()
             if not sameWaypoint(waypoint, lastWaypoint) then
-                teleportToWaypoint()
-                lastWaypoint = waypoint
+                local result = Feather.Teleport:ToWaypoint()
+                if result.success then lastWaypoint = waypoint end
             end
         else
             lastWaypoint = nil
@@ -91,7 +31,7 @@ local function runAutoWaypoint(session)
 end
 
 function AdminTeleports.ToWaypoint()
-    CreateThread(teleportToWaypoint)
+    return succeeded(Feather.Teleport:ToWaypoint())
 end
 
 function AdminTeleports.ParseCoordinates(value)
@@ -117,11 +57,7 @@ function AdminTeleports.ToCoordinates(x, y, z, heading)
     x, y, z, heading = tonumber(x), tonumber(y), tonumber(z), tonumber(heading)
     if not x or not y or not z then return false end
 
-    CreateThread(function()
-        teleportToCoordinates(x, y, z, heading)
-    end)
-
-    return true
+    return succeeded(Feather.Teleport:ToCoords(vector3(x, y, z), { heading = heading }))
 end
 
 function AdminTeleports.ToggleAutoWaypoint()
@@ -140,5 +76,4 @@ AddEventHandler('onResourceStop', function(resourceName)
 
     state.autoWaypoint = false
     state.autoWaypointSession = state.autoWaypointSession + 1
-    if IsScreenFadedOut() or IsScreenFadingOut() then DoScreenFadeIn(0) end
 end)
