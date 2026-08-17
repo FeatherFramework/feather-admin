@@ -160,19 +160,27 @@ function AdminUI.OpenModerationHistory(history)
 
     for _, record in ipairs(history) do
         local entry = record
+        local issuedBy = entry.adminName or AdminTranslate('not_available')
+        if entry.adminCharacterName then
+            issuedBy = ('%s (%s)'):format(issuedBy, entry.adminCharacterName)
+        end
         local status = entry.kind == 'warning' and AdminTranslate('warning')
             or entry.kind == 'kick' and AdminTranslate('kick')
             or AdminTranslate(entry.status == 'active' and 'active_ban' or entry.status == 'revoked' and 'revoked_ban' or 'expired_ban')
         local lines = {
             ('%s #%s'):format(status, entry.id),
             ('%s: %s'):format(AdminTranslate('reason'), entry.reason),
-            ('%s: %s'):format(AdminTranslate('issued_by'), entry.adminName or AdminTranslate('not_available')),
+            ('%s: %s'):format(AdminTranslate('issued_by'), issuedBy),
             ('%s: %s'):format(AdminTranslate('issued_at'), entry.createdAt or AdminTranslate('not_available'))
         }
         if entry.kind == 'ban' then
             lines[#lines + 1] = ('%s: %s'):format(AdminTranslate('expires'), entry.expiresAt or AdminTranslate('permanent'))
             if entry.revokedBy then
-                lines[#lines + 1] = ('%s: %s'):format(AdminTranslate('revoked_by'), entry.revokedBy)
+                local revokedBy = entry.revokedBy
+                if entry.revokedByCharacterName then
+                    revokedBy = ('%s (%s)'):format(revokedBy, entry.revokedByCharacterName)
+                end
+                lines[#lines + 1] = ('%s: %s'):format(AdminTranslate('revoked_by'), revokedBy)
                 lines[#lines + 1] = ('%s: %s'):format(AdminTranslate('revoked_at'), entry.revokedAt or AdminTranslate('not_available'))
             end
         end
