@@ -12,7 +12,7 @@ CreateThread(function()
         local menuKey = Config.controls.openMenu
         AdminKeyListener = Feather.Keys:RegisterListener(menuKey, function ()
             if not InMenu then
-                TriggerServerEvent('feather-admin:access:request')
+                Feather.RPC.Notify('feather-admin:access:request', {})
             end
         end)
     end
@@ -22,7 +22,7 @@ CreateThread(function()
         local suggestion = AdminTranslate(Config.commands.suggestionKey)
         Feather.Command.Register(command, suggestion, function()
             if not InMenu then
-                TriggerServerEvent('feather-admin:access:request')
+                Feather.RPC.Notify('feather-admin:access:request', {})
             end
         end)
     end
@@ -31,8 +31,25 @@ end)
 RegisterNetEvent('feather-admin:access:result', function(authorized, permissions)
     AdminPermissions = type(permissions) == 'table' and permissions or {}
     if not authorized or InMenu then return end
-    if AdminUI.CanUse('players.view') then TriggerServerEvent('feather-admin:players:request') end
+    if AdminUI.CanUse('players.view') then Feather.RPC.Notify('feather-admin:players:request', {}) end
     AdminUI.OpenMain()
+end)
+
+RegisterNetEvent('feather-admin:access:permissions', function(authorized, permissions)
+    AdminPermissions = authorized and type(permissions) == 'table' and permissions or {}
+    if not authorized and InMenu then AdminUI.Close() end
+end)
+
+AddEventHandler('Feather:Character:Spawned', function()
+    Feather.RPC.Notify('feather-admin:access:refresh', {})
+end)
+
+AddEventHandler('Feather:Character:Logout', function()
+    AdminPermissions = {}
+    ClientAllPlayers = {}
+    AdminUI.targetPlayer = nil
+    AdminUI.toggleStates = {}
+    if InMenu then AdminUI.Close() end
 end)
 
 AddEventHandler('onResourceStop', function(resourceName)
