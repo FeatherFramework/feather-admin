@@ -11,6 +11,7 @@ Config.permissions = {
 
     ['moderation.view'] = 99,
     ['moderation.search'] = 99,
+    ['moderation.search_identifiers'] = 99,
     ['moderation.history'] = 99,
     ['moderation.warn'] = 99,
     ['moderation.ban'] = 99,
