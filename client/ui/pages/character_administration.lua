@@ -25,7 +25,7 @@ function AdminUI.OpenEconomyConfirmation(field, amount)
         if AdminCharacter.AdjustEconomy(AdminUI.GetTarget(), field, 'remove', amount) then
             AdminUI.OpenCharacterAdministration()
         end
-    end, AdminUI.Styles.danger)
+    end, AdminUI.Styles.button)
 
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenCharacterAdministration)
@@ -98,9 +98,8 @@ function AdminUI.OpenCharacterAdministration()
 
     if AdminUI.CanUse('character.restore_model') then
         AdminUI.AddButton(page, AdminTranslate('restore_character_appearance'), function()
-            AdminUI.RunAction(AdminTranslate('restore_character_appearance'), function()
-                return AdminCharacter.RestoreAppearance(AdminUI.GetTarget())
-            end)
+            -- The server sends the authoritative success/failure message.
+            AdminCharacter.RestoreAppearance(AdminUI.GetTarget())
         end)
     end
 
