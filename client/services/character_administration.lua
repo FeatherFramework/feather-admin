@@ -9,13 +9,15 @@ end
 
 function AdminCharacter.AdjustEconomy(target, field, operation, amount)
     if target == nil or AdminCharacter.ParseAmount(amount) == nil then return false end
-    TriggerServerEvent('feather-admin:economy:adjust', target, field, operation, amount)
+    Feather.RPC.Notify('feather-admin:economy:adjust', {
+        playerId = target, field = field, operation = operation, value = amount
+    })
     return true
 end
 
 function AdminCharacter.RestoreAppearance(target)
     if target == nil then return false end
-    TriggerServerEvent('feather-admin:character:restore', target)
+    Feather.RPC.Notify('feather-admin:character:restore', { playerId = target })
     return true
 end
 
