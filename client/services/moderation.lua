@@ -1,6 +1,7 @@
 AdminModeration = {
     target = nil,
-    results = {}
+    results = {},
+    form = {}
 }
 
 local function validReason(reason)
@@ -10,28 +11,47 @@ local function validReason(reason)
     return reason ~= '' and #reason <= maximum
 end
 
+function AdminModeration.ValidateReason(reason)
+    return validReason(reason)
+end
+
 function AdminModeration.SelectOnline(serverId)
     AdminModeration.target = { serverId = tonumber(serverId) }
+    AdminModeration.form = {}
     AdminUI.OpenModerationTarget()
 end
 
 function AdminModeration.SelectOffline(target)
     AdminModeration.target = target
+    AdminModeration.form = {}
     AdminUI.OpenModerationTarget()
 end
 
-function AdminModeration.Ban(reason, duration)
+function AdminModeration.ValidateBan(reason, duration)
     if not validReason(reason) then return false, 'reason' end
     duration = (duration == nil or duration == '') and 0 or tonumber(duration)
     local maximum = tonumber(Config.moderation.maxBanMinutes) or 525600
     if not duration or duration < 0 or duration > maximum or duration % 1 ~= 0 then return false, 'duration' end
-    TriggerServerEvent('feather-admin:moderation:ban', AdminModeration.target, reason, duration)
+    return true, nil, duration
+end
+
+function AdminModeration.Ban(reason, duration)
+    local valid, problem, parsedDuration = AdminModeration.ValidateBan(reason, duration)
+    if not valid then return false, problem end
+    TriggerServerEvent('feather-admin:moderation:ban', AdminModeration.target, reason, parsedDuration)
     return true
 end
 
 function AdminModeration.Warn(reason)
     if not validReason(reason) then return false end
     TriggerServerEvent('feather-admin:moderation:warn', AdminModeration.target, reason)
+    return true
+end
+
+function AdminModeration.Kick(reason)
+    local target = AdminModeration.target
+    if not target or not target.serverId or not validReason(reason) then return false end
+    TriggerServerEvent('feather-admin:moderation:kick', target.serverId, reason)
     return true
 end
 
