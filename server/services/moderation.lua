@@ -274,7 +274,7 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:kick', function(params, _, sr
     if not schemaReady then return end
     local targetId = FeatherAdmin.RequireTarget(src, 'moderation.kick', playerId)
     local cleanReason = validReason(reason)
-    if not targetId or targetId == src or not cleanReason then return end
+    if not targetId or not cleanReason then return end
 
     local target = resolveTarget({ serverId = targetId })
     if not target then return end
@@ -301,10 +301,6 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:ban', function(params, _, src
     if not target or not cleanReason or not duration or duration < 0
         or duration > maximumDuration or duration % 1 ~= 0 then return end
     local adminLicense, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
-    if target.serverId == src or target.license == adminLicense then
-        notify(src, 'cannot_ban_self')
-        return
-    end
     if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.ban', target.license, target.serverId) then return end
 
     MySQL.update.await('UPDATE feather_admin_bans SET active = 0 WHERE license = ? AND active = 1', { target.license })
@@ -318,7 +314,7 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:ban', function(params, _, src
     AdminAudit.Record(src, 'moderation.ban', target.serverId,
         ('license=%s duration=%s reason=%s'):format(target.license, duration == 0 and 'permanent' or duration, cleanReason))
     notify(src, 'player_banned')
-    if target.serverId and target.serverId ~= src then DropPlayer(target.serverId, cleanReason) end
+    if target.serverId then DropPlayer(target.serverId, cleanReason) end
 end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 1024 })
 
 FeatherAdmin.RegisterRPC('feather-admin:moderation:history', function(params, _, src)
