@@ -183,6 +183,20 @@ function AdminUI.CanUse(action)
     return AdminPermissions[action] == true
 end
 
+function AdminUI.IsSelfTarget(target)
+    local targetId = tonumber(target or AdminUI.GetTarget())
+    return targetId ~= nil and targetId == GetPlayerServerId(PlayerId())
+end
+
+function AdminUI.CanUseOnTarget(action, target)
+    if not AdminUI.CanUse(action) then return false end
+    if not AdminUI.IsSelfTarget(target) then return true end
+
+    local hierarchy = type(Config.hierarchy) == 'table' and Config.hierarchy or {}
+    local allowSelf = type(hierarchy.allowSelf) == 'table' and hierarchy.allowSelf or {}
+    return allowSelf[action] == true
+end
+
 function AdminUI.CanUseAny(prefix)
     for action, allowed in pairs(AdminPermissions) do
         if allowed and action:sub(1, #prefix) == prefix then return true end
