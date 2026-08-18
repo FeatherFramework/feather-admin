@@ -19,6 +19,9 @@ Config.permissions = {
     ['moderation.unban'] = 75,
     ['moderation.kick'] = 50,
 
+    ['audit.view'] = 75,
+    ['audit.sensitive'] = 99,
+
     ['economy.dollars.add'] = 99,
     ['economy.dollars.remove'] = 99,
     ['economy.gold.add'] = 99,
