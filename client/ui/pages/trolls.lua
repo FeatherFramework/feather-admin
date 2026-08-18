@@ -11,7 +11,7 @@ local actions = {
 
 function AdminUI.CanUseSpecialEffects()
     for _, action in ipairs(actions) do
-        if AdminUI.CanUse(('troll.%s'):format(action.action)) then return true end
+        if AdminUI.CanUseOnTarget(('troll.%s'):format(action.action)) then return true end
     end
     return false
 end
@@ -24,7 +24,7 @@ function AdminUI.OpenTrolls()
 
     for _, entry in ipairs(actions) do
         local action = entry
-        if AdminUI.CanUse(('troll.%s'):format(action.action)) then
+        if AdminUI.CanUseOnTarget(('troll.%s'):format(action.action)) then
             local label = AdminTranslate(action.key)
             local buttonLabel = action.toggle and AdminUI.GetToggleLabel(label, action.action) or label
             AdminUI.AddButton(page, buttonLabel, function(_, element)
