@@ -89,3 +89,78 @@ function AdminAudit.Record(adminId, action, targetId, details)
     end
     if webhook then webhook:sendMessage('Admin Action', message) end
 end
+
+local function cleanFilter(value, maximum)
+    if type(value) ~= 'string' then return nil end
+    value = value:match('^%s*(.-)%s*$')
+    if value == '' then return nil end
+    return value:sub(1, maximum)
+end
+
+FeatherAdmin.RegisterRPC('feather-admin:audit:list', function(params, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'audit.view') then return end
+    if not schemaReady then
+        return TriggerClientEvent('feather-admin:audit:result', src, {}, 1, false, 'audit_unavailable')
+    end
+
+    local page = math.min(100000, math.max(1, math.floor(tonumber(params.page) or 1)))
+    local pageSize = 20
+    local filters = type(params.filters) == 'table' and params.filters or {}
+    local admin = cleanFilter(filters.admin, 100)
+    local target = cleanFilter(filters.target, 100)
+    local action = cleanFilter(filters.action, 100)
+    local date = cleanFilter(filters.date, 10)
+    if date and not date:match('^%d%d%d%d%-%d%d%-%d%d$') then date = nil end
+
+    local clauses = {}
+    local values = {}
+    if admin then
+        clauses[#clauses + 1] = '(admin_name LIKE ? OR admin_character_name LIKE ?)'
+        values[#values + 1] = admin .. '%'
+        values[#values + 1] = admin .. '%'
+    end
+    if target then
+        clauses[#clauses + 1] = '(target_name LIKE ? OR target_character_name LIKE ?)'
+        values[#values + 1] = target .. '%'
+        values[#values + 1] = target .. '%'
+    end
+    if action then
+        clauses[#clauses + 1] = 'action LIKE ?'
+        values[#values + 1] = action .. '%'
+    end
+    if date then
+        clauses[#clauses + 1] = 'created_at >= ? AND created_at < DATE_ADD(?, INTERVAL 1 DAY)'
+        values[#values + 1] = date
+        values[#values + 1] = date
+    end
+
+    local where = #clauses > 0 and (' WHERE ' .. table.concat(clauses, ' AND ')) or ''
+    local offset = (page - 1) * pageSize
+    local query = ([=[
+        SELECT id, admin_license AS adminLicense, admin_name AS adminName,
+               admin_character_name AS adminCharacterName, action,
+               target_license AS targetLicense, target_name AS targetName,
+               target_character_name AS targetCharacterName, details,
+               DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt
+        FROM feather_admin_actions%s
+        ORDER BY id DESC
+        LIMIT %d OFFSET %d
+    ]=]):format(where, pageSize + 1, offset)
+    local rows = MySQL.query.await(query, values) or {}
+    local hasNext = #rows > pageSize
+    if hasNext then rows[#rows] = nil end
+
+    if not FeatherAdmin.CanUse(src, 'audit.sensitive') then
+        for _, row in ipairs(rows) do
+            row.adminLicense = nil
+            row.targetLicense = nil
+            if tostring(row.action):sub(1, 8) == 'economy.' then
+                row.details = 'Restricted'
+            else
+                row.details = tostring(row.details or ''):gsub('license=[^%s]+', 'license=restricted')
+            end
+        end
+    end
+
+    TriggerClientEvent('feather-admin:audit:result', src, rows, page, hasNext)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 1024 })
