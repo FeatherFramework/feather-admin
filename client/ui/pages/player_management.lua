@@ -73,7 +73,7 @@ function AdminUI.OpenPlayerManagement()
     local page = AdminUI.RegisterPage('player_management')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('movement_header'))
 
-    if AdminUI.CanUse('player.go_to') then
+    if AdminUI.CanUseOnTarget('player.go_to') then
         local label = AdminTranslate('go_to_player')
         AdminUI.AddButton(page, label, function()
             AdminPlayerManagement.GoTo(AdminUI.GetTarget())
@@ -81,21 +81,21 @@ function AdminUI.OpenPlayerManagement()
         end)
     end
 
-    if AdminUI.CanUse('player.bring') then
+    if AdminUI.CanUseOnTarget('player.bring') then
         local label = AdminTranslate('bring_player')
         AdminUI.AddButton(page, label, function()
             AdminPlayerManagement.Bring(AdminUI.GetTarget())
         end)
     end
 
-    if AdminUI.CanUse('player.send_back') then
+    if AdminUI.CanUseOnTarget('player.send_back') then
         local label = AdminTranslate('send_player_back')
         AdminUI.AddButton(page, label, function()
             AdminPlayerManagement.SendBack(AdminUI.GetTarget())
         end)
     end
 
-    if AdminUI.CanUse('player.spectate') then
+    if AdminUI.CanUseOnTarget('player.spectate') then
         local label = AdminTranslate('spectate_player')
         local enabled = AdminPlayerManagement.IsSpectating(AdminUI.GetTarget())
         local buttonLabel = ('%s: %s'):format(label, AdminTranslate(enabled and 'status_on' or 'status_off'))
