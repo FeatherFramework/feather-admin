@@ -26,6 +26,8 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Freeze, cage, handcuff, or remove a player from a vehicle
 - Apply several optional player effects
 - Open the menu with a key or chat command
+- Store admin actions in the database and review them from a paginated Admin Logs page
+- Filter admin logs by administrator, player, action, or date
 - Record admin actions in the server console and optionally Discord
 
 ## Dependencies
@@ -59,8 +61,8 @@ Feather Admin creates its moderation and durable action-audit database tables au
 Every menu action has a minimum numeric role level in `configs/permissions.lua`. The default tiers are:
 
 - Level `50` — Moderator: player support, warnings, kicks, spectating, travel, healing, and reviving
-- Level `75` — Senior Admin: bans, unbans, identifier searches, character repair, advanced status tools, appearance tools, and reversible player effects
-- Level `99` — Owner: economy adjustments and the most disruptive special effects
+- Level `75` — Senior Admin: bans, unbans, identifier searches, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
+- Level `99` — Owner: economy adjustments, sensitive log details, and the most disruptive special effects
 
 These are numeric checks; the role names are only friendly labels. You can rename the roles without changing permission behavior.
 
@@ -78,7 +80,7 @@ WHERE NOT EXISTS (SELECT 1 FROM roles WHERE level = 75);
 
 Adjust individual values to fit your staff structure. Keep `menu.open` at or below the lowest staff level that should be able to open the menu.
 
-Buttons a staff member cannot use are hidden. Every player-affecting request is checked again by the server, so changing the local menu does not grant permission.
+Buttons a staff member cannot use are hidden. Self-target buttons also follow `configs/hierarchy.lua`. Every request is checked again by the server, so changing the local menu does not grant permission.
 
 Staff also cannot target an account with an equal or higher role level. This hierarchy is configured in `configs/hierarchy.lua`. The active character controls a staff member's authority, while the highest role held anywhere on the target account controls its protection.
 
@@ -136,6 +138,8 @@ With the default settings, a staff character at level `50` or higher can open th
 Choose **Player List** to select another connected player. Selected-player tools are grouped under Player Information, Moderation, Movement, Character & Economy, Player Status, Appearance, and Special Effects.
 
 Use **Offline Players** to search moderation records for someone who is not connected. Names use prefix matching; license searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for status and appearance actions that apply to your own character.
+
+Senior staff can open **Admin Logs** to review durable action records. Filters use the beginning of a name or action, and dates use `YYYY-MM-DD`. License identifiers and economy details are visible only to staff with `audit.sensitive` permission.
 
 Every page has a **Back** button. Use **Close** on the main page or tap **ESC** to exit the menu.
 
