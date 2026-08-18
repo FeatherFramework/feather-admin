@@ -10,7 +10,7 @@ local function permission(field, operation)
 end
 
 function AdminUI.OpenEconomyConfirmation(field, amount)
-    if not AdminUI.CanUse(permission(field, 'remove')) then return end
+    if not AdminUI.CanUseOnTarget(permission(field, 'remove')) then return end
 
     local page = AdminUI.RegisterPage('economy_confirmation')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('confirm_economy_removal'))
@@ -45,7 +45,7 @@ function AdminUI.OpenCharacterAdministration()
         local operationOptions = {}
         for _, operation in ipairs({ 'add', 'remove' }) do
             for _, entry in ipairs(economyFields) do
-                if AdminUI.CanUse(permission(entry.field, operation)) then
+                if AdminUI.CanUseOnTarget(permission(entry.field, operation)) then
                     operationOptions[#operationOptions + 1] = {
                         display = AdminTranslate(operation),
                         value = operation
@@ -65,7 +65,7 @@ function AdminUI.OpenCharacterAdministration()
 
         local fieldOptions = {}
         for _, entry in ipairs(economyFields) do
-            if AdminUI.CanUse(permission(entry.field, 'add')) or AdminUI.CanUse(permission(entry.field, 'remove')) then
+            if AdminUI.CanUseOnTarget(permission(entry.field, 'add')) or AdminUI.CanUseOnTarget(permission(entry.field, 'remove')) then
                 fieldOptions[#fieldOptions + 1] = {
                     display = AdminTranslate(entry.key),
                     value = entry.field
@@ -83,7 +83,7 @@ function AdminUI.OpenCharacterAdministration()
                 Feather.Notify.RightNotify(AdminTranslate('invalid_economy_amount'), 3000)
                 return
             end
-            if not AdminUI.CanUse(permission(selectedField, selectedOperation)) then
+            if not AdminUI.CanUseOnTarget(permission(selectedField, selectedOperation)) then
                 Feather.Notify.RightNotify(AdminTranslate('action_not_permitted'), 3000)
                 return
             end
@@ -96,7 +96,7 @@ function AdminUI.OpenCharacterAdministration()
         end)
     end
 
-    if AdminUI.CanUse('character.restore_model') then
+    if AdminUI.CanUseOnTarget('character.restore_model') then
         AdminUI.AddButton(page, AdminTranslate('restore_character_appearance'), function()
             -- The server sends the authoritative success/failure message.
             AdminCharacter.RestoreAppearance(AdminUI.GetTarget())
