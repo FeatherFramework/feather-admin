@@ -35,6 +35,7 @@ Config.hierarchy = {
         ['economy.xp.add'] = true,
         ['economy.xp.remove'] = true,
         ['character.restore_model'] = true,
+        ['inventory.give'] = true,
 
         -- Player status
         ['booster.invincibility'] = true,
@@ -46,7 +47,7 @@ Config.hierarchy = {
         ['booster.disable_fow'] = true,
 
         -- Appearance
-        ['ped.change'] = true,
+        ['ped.change'] = false,
 
         -- Special effects
         ['troll.lightning_strike'] = false,
