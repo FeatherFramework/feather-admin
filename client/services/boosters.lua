@@ -105,9 +105,11 @@ local function runNoclip(session)
     state.noclipPrompts = nil
 end
 
-function AdminBoosters.Request(action, targetPlayer)
+function AdminBoosters.Request(action, targetPlayer, requestId)
     if targetPlayer == nil then return end
-    Feather.RPC.Notify('feather-admin:booster:request', { action = action, playerId = targetPlayer })
+    Feather.RPC.Notify('feather-admin:booster:request', {
+        action = action, playerId = targetPlayer, requestId = requestId
+    })
 end
 
 function AdminBoosters.ToggleNoClip(enabled)
@@ -164,6 +166,10 @@ local actionHandlers = {
 RegisterNetEvent('feather-admin:booster:apply', function(action)
     local handler = actionHandlers[action]
     if handler then handler() end
+end)
+
+RegisterNetEvent('feather-admin:booster:toggle:result', function(requestId, succeeded)
+    AdminUI.ResolveServerToggle(requestId, succeeded)
 end)
 
 AddEventHandler('onResourceStop', function(resourceName)
