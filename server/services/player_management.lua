@@ -55,7 +55,7 @@ end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 128 })
 FeatherAdmin.RegisterRPC('feather-admin:player:go_to', function(params, _, src)
     local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'player.go_to', playerId)
-    if target == nil or target == src then return end
+    if target == nil then return end
     if movePlayer(src, src, target, 'player.go_to') then
         notify(src, 'Teleported to player.')
     else
@@ -66,7 +66,7 @@ end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 128 })
 FeatherAdmin.RegisterRPC('feather-admin:player:bring', function(params, _, src)
     local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'player.bring', playerId)
-    if target == nil or target == src then return end
+    if target == nil then return end
     if movePlayer(src, target, src, 'player.bring') then
         notify(src, 'Player brought to your location.')
     else
@@ -101,7 +101,7 @@ FeatherAdmin.RegisterRPC('feather-admin:player:spectate', function(params, _, sr
     end
 
     local target = FeatherAdmin.RequireTarget(src, 'player.spectate', playerId)
-    if target == nil or target == src then return end
+    if target == nil then return end
 
     local targetCoords = getPlayerCoords(target)
     if targetCoords == nil then return end

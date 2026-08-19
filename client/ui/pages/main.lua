@@ -17,6 +17,12 @@ function AdminUI.OpenMain()
         end)
     end
 
+    if AdminUI.CanUse('audit.view') then
+        AdminUI.AddButton(page, AdminTranslate('admin_logs'), function()
+            AdminAuditLogs.Request(1)
+        end)
+    end
+
     if AdminUI.CanUseAny('teleport.') then
         AdminUI.AddButton(page, AdminTranslate('travel'), function()
             AdminUI.OpenTeleports()

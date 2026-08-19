@@ -3,7 +3,7 @@ function AdminUI.OpenSelectedPlayer()
     local page = AdminUI.RegisterPage('selected_player')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('selected_player_header'))
 
-    if AdminUI.CanUse('player.info') then
+    if AdminUI.CanUseOnTarget('player.info') then
         AdminUI.AddButton(page, AdminTranslate('player_information'), function()
             AdminPlayerManagement.RequestInfo(AdminUI.GetTarget())
         end)
@@ -15,12 +15,16 @@ function AdminUI.OpenSelectedPlayer()
         end)
     end
 
-    if AdminUI.CanUse('player.go_to') or AdminUI.CanUse('player.bring')
-        or AdminUI.CanUse('player.send_back') or AdminUI.CanUse('player.spectate') then
+    if AdminUI.CanUseOnTarget('player.go_to') or AdminUI.CanUseOnTarget('player.bring')
+        or AdminUI.CanUseOnTarget('player.send_back') or AdminUI.CanUseOnTarget('player.spectate') then
         AdminUI.AddButton(page, AdminTranslate('movement'), AdminUI.OpenPlayerManagement)
     end
 
-    if AdminUI.CanUseAny('economy.') or AdminUI.CanUse('character.restore_model') then
+    if AdminUI.CanUseOnTarget('economy.dollars.add') or AdminUI.CanUseOnTarget('economy.dollars.remove')
+        or AdminUI.CanUseOnTarget('economy.gold.add') or AdminUI.CanUseOnTarget('economy.gold.remove')
+        or AdminUI.CanUseOnTarget('economy.tokens.add') or AdminUI.CanUseOnTarget('economy.tokens.remove')
+        or AdminUI.CanUseOnTarget('economy.xp.add') or AdminUI.CanUseOnTarget('economy.xp.remove')
+        or AdminUI.CanUseOnTarget('character.restore_model') then
         AdminUI.AddButton(page, AdminTranslate('character_and_economy'), function()
             AdminUI.OpenCharacterAdministration()
         end)
@@ -32,7 +36,7 @@ function AdminUI.OpenSelectedPlayer()
         end)
     end
 
-    if AdminUI.CanUse('ped.change') or AdminUI.CanUse('troll.make_ped_giant') then
+    if AdminUI.CanUseOnTarget('ped.change') or AdminUI.CanUseOnTarget('troll.make_ped_giant') then
         AdminUI.AddButton(page, AdminTranslate('appearance'), function()
             AdminUI.OpenAppearance('selected_player')
         end)

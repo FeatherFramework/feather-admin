@@ -17,7 +17,7 @@ local function availableActions(target)
     local actions = {}
     for _, name in ipairs({ 'warn', 'kick', 'ban' }) do
         local definition = actionDefinitions[name]
-        if AdminUI.CanUse(definition.permission) and (not definition.onlineOnly or target.serverId) then
+        if AdminUI.CanUseOnTarget(definition.permission, target.serverId) and (not definition.onlineOnly or target.serverId) then
             actions[#actions + 1] = { display = AdminTranslate(definition.label), value = name }
         end
     end
@@ -31,22 +31,22 @@ local function banDurationOptions()
         local minutes = tonumber(entry.minutes)
         if type(entry.label) == 'string' and entry.label ~= '' and minutes
             and minutes >= 0 and minutes <= maximum and minutes % 1 == 0 then
-            options[#options + 1] = { text = entry.label, value = minutes }
+            options[#options + 1] = { display = entry.label, value = minutes }
         end
     end
     return options
 end
 
-local function selectedDurationLabel(options, selectedValue)
-    for _, option in ipairs(options) do
-        if tonumber(option.value) == tonumber(selectedValue) then return option.text end
+local function selectedDurationIndex(options, selectedValue)
+    for index, option in ipairs(options) do
+        if tonumber(option.value) == tonumber(selectedValue) then return index - 1 end
     end
-    return AdminTranslate('ban_duration_placeholder')
+    return 0
 end
 
 function AdminUI.OpenModerationConfirmation(action, reason, duration)
     local definition = actionDefinitions[action]
-    if not definition or not AdminUI.CanUse(definition.permission) then return end
+    if not definition or not AdminUI.CanUseOnTarget(definition.permission, AdminModeration.target and AdminModeration.target.serverId) then return end
 
     local parsedDuration
     if action == 'ban' then
@@ -236,9 +236,10 @@ function AdminUI.OpenModerationTarget()
     if form.action == 'ban' then
         local durations = banDurationOptions()
         if #durations > 0 then
-            AdminUI.AddText(page, AdminTranslate('ban_duration'))
-            AdminUI.AddDropdown(page, durations, selectedDurationLabel(durations, form.duration), function(data)
-                form.duration = data.value
+            local durationIndex = selectedDurationIndex(durations, form.duration)
+            form.duration = durations[durationIndex + 1].value
+            AdminUI.AddArrows(page, AdminTranslate('ban_duration'), durations, durationIndex, function(data)
+                form.duration = data.value.value
             end)
         else
             AdminUI.AddText(page, AdminTranslate('invalid_ban_duration'))
@@ -251,7 +252,7 @@ function AdminUI.OpenModerationTarget()
 
     AdminUI.AddLine(page)
 
-    if AdminUI.CanUse('moderation.history') then
+    if AdminUI.CanUseOnTarget('moderation.history', target.serverId) then
         AdminUI.AddButton(page, AdminTranslate('view_history'), AdminModeration.RequestHistory)
     end
 

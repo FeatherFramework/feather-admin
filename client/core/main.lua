@@ -31,7 +31,11 @@ end)
 RegisterNetEvent('feather-admin:access:result', function(authorized, permissions)
     AdminPermissions = type(permissions) == 'table' and permissions or {}
     if not authorized or InMenu then return end
-    if AdminUI.CanUse('players.view') then Feather.RPC.Notify('feather-admin:players:request', {}) end
+
+    if AdminUI.CanUse('players.view') then
+        Feather.RPC.Notify('feather-admin:players:request', {})
+    end
+
     AdminUI.OpenMain()
 end)
 
@@ -49,6 +53,7 @@ AddEventHandler('Feather:Character:Logout', function()
     ClientAllPlayers = {}
     AdminUI.targetPlayer = nil
     AdminUI.toggleStates = {}
+    AdminUI.pendingToggles = {}
     if InMenu then AdminUI.Close() end
 end)
 

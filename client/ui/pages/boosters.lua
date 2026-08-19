@@ -15,10 +15,10 @@ local statusEffects = {
 
 function AdminUI.CanUsePlayerStatus(includeLocalActions)
     for _, action in ipairs(actions) do
-        if AdminUI.CanUse(('booster.%s'):format(action.action)) then return true end
+        if AdminUI.CanUseOnTarget(('booster.%s'):format(action.action)) then return true end
     end
     for _, action in ipairs(statusEffects) do
-        if AdminUI.CanUse(('troll.%s'):format(action.action)) then return true end
+        if AdminUI.CanUseOnTarget(('troll.%s'):format(action.action)) then return true end
     end
     return includeLocalActions == true and AdminUI.CanUse('booster.noclip')
 end
@@ -32,15 +32,18 @@ function AdminUI.OpenBoosters(includeLocalActions)
 
     for _, entry in ipairs(actions) do
         local action = entry
-        if AdminUI.CanUse(('booster.%s'):format(action.action)) then
+        if AdminUI.CanUseOnTarget(('booster.%s'):format(action.action)) then
             local label = AdminTranslate(action.key)
             local buttonLabel = action.toggle and AdminUI.GetToggleLabel(label, action.action) or label
             AdminUI.AddButton(page, buttonLabel, function(_, element)
-                local request = function() AdminBoosters.Request(action.action, AdminUI.GetTarget()) end
                 if action.toggle then
-                    AdminUI.RunToggleAction(label, action.action, element, request)
+                    AdminUI.RunServerToggleAction(label, action.action, element, function(requestId)
+                        AdminBoosters.Request(action.action, AdminUI.GetTarget(), requestId)
+                    end)
                 else
-                    AdminUI.RunAction(label, request)
+                    AdminUI.RunAction(label, function()
+                        AdminBoosters.Request(action.action, AdminUI.GetTarget())
+                    end)
                 end
             end, AdminUI.Styles.button)
         end
@@ -48,11 +51,11 @@ function AdminUI.OpenBoosters(includeLocalActions)
 
     for _, entry in ipairs(statusEffects) do
         local action = entry
-        if AdminUI.CanUse(('troll.%s'):format(action.action)) then
+        if AdminUI.CanUseOnTarget(('troll.%s'):format(action.action)) then
             local label = AdminTranslate(action.key)
             AdminUI.AddButton(page, AdminUI.GetToggleLabel(label, action.action), function(_, element)
-                AdminUI.RunToggleAction(label, action.action, element, function()
-                    AdminTrolls.Request(action.action, AdminUI.GetTarget())
+                AdminUI.RunServerToggleAction(label, action.action, element, function(requestId)
+                    AdminTrolls.Request(action.action, AdminUI.GetTarget(), requestId)
                 end)
             end)
         end

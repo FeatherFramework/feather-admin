@@ -13,12 +13,16 @@ local allowedActions = {
 }
 
 FeatherAdmin.RegisterRPC('feather-admin:troll:request', function(params, _, src)
-    local action, playerId = params.action, params.playerId
-    if allowedActions[action] ~= true then return end
+    local action, playerId, requestId = params.action, params.playerId, tonumber(params.requestId)
+    local function result(succeeded)
+        if requestId then TriggerClientEvent('feather-admin:troll:toggle:result', src, requestId, succeeded) end
+    end
+    if allowedActions[action] ~= true then result(false) return end
     local permission = ('troll.%s'):format(action)
     local target = FeatherAdmin.RequireTarget(src, permission, playerId)
-    if target == nil then return end
+    if target == nil then result(false) return end
 
     AdminAudit.Record(src, permission, target)
     TriggerClientEvent('feather-admin:troll:apply', target, action)
+    result(true)
 end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 256 })

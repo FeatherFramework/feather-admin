@@ -2,7 +2,9 @@ AdminUI = {
     Pages = {},
     targetPlayer = nil,
     currentPage = nil,
-    toggleStates = {}
+    toggleStates = {},
+    pendingToggles = {},
+    nextToggleRequest = 0
 }
 
 AdminUI.Styles = {
@@ -28,7 +30,7 @@ AdminMenu = FeatherMenu:RegisterMenu('feather-admin:AdminMenu', {
     style = {},
     contentslot = {
         style = {
-            ['height'] = '450px',
+            ['height'] = '500px',
             ['min-height'] = '325px'
         }
     },
@@ -37,9 +39,11 @@ AdminMenu = FeatherMenu:RegisterMenu('feather-admin:AdminMenu', {
 }, {
     opened = function()
         InMenu = true
+        DisplayRadar(false)
     end,
     closed = function()
         InMenu = false
+        DisplayRadar(true)
         AdminUI.targetPlayer = nil
         AdminUI.currentPage = nil
     end
@@ -183,6 +187,20 @@ function AdminUI.CanUse(action)
     return AdminPermissions[action] == true
 end
 
+function AdminUI.IsSelfTarget(target)
+    local targetId = tonumber(target or AdminUI.GetTarget())
+    return targetId ~= nil and targetId == GetPlayerServerId(PlayerId())
+end
+
+function AdminUI.CanUseOnTarget(action, target)
+    if not AdminUI.CanUse(action) then return false end
+    if not AdminUI.IsSelfTarget(target) then return true end
+
+    local hierarchy = type(Config.hierarchy) == 'table' and Config.hierarchy or {}
+    local allowSelf = type(hierarchy.allowSelf) == 'table' and hierarchy.allowSelf or {}
+    return allowSelf[action] == true
+end
+
 function AdminUI.CanUseAny(prefix)
     for action, allowed in pairs(AdminPermissions) do
         if allowed and action:sub(1, #prefix) == prefix then return true end
@@ -216,6 +234,43 @@ function AdminUI.RunToggleAction(label, action, element, callback)
     callback(enabled)
     AdminUI.toggleStates[stateKey] = enabled
     element:update({ label = AdminUI.GetToggleLabel(label, action) })
+end
+
+function AdminUI.RunServerToggleAction(label, action, element, callback)
+    local stateKey = getToggleStateKey(action)
+    for _, pending in pairs(AdminUI.pendingToggles) do
+        if pending.stateKey == stateKey then return false end
+    end
+
+    AdminUI.nextToggleRequest = AdminUI.nextToggleRequest + 1
+    local requestId = AdminUI.nextToggleRequest
+    AdminUI.pendingToggles[requestId] = {
+        stateKey = stateKey,
+        label = label,
+        element = element,
+        enabled = not AdminUI.toggleStates[stateKey]
+    }
+    callback(requestId)
+
+    SetTimeout(10000, function()
+        AdminUI.pendingToggles[requestId] = nil
+    end)
+    return true
+end
+
+function AdminUI.ResolveServerToggle(requestId, succeeded)
+    local pending = AdminUI.pendingToggles[tonumber(requestId)]
+    if not pending then return end
+    AdminUI.pendingToggles[tonumber(requestId)] = nil
+    if succeeded ~= true then return end
+
+    AdminUI.toggleStates[pending.stateKey] = pending.enabled
+    pcall(function()
+        pending.element:update({
+            label = ('%s: %s'):format(pending.label,
+                AdminTranslate(pending.enabled and 'status_on' or 'status_off'))
+        })
+    end)
 end
 
 function AdminUI.Close()
