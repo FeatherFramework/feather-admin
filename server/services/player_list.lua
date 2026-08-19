@@ -1,11 +1,23 @@
-local function getPlayerIds()
-    local playerIds = {}
+local function getPlayerList()
+    local players = {}
     for _, playerId in ipairs(GetPlayers()) do
         local id = math.tointeger(tonumber(playerId) or -1)
-        if id and id >= 0 then playerIds[#playerIds + 1] = id end
+        if id and id >= 0 then
+            local character = FeatherAdmin.Core.Character.GetCharacter({ src = id })
+            local char = character and character.char or {}
+            local firstName = tostring(char.first_name or '')
+            local lastName = tostring(char.last_name or '')
+            local characterName = ('%s %s'):format(firstName, lastName):match('^%s*(.-)%s*$')
+            players[#players + 1] = {
+                serverId = id,
+                firstName = firstName,
+                lastName = lastName,
+                characterName = characterName ~= '' and characterName or nil
+            }
+        end
     end
 
-    return playerIds
+    return players
 end
 
 local function syncPlayerList(src)
@@ -14,7 +26,7 @@ local function syncPlayerList(src)
 
     if not FeatherAdmin.CanUse(playerId, 'players.view') then return end
 
-    TriggerClientEvent('feather-admin:players:sync', playerId, getPlayerIds())
+    TriggerClientEvent('feather-admin:players:sync', playerId, getPlayerList())
 end
 
 local function syncAllAdmins(excludedPlayer)
@@ -39,4 +51,8 @@ AddEventHandler('playerJoining', function()
         Wait(1000)
         syncAllAdmins()
     end)
+end)
+
+AddEventHandler('Feather:Server:Character:Spawned', function(_, src)
+    syncAllAdmins(tonumber(src))
 end)
