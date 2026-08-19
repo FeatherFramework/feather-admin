@@ -139,7 +139,7 @@ Choose **Player List** to select another connected player. Selected-player tools
 
 Use **Offline Players** to search moderation records for someone who is not connected. Names use prefix matching; license searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for status and appearance actions that apply to your own character.
 
-Senior staff can open **Admin Logs** to review durable action records. Filters use the beginning of a name or action, and dates use `YYYY-MM-DD`. License identifiers and economy details are visible only to staff with `audit.sensitive` permission.
+Senior staff can open **Admin Logs** to review durable action records. Choose an action from the categorized action picker, filter completed or blocked attempts, filter names by their beginning, and enter dates as `MM-DD-YYYY`. License identifiers and economy details are visible only to staff with `audit.sensitive` permission.
 
 Every page has a **Back** button. Use **Close** on the main page or tap **ESC** to exit the menu.
 
