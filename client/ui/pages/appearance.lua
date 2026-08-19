@@ -12,8 +12,8 @@ function AdminUI.OpenAppearance(parentPage)
     if AdminUI.CanUseOnTarget('troll.make_ped_giant') then
         local label = AdminTranslate('toggle_giant_ped')
         AdminUI.AddButton(page, AdminUI.GetToggleLabel(label, 'make_ped_giant'), function(_, element)
-            AdminUI.RunToggleAction(label, 'make_ped_giant', element, function()
-                AdminTrolls.Request('make_ped_giant', AdminUI.GetTarget())
+            AdminUI.RunServerToggleAction(label, 'make_ped_giant', element, function(requestId)
+                AdminTrolls.Request('make_ped_giant', AdminUI.GetTarget(), requestId)
             end)
         end)
     end
