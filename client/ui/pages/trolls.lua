@@ -30,7 +30,9 @@ function AdminUI.OpenTrolls()
             AdminUI.AddButton(page, buttonLabel, function(_, element)
                 local request = function() AdminTrolls.Request(action.action, AdminUI.GetTarget()) end
                 if action.toggle then
-                    AdminUI.RunToggleAction(label, action.action, element, request)
+                    AdminUI.RunServerToggleAction(label, action.action, element, function(requestId)
+                        AdminTrolls.Request(action.action, AdminUI.GetTarget(), requestId)
+                    end)
                 else
                     AdminUI.RunAction(label, request)
                 end
