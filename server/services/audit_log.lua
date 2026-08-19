@@ -1,6 +1,7 @@
 AdminAudit = {}
 local schemaReady = false
 local pendingRecords = {}
+local knownActions = {}
 
 local webhook
 local webhookUrl = tostring(Config.logging.webhook or '')
@@ -44,28 +45,10 @@ local function persist(record)
     })
 end
 
-MySQL.ready(function()
-    MySQL.query.await([[
-        CREATE TABLE IF NOT EXISTS feather_admin_actions (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            admin_license VARCHAR(100) NULL,
-            admin_name VARCHAR(100) NULL,
-            admin_character_id INT NULL,
-            admin_character_name VARCHAR(150) NULL,
-            action VARCHAR(100) NOT NULL,
-            target_license VARCHAR(100) NULL,
-            target_name VARCHAR(100) NULL,
-            target_character_id INT NULL,
-            target_character_name VARCHAR(150) NULL,
-            details VARCHAR(500) NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            INDEX idx_fa_actions_admin_license (admin_license),
-            INDEX idx_fa_actions_target_license (target_license),
-            INDEX idx_fa_actions_action (action),
-            INDEX idx_fa_actions_created_at (created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ]])
+AdminDatabase.OnReady(function()
+    for _, row in ipairs(MySQL.query.await('SELECT DISTINCT action FROM feather_admin_actions ORDER BY action ASC') or {}) do
+        if type(row.action) == 'string' then knownActions[row.action] = true end
+    end
     schemaReady = true
     for _, record in ipairs(pendingRecords) do persist(record) end
     pendingRecords = {}
@@ -76,6 +59,7 @@ function AdminAudit.Record(adminId, action, targetId, details)
     local admin = playerIdentity(adminId)
     local target = playerIdentity(targetId)
     action = tostring(action):sub(1, 100)
+    knownActions[action] = true
     local record = { admin = admin, target = target, action = action, details = details }
     local message = ('admin=%s action=%s target=%s details=%s'):format(admin.label, action, target.label, details)
 
@@ -97,6 +81,17 @@ local function cleanFilter(value, maximum)
     return value:sub(1, maximum)
 end
 
+local function databaseDate(value)
+    if value == nil then return nil end
+    local month, day, year = value:match('^(%d%d)%-(%d%d)%-(%d%d%d%d)$')
+    month, day, year = tonumber(month), tonumber(day), tonumber(year)
+    if not month or month < 1 or month > 12 or not day or not year or year < 1000 then return false end
+    local days = { 31, (year % 400 == 0 or (year % 4 == 0 and year % 100 ~= 0)) and 29 or 28,
+        31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
+    if day < 1 or day > days[month] then return false end
+    return ('%04d-%02d-%02d'):format(year, month, day)
+end
+
 FeatherAdmin.RegisterRPC('feather-admin:audit:list', function(params, _, src)
     if not FeatherAdmin.RequirePermission(src, 'audit.view') then return end
     if not schemaReady then
@@ -109,8 +104,15 @@ FeatherAdmin.RegisterRPC('feather-admin:audit:list', function(params, _, src)
     local admin = cleanFilter(filters.admin, 100)
     local target = cleanFilter(filters.target, 100)
     local action = cleanFilter(filters.action, 100)
+    local status = cleanFilter(filters.status, 10) or 'all'
+    if status ~= 'completed' and status ~= 'blocked' then status = 'all' end
     local date = cleanFilter(filters.date, 10)
-    if date and not date:match('^%d%d%d%d%-%d%d%-%d%d$') then date = nil end
+    if date then
+        date = databaseDate(date)
+        if date == false then
+            return TriggerClientEvent('feather-admin:audit:result', src, {}, page, false, 'invalid_audit_date')
+        end
+    end
 
     local clauses = {}
     local values = {}
@@ -125,8 +127,21 @@ FeatherAdmin.RegisterRPC('feather-admin:audit:list', function(params, _, src)
         values[#values + 1] = target .. '%'
     end
     if action then
-        clauses[#clauses + 1] = 'action LIKE ?'
-        values[#values + 1] = action .. '%'
+        if status == 'blocked' then
+            clauses[#clauses + 1] = 'action = ?'
+            values[#values + 1] = action .. '.blocked'
+        elseif status == 'completed' then
+            clauses[#clauses + 1] = 'action = ?'
+            values[#values + 1] = action
+        else
+            clauses[#clauses + 1] = '(action = ? OR action = ?)'
+            values[#values + 1] = action
+            values[#values + 1] = action .. '.blocked'
+        end
+    elseif status == 'blocked' then
+        clauses[#clauses + 1] = "action LIKE '%.blocked'"
+    elseif status == 'completed' then
+        clauses[#clauses + 1] = "action NOT LIKE '%.blocked'"
     end
     if date then
         clauses[#clauses + 1] = 'created_at >= ? AND created_at < DATE_ADD(?, INTERVAL 1 DAY)'
@@ -141,7 +156,7 @@ FeatherAdmin.RegisterRPC('feather-admin:audit:list', function(params, _, src)
                admin_character_name AS adminCharacterName, action,
                target_license AS targetLicense, target_name AS targetName,
                target_character_name AS targetCharacterName, details,
-               DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt
+               DATE_FORMAT(created_at, '%%m-%%d-%%Y %%H:%%i:%%s') AS createdAt
         FROM feather_admin_actions%s
         ORDER BY id DESC
         LIMIT %d OFFSET %d
@@ -162,5 +177,8 @@ FeatherAdmin.RegisterRPC('feather-admin:audit:list', function(params, _, src)
         end
     end
 
-    TriggerClientEvent('feather-admin:audit:result', src, rows, page, hasNext)
+    local actions = {}
+    for name in pairs(knownActions) do actions[#actions + 1] = name end
+    table.sort(actions)
+    TriggerClientEvent('feather-admin:audit:result', src, rows, page, hasNext, nil, actions)
 end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 1024 })
