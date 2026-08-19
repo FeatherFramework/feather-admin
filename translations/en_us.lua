@@ -34,7 +34,7 @@ Feather.Locale.register('en_us', {
     developer_tools = 'Developer Tools',
     boosters = 'Player Status',
     teleport = 'Travel',
-    player_id = 'Player ID',
+    server_id = 'Server ID',
     trolls = 'Special Effects',
     player_management = 'Movement',
     player_information = 'Player Information',
@@ -44,6 +44,7 @@ Feather.Locale.register('en_us', {
     appearance = 'Appearance',
     special_effects = 'Special Effects',
     character_administration = 'Character & Economy',
+    inventory = 'Inventory',
     command_suggestion = 'Open the Feather Admin menu',
     admin_logs = 'Admin Logs',
 
@@ -166,6 +167,29 @@ Feather.Locale.register('en_us', {
     new_balance = 'New Balance',
     restore_character_appearance = 'Restore Character Appearance',
 
+    -- Inventory administration
+    inventory_header = 'Inventory',
+    give_item_header = 'Give Item',
+    confirm_item_grant = 'Confirm Item Grant',
+    no_inventory_items = 'No inventory items are configured.',
+    item = 'Item',
+    item_name = 'Item Name',
+    quantity = 'Quantity',
+    required = 'Required',
+    continue = 'Continue',
+    invalid_item_quantity = 'Enter a valid whole-number quantity.',
+    invalid_item_grant = 'Select a valid item and quantity.',
+    item_granted = 'Item granted',
+    item_received = 'Item received',
+    inventory_invalid_item = 'That item no longer exists.',
+    inventory_invalid_quantity = 'The item quantity is invalid.',
+    inventory_invalid_inventory = 'The player inventory is unavailable.',
+    inventory_inventory_full = 'The player inventory has no available slots.',
+    inventory_item_limit = 'That item would exceed its inventory limit.',
+    inventory_weight_limit = 'That item would exceed the inventory weight limit.',
+    inventory_database_error = 'The item could not be saved.',
+    inventory_grant_failed = 'The item could not be granted.',
+
     -- Player tools
     toggle_god_mode = 'God Mode',
     toggle_invisibility = 'Invisibility',
@@ -185,6 +209,9 @@ Feather.Locale.register('en_us', {
     move_backward = 'Move Backward',
     move_up = 'Move Up',
     move_down = 'Move Down',
+    strafe = 'Strafe Left / Right',
+    exit_noclip = 'Exit Noclip',
+    noclip_speed = 'Speed',
 
     -- Developer tools
     entity_inspector = 'Entity Inspector',

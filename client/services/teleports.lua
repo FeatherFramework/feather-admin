@@ -57,7 +57,10 @@ function AdminTeleports.ToCoordinates(x, y, z, heading)
     x, y, z, heading = tonumber(x), tonumber(y), tonumber(z), tonumber(heading)
     if not x or not y or not z then return false end
 
-    return succeeded(Feather.Teleport:ToCoords(vector3(x, y, z), { heading = heading }))
+    return succeeded(Feather.Teleport:ToCoords(vector3(x, y, z), {
+        heading = heading,
+        mode = 'exact'
+    }))
 end
 
 function AdminTeleports.ToggleAutoWaypoint()

@@ -85,6 +85,14 @@ function AdminUI.AddButton(page, label, callback, style)
     }, callback)
 end
 
+function AdminUI.AddHtmlButton(page, html, callback, style)
+    return page:RegisterElement('button', {
+        html = html,
+        slot = 'content',
+        style = style or AdminUI.Styles.button
+    }, callback)
+end
+
 function AdminUI.AddInput(page, label, placeholder, callback, value)
     return page:RegisterElement('input', {
         label = label,
@@ -225,6 +233,11 @@ function AdminUI.GetToggleLabel(label, action)
     local enabled = AdminUI.toggleStates[getToggleStateKey(action)]
     if enabled == nil then return label end
     return ('%s: %s'):format(label, AdminTranslate(enabled and 'status_on' or 'status_off'))
+end
+
+function AdminUI.SetToggleState(action, enabled, target)
+    local stateTarget = tonumber(target) or AdminUI.GetTarget() or GetPlayerServerId(PlayerId())
+    AdminUI.toggleStates[('%s:%s'):format(stateTarget, action)] = enabled == true
 end
 
 function AdminUI.RunToggleAction(label, action, element, callback)

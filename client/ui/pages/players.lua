@@ -30,6 +30,11 @@ function AdminUI.OpenSelectedPlayer()
         end)
     end
 
+
+    if AdminUI.CanUseOnTarget('inventory.give') then
+        AdminUI.AddButton(page, AdminTranslate('inventory'), AdminInventory.RequestCatalog)
+    end
+
     if AdminUI.CanUsePlayerStatus(false) then
         AdminUI.AddButton(page, AdminTranslate('player_status'), function()
             AdminUI.OpenBoosters(false)
@@ -61,10 +66,22 @@ function AdminUI.OpenPlayers()
     local page = AdminUI.RegisterPage('players')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('players_header'))
 
-    table.sort(ClientAllPlayers)
-    for _, playerId in ipairs(ClientAllPlayers) do
-        local target = playerId
-        AdminUI.AddButton(page, ('%s: %s'):format(AdminTranslate('player_id'), target), function()
+    table.sort(ClientAllPlayers, function(left, right)
+        local leftName = tostring(left.characterName or ''):lower()
+        local rightName = tostring(right.characterName or ''):lower()
+        if leftName == rightName then return left.serverId < right.serverId end
+        return leftName < rightName
+    end)
+    for _, player in ipairs(ClientAllPlayers) do
+        local target = player.serverId
+        local name = player.characterName or AdminTranslate('not_available')
+        local safeName = tostring(name):gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;')
+            :gsub('"', '&quot;'):gsub("'", '&#39;')
+        local html = ([=[
+            <div style="font-size:1.65vmin;line-height:1.25;">%s</div>
+            <div style="font-size:1.2vmin;line-height:1.25;color:#c0c0c0;">%s: %s</div>
+        ]=]):format(safeName, AdminTranslate('server_id'), target)
+        AdminUI.AddHtmlButton(page, html, function()
             AdminUI.SetTarget(target)
             AdminUI.OpenSelectedPlayer()
         end)

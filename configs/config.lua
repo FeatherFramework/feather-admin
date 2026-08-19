@@ -31,6 +31,12 @@ Config = {
     },
     -----------------------------------------------------
 
+    -- Limits the quantity added by one admin item grant.
+    inventory = {
+        maxGrantQuantity = 100
+    },
+    -----------------------------------------------------
+
     -- Limits and messages used by persistent moderation tools.
     moderation = {
         searchLimit = 25,       -- Maximum offline results shown at once.

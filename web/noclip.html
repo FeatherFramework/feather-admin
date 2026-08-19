@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: transparent; }
+        body { pointer-events: none; font-family: Georgia, 'Times New Roman', serif; color: #eee; }
+        #noclip {
+            display: none;
+            position: absolute;
+            right: 2.25rem;
+            bottom: 2.25rem;
+            min-width: 18rem;
+            padding: 0.85rem 1rem;
+            border: 1px solid rgba(204, 153, 0, 0.8);
+            border-radius: 4px;
+            background: rgba(10, 10, 10, 0.82);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+        }
+        #noclip.visible { display: block; }
+        #title { margin-bottom: 0.55rem; color: #cc9900; font-size: 1rem; font-weight: 700; text-transform: uppercase; }
+        .control { margin-top: 0.2rem; font-size: 0.82rem; line-height: 1.35; }
+    </style>
+</head>
+<body>
+    <section id="noclip" aria-live="polite">
+        <div id="title"></div>
+        <div id="forward" class="control"></div>
+        <div id="strafe" class="control"></div>
+        <div id="vertical" class="control"></div>
+        <div id="speed" class="control"></div>
+        <div id="exit" class="control"></div>
+    </section>
+    <script>
+        const panel = document.getElementById('noclip');
+        window.addEventListener('message', ({ data }) => {
+            if (!data || data.type !== 'noclip') return;
+            panel.classList.toggle('visible', data.visible === true);
+            if (!data.visible) return;
+            for (const field of ['title', 'forward', 'strafe', 'vertical', 'speed', 'exit']) {
+                document.getElementById(field).textContent = String(data[field] || '');
+            }
+        });
+    </script>
+</body>
+</html>

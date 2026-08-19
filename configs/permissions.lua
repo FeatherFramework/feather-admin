@@ -31,6 +31,7 @@ Config.permissions = {
     ['economy.xp.add'] = 99,
     ['economy.xp.remove'] = 99,
     ['character.restore_model'] = 75,
+    ['inventory.give'] = 75,
 
     ['booster.invincibility'] = 75,
     ['booster.invisibility'] = 75,

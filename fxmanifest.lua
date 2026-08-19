@@ -6,12 +6,18 @@ lua54 'yes'
 name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
-version '0.2.1'
+version '0.2.2'
 
 github_version_check 'true'
 github_version_type 'release'
 github_ui_check 'false'
 github_link 'https://github.com/FeatherFramework/feather-admin'
+
+ui_page 'web/noclip.html'
+
+files {
+    'web/noclip.html'
+}
 
 shared_scripts {
     'configs/config.lua',
@@ -29,6 +35,7 @@ client_scripts {
     'client/ui/pages/boosters.lua',
     'client/ui/pages/developer_tools.lua',
     'client/ui/pages/character_administration.lua',
+    'client/ui/pages/inventory.lua',
     'client/ui/pages/player_management.lua',
     'client/ui/pages/teleports.lua',
     'client/ui/pages/trolls.lua',
@@ -50,5 +57,6 @@ server_scripts {
 dependencies {
     'oxmysql',
     'feather-core',
+    'feather-inventory',
     'feather-menu'
 }

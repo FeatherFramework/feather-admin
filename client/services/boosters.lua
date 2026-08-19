@@ -6,8 +6,7 @@ local state = {
     infiniteStamina = false,
     noclip = false,
     noclipSession = 0,
-    noclipPed = nil,
-    noclipPrompts = nil
+    noclipPed = nil
 }
 
 local function setNoclipPed(ped, enabled)
@@ -18,37 +17,39 @@ local function setNoclipPed(ped, enabled)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
 end
 
-local function deletePrompts(prompts)
-    if not prompts then return end
-
-    for _, prompt in ipairs(prompts) do
-        prompt:DeletePrompt()
-    end
+local function showNoclipOverlay(visible, speed)
+    SendNUIMessage({
+        type = 'noclip',
+        visible = visible,
+        title = AdminTranslate('noclip_controls'),
+        forward = ('W / S - %s / %s'):format(AdminTranslate('move_forward'), AdminTranslate('move_backward')),
+        strafe = ('A / D - %s'):format(AdminTranslate('strafe')),
+        vertical = ('Space / Ctrl - %s / %s'):format(AdminTranslate('move_up'), AdminTranslate('move_down')),
+        speed = ('Shift - %s: %s m/s'):format(AdminTranslate('noclip_speed'), tostring(speed or '')),
+        exit = ('Backspace - %s'):format(AdminTranslate('exit_noclip'))
+    })
 end
 
-local function createNoclipPrompts()
-    local keys = Feather.KeyCodes
-    local group = Feather.Prompt:SetupPromptGroup()
-    local prompts = {
-        group:RegisterPrompt(AdminTranslate('change_speed'), keys.SHIFT, 1, 1, false, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_forward'), keys.MOUSE1, 1, 1, false, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_backward'), keys.MOUSE2, 1, 1, false, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_up'), keys.CTRL, 1, 1, false, 'click'),
-        group:RegisterPrompt(AdminTranslate('move_down'), keys.LALT, 1, 1, false, 'click')
-    }
-    return group, prompts
-end
+local function moveNoclipPed(ped, forwardAmount, strafeAmount, verticalAmount, speed)
+    local rotation = GetGameplayCamRot(2)
+    local pitch = math.rad(rotation.x)
+    local yaw = math.rad(rotation.z)
+    local cosPitch = math.cos(pitch)
+    local x = -math.sin(yaw) * cosPitch * forwardAmount + math.cos(yaw) * strafeAmount
+    local y = math.cos(yaw) * cosPitch * forwardAmount + math.sin(yaw) * strafeAmount
+    local z = math.sin(pitch) * forwardAmount + verticalAmount
+    local length = math.sqrt(x * x + y * y + z * z)
+    if length <= 0.0 then return end
 
-local function moveNoclipPed(ped, forwardOffset, verticalOffset, speed)
-    local coords = GetOffsetFromEntityInWorldCoords(
-        ped,
-        0.0,
-        forwardOffset * (speed + 0.3),
-        verticalOffset * (speed + 0.3)
-    )
+    local distance = speed * GetFrameTime()
+    local coords = GetEntityCoords(ped)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
-    SetEntityHeading(ped, GetGameplayCamRelativeHeading())
-    SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false)
+    if forwardAmount ~= 0.0 then SetEntityHeading(ped, rotation.z) end
+    SetEntityCoordsNoOffset(ped,
+        coords.x + (x / length) * distance,
+        coords.y + (y / length) * distance,
+        coords.z + (z / length) * distance,
+        false, false, false)
 end
 
 local function runInfiniteStamina()
@@ -60,10 +61,10 @@ end
 
 local function runNoclip(session)
     local keys = Feather.KeyCodes
-    local speed = 0.1
-    local promptGroup, prompts = createNoclipPrompts()
-    state.noclipPrompts = prompts
+    local speeds = { 2.0, 5.0, 10.0, 20.0 }
+    local speedIndex = 2
     SetEveryoneIgnorePlayer(PlayerId(), true)
+    showNoclipOverlay(true, speeds[speedIndex])
 
     while state.noclip and state.noclipSession == session do
         local ped = PlayerPedId()
@@ -73,26 +74,36 @@ local function runNoclip(session)
             setNoclipPed(ped, true)
         end
 
-        -- Prompt groups compete with menu/pause frontends for the active UI
-        -- context. Only activate noclip prompts while gameplay has focus.
-        if not InMenu and not IsPauseMenuActive() then
-            promptGroup:ShowGroup(AdminTranslate('noclip_controls'))
-        end
-        -- Poll the control directly so this frame-critical loop never enters
-        -- a prompt completion helper that may perform a blocking wait.
-        if IsControlJustPressed(0, keys.SHIFT) then
-            speed = speed + 0.1
-            if speed > 2.0 then speed = 0.1 end
+        -- Suppress the gameplay actions assigned to the noclip controls.
+        DisablePlayerFiring(PlayerId(), true)
+        DisableControlAction(0, keys.SHIFT, true)
+        DisableControlAction(0, keys.W, true)
+        DisableControlAction(0, keys.S, true)
+        DisableControlAction(0, keys.A, true)
+        DisableControlAction(0, keys.D, true)
+        DisableControlAction(0, keys.SPACEBAR, true)
+        DisableControlAction(0, keys.CTRL, true)
+        DisableControlAction(0, keys.BACKSPACE, true)
+
+        if IsDisabledControlJustPressed(0, keys.SHIFT) then
+            speedIndex = speedIndex % #speeds + 1
+            showNoclipOverlay(true, speeds[speedIndex])
         end
 
-        if IsControlPressed(0, keys.MOUSE1) then
-            moveNoclipPed(ped, -0.2, 0.0, speed)
-        elseif IsControlPressed(0, keys.MOUSE2) then
-            moveNoclipPed(ped, 0.2, 0.0, speed)
-        elseif IsControlPressed(0, keys.CTRL) then
-            moveNoclipPed(ped, 0.0, 1.0, speed)
-        elseif IsControlPressed(0, keys.LALT) then
-            moveNoclipPed(ped, 0.0, -1.0, speed)
+        if IsDisabledControlJustPressed(0, keys.BACKSPACE) then
+            AdminBoosters.ToggleNoClip(false)
+            AdminUI.SetToggleState('noclip', false)
+            break
+        end
+
+        local forward = (IsDisabledControlPressed(0, keys.W) and 1.0 or 0.0)
+            - (IsDisabledControlPressed(0, keys.S) and 1.0 or 0.0)
+        local strafe = (IsDisabledControlPressed(0, keys.D) and 1.0 or 0.0)
+            - (IsDisabledControlPressed(0, keys.A) and 1.0 or 0.0)
+        local vertical = (IsDisabledControlPressed(0, keys.SPACEBAR) and 1.0 or 0.0)
+            - (IsDisabledControlPressed(0, keys.CTRL) and 1.0 or 0.0)
+        if forward ~= 0.0 or strafe ~= 0.0 or vertical ~= 0.0 then
+            moveNoclipPed(ped, forward, strafe, vertical, speeds[speedIndex])
         end
 
         Wait(0)
@@ -100,9 +111,8 @@ local function runNoclip(session)
 
     setNoclipPed(state.noclipPed, false)
     SetEveryoneIgnorePlayer(PlayerId(), false)
-    deletePrompts(prompts)
+    showNoclipOverlay(false)
     state.noclipPed = nil
-    state.noclipPrompts = nil
 end
 
 function AdminBoosters.Request(action, targetPlayer, requestId)
@@ -180,7 +190,7 @@ AddEventHandler('onResourceStop', function(resourceName)
     state.noclipSession = state.noclipSession + 1
     setNoclipPed(state.noclipPed, false)
     SetEveryoneIgnorePlayer(PlayerId(), false)
-    deletePrompts(state.noclipPrompts)
+    showNoclipOverlay(false)
 
     local ped = PlayerPedId()
     SetEntityInvincible(ped, false)
