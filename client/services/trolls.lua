@@ -173,9 +173,11 @@ local function toggleLag()
     end
 end
 
-function AdminTrolls.Request(action, targetPlayer)
+function AdminTrolls.Request(action, targetPlayer, requestId)
     if targetPlayer == nil then return end
-    Feather.RPC.Notify('feather-admin:troll:request', { action = action, playerId = targetPlayer })
+    Feather.RPC.Notify('feather-admin:troll:request', {
+        action = action, playerId = targetPlayer, requestId = requestId
+    })
 end
 
 function AdminTrolls.RefreshPlayerState()
@@ -232,6 +234,10 @@ local actionHandlers = {
 RegisterNetEvent('feather-admin:troll:apply', function(action)
     local handler = actionHandlers[action]
     if handler then handler() end
+end)
+
+RegisterNetEvent('feather-admin:troll:toggle:result', function(requestId, succeeded)
+    AdminUI.ResolveServerToggle(requestId, succeeded)
 end)
 
 AddEventHandler('onResourceStop', function(resourceName)
