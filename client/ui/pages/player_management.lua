@@ -10,7 +10,7 @@ function AdminUI.OpenPlayerInfo(info)
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('player_info_header'))
 
     local identityText = table.concat({
-        ('%s: %s'):format(AdminTranslate('player_id'), displayValue(info.serverId)),
+        ('%s: %s'):format(AdminTranslate('server_id'), displayValue(info.serverId)),
         ('%s: %s'):format(AdminTranslate('server_name'), displayValue(info.serverName)),
         ('%s: %s'):format(AdminTranslate('character_id'), displayValue(info.characterId)),
         ('%s: %s %s'):format(AdminTranslate('character_name'), displayValue(info.firstName), displayValue(info.lastName))
