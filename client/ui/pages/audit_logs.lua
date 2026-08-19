@@ -3,6 +3,92 @@ local function valueOrUnavailable(value)
     return tostring(value)
 end
 
+local function actionNameLabel(action)
+    local category, name = tostring(action):match('^([^.]+)%.(.+)$')
+    if not category then return tostring(action) end
+    name = name:gsub('%.blocked$', ' (Blocked)'):gsub('_', ' '):gsub('^%l', string.upper)
+    return name
+end
+
+local function actionLabel(action)
+    local category = tostring(action):match('^([^.]+)%.')
+    if not category then return tostring(action) end
+    category = category:gsub('_', ' '):gsub('^%l', string.upper)
+    return ('%s - %s'):format(actionNameLabel(action), category)
+end
+
+local function baseAction(action)
+    return tostring(action):gsub('%.blocked$', '')
+end
+
+local function actionCategory(action)
+    return baseAction(action):match('^([^.]+)%.') or 'other'
+end
+
+local function categoryLabel(category)
+    return tostring(category):gsub('_', ' '):gsub('^%l', string.upper)
+end
+
+local function resultOptions()
+    return {
+        { display = AdminTranslate('all_results'), value = 'all' },
+        { display = AdminTranslate('completed_actions'), value = 'completed' },
+        { display = AdminTranslate('blocked_actions'), value = 'blocked' }
+    }
+end
+
+function AdminUI.OpenAuditActionChoices(category)
+    if not AdminUI.CanUse('audit.view') then return end
+    local page = AdminUI.RegisterPage('audit_action_choices')
+    AdminUI.AddHeader(page, AdminTranslate('admin_header'), categoryLabel(category))
+
+    local actions = {}
+    for _, storedAction in ipairs(AdminAuditLogs.actions) do
+        local action = baseAction(storedAction)
+        if actionCategory(action) == category then actions[action] = true end
+    end
+    local sorted = {}
+    for action in pairs(actions) do sorted[#sorted + 1] = action end
+    table.sort(sorted)
+    for _, actionName in ipairs(sorted) do
+        local action = actionName
+        AdminUI.AddButton(page, actionNameLabel(action), function()
+            AdminAuditLogs.filters.action = action
+            AdminAuditLogs.Request(1)
+        end)
+    end
+
+    AdminUI.AddFooter(page)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenAuditActionCategories)
+    AdminUI.OpenPage('audit_action_choices')
+end
+
+function AdminUI.OpenAuditActionCategories()
+    if not AdminUI.CanUse('audit.view') then return end
+    local page = AdminUI.RegisterPage('audit_action_categories')
+    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('action_filter'))
+    AdminUI.AddButton(page, AdminTranslate('all_actions'), function()
+        AdminAuditLogs.filters.action = ''
+        AdminAuditLogs.Request(1)
+    end)
+
+    local categories = {}
+    for _, action in ipairs(AdminAuditLogs.actions) do categories[actionCategory(action)] = true end
+    local sorted = {}
+    for category in pairs(categories) do sorted[#sorted + 1] = category end
+    table.sort(sorted)
+    for _, categoryName in ipairs(sorted) do
+        local category = categoryName
+        AdminUI.AddButton(page, categoryLabel(category), function()
+            AdminUI.OpenAuditActionChoices(category)
+        end)
+    end
+
+    AdminUI.AddFooter(page)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenAuditLogs)
+    AdminUI.OpenPage('audit_action_categories')
+end
+
 function AdminUI.OpenAuditLogDetails()
     local row = AdminAuditLogs.selected
     if not row or not AdminUI.CanUse('audit.view') then return end
@@ -34,9 +120,17 @@ function AdminUI.OpenAuditLogs()
     AdminUI.AddInput(page, AdminTranslate('player'), AdminTranslate('optional'), function(data)
         filters.target = data.value
     end, filters.target)
-    AdminUI.AddInput(page, AdminTranslate('action'), AdminTranslate('optional'), function(data)
-        filters.action = data.value
-    end, filters.action)
+    AdminUI.AddButton(page, ('%s: %s'):format(AdminTranslate('action'),
+        filters.action ~= '' and actionLabel(filters.action) or AdminTranslate('all_actions')),
+        AdminUI.OpenAuditActionCategories)
+    local statuses = resultOptions()
+    local statusIndex = 0
+    for index, option in ipairs(statuses) do
+        if option.value == filters.status then statusIndex = index - 1 break end
+    end
+    AdminUI.AddArrows(page, AdminTranslate('result'), statuses, statusIndex, function(data)
+        filters.status = data.value.value
+    end)
     AdminUI.AddInput(page, AdminTranslate('date'), AdminTranslate('date_placeholder'), function(data)
         filters.date = data.value
     end, filters.date)
