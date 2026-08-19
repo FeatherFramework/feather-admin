@@ -9,8 +9,7 @@ end)
 
 CreateThread(function()
     if Config.controls.enabled then
-        local menuKey = Config.controls.openMenu
-        AdminKeyListener = Feather.Keys:RegisterListener(menuKey, function ()
+        AdminKeyListener = Feather.Keys:RegisterListener(Config.controls.openMenu, function()
             if not InMenu then
                 Feather.RPC.Notify('feather-admin:access:request', {})
             end
@@ -58,10 +57,7 @@ AddEventHandler('Feather:Character:Logout', function()
 end)
 
 AddEventHandler('onResourceStop', function(resourceName)
-    if (GetCurrentResourceName() ~= resourceName) then return end
-
-    if AdminKeyListener then
-        AdminKeyListener:RemoveListener()
-        AdminKeyListener = nil
-    end
+    if resourceName ~= GetCurrentResourceName() then return end
+    if AdminKeyListener then AdminKeyListener:RemoveListener() end
+    AdminKeyListener = nil
 end)
