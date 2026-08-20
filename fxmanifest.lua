@@ -36,6 +36,7 @@ client_scripts {
     'client/ui/pages/developer_tools.lua',
     'client/ui/pages/character_administration.lua',
     'client/ui/pages/inventory.lua',
+    'client/ui/pages/staff_management.lua',
     'client/ui/pages/player_management.lua',
     'client/ui/pages/teleports.lua',
     'client/ui/pages/trolls.lua',
