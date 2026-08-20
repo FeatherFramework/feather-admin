@@ -23,6 +23,12 @@ function AdminUI.OpenMain()
         end)
     end
 
+    if AdminUI.CanUse('staff.view') then
+        AdminUI.AddButton(page, AdminTranslate('staff_management'), function()
+            AdminStaff.Request()
+        end)
+    end
+
     if AdminUI.CanUseAny('teleport.') then
         AdminUI.AddButton(page, AdminTranslate('travel'), function()
             AdminUI.OpenTeleports()

@@ -15,6 +15,12 @@ function AdminUI.OpenSelectedPlayer()
         end)
     end
 
+    if AdminUI.CanUseOnTarget('staff.role.assign') then
+        AdminUI.AddButton(page, AdminTranslate('staff_role'), function()
+            AdminStaff.Request(AdminUI.GetTarget())
+        end)
+    end
+
     if AdminUI.CanUseOnTarget('player.go_to') or AdminUI.CanUseOnTarget('player.bring')
         or AdminUI.CanUseOnTarget('player.send_back') or AdminUI.CanUseOnTarget('player.spectate') then
         AdminUI.AddButton(page, AdminTranslate('movement'), AdminUI.OpenPlayerManagement)

@@ -28,6 +28,7 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Apply several optional player effects
 - Open the menu with a key or chat command
 - Store admin actions in the database and review them from a paginated Admin Logs page
+- Search online or offline characters and assign staff roles with account-level hierarchy protection
 - Filter admin logs by administrator, player, action, or date
 - Record admin actions in the server console and optionally Discord
 
@@ -65,7 +66,7 @@ Every menu action has a minimum numeric role level in `configs/permissions.lua`.
 
 - Level `50` — Moderator: player support, warnings, kicks, spectating, travel, healing, and reviving
 - Level `75` — Senior Admin: bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
-- Level `99` — Owner: economy adjustments, sensitive log details, and the most disruptive special effects
+- Level `99` — Owner: staff role management, economy adjustments, sensitive log details, and the most disruptive special effects
 
 These are numeric checks; the role names are only friendly labels. You can rename the roles without changing permission behavior.
 
@@ -120,6 +121,8 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `logging.webhook`: optionally send admin action logs to a Discord webhook
 - `economy.maxAmount`: limit the size of a single balance adjustment
 - `inventory.maxGrantQuantity`: limit the quantity in one admin item grant
+- `staff.searchLimit`: limit the number of offline staff-search results
+- `staff.minSearchLength`: require a minimum staff-search length
 - `moderation.searchLimit`: limit offline search results
 - `moderation.minSearchLength`: require a minimum offline-search length
 - `moderation.historyLimit`: limit the history records shown
@@ -142,6 +145,8 @@ With the default settings, a staff character at level `50` or higher can open th
 Choose **Player List** to select another connected player. Selected-player tools are grouped under Player Information, Moderation, Movement, Character & Economy, Player Status, Appearance, and Special Effects.
 
 Choose **Inventory** for a selected player to browse configured item categories, choose an item and quantity, and confirm the grant. Item limits, available slots, and weight are validated by Feather Inventory before anything is added.
+
+Owners can open **Staff Management** from the main menu, select an online character or search for an offline character, choose a configured role, and confirm the change. Search accepts a character ID, account name, character name, or complete `license:` identifier. All characters matching the account are shown separately. A role can never be assigned above the acting character's own level. Self-edits and changes to equal- or higher-ranked accounts are blocked; use the emergency recovery command when no eligible owner character is available.
 
 Use **Offline Players** to search moderation records for someone who is not connected. Names use prefix matching; license searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for status and appearance actions that apply to your own character.
 

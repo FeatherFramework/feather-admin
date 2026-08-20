@@ -22,6 +22,11 @@ Config.permissions = {
     ['audit.view'] = 75,
     ['audit.sensitive'] = 99,
 
+    ['staff.view'] = 99,
+    ['staff.search'] = 99,
+    ['staff.search_identifiers'] = 99,
+    ['staff.role.assign'] = 99,
+
     ['economy.dollars.add'] = 99,
     ['economy.dollars.remove'] = 99,
     ['economy.gold.add'] = 99,

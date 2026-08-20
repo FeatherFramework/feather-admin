@@ -50,6 +50,13 @@ end)
 AddEventHandler('Feather:Character:Logout', function()
     AdminPermissions = {}
     ClientAllPlayers = {}
+    AdminStaff.roles = {}
+    AdminStaff.players = {}
+    AdminStaff.results = {}
+    AdminStaff.selectedTarget = nil
+    AdminStaff.selectedRole = nil
+    AdminStaff.searchQuery = nil
+    AdminStaff.origin = 'online'
     AdminUI.targetPlayer = nil
     AdminUI.toggleStates = {}
     AdminUI.pendingToggles = {}

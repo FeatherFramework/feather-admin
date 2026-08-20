@@ -5,12 +5,15 @@ Config.hierarchy = {
     -- These helpful actions may be used on players of any role level.
     exempt = {
         ['booster.heal'] = true,
-        ['booster.revive'] = true
+        ['booster.revive'] = true,
+        ['player.go_to'] = true
     },
 
     -- Self-target rules. Set action to true to allow it; false blocks it.
     -- These checks are enforced by the server, not only by the menu.
     allowSelf = {
+        -- Staff roles must always be changed by another authorized staff member.
+        ['staff.role.assign'] = false,
         -- Player management
         ['player.info'] = true,
         ['player.go_to'] = false,

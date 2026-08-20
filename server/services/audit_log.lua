@@ -54,10 +54,13 @@ AdminDatabase.OnReady(function()
     pendingRecords = {}
 end)
 
-function AdminAudit.Record(adminId, action, targetId, details)
+function AdminAudit.RecordTarget(adminId, action, target, details)
     details = tostring(details or 'none'):gsub('[%c]', ' '):sub(1, 500)
     local admin = playerIdentity(adminId)
-    local target = playerIdentity(targetId)
+    target = type(target) == 'table' and target or { label = 'none' }
+    target.label = target.label or ('%s, character=%s (%s)'):format(
+        tostring(target.name or 'unknown'), tostring(target.characterName or 'none'),
+        tostring(target.characterId or 'none'))
     action = tostring(action):sub(1, 100)
     knownActions[action] = true
     local record = { admin = admin, target = target, action = action, details = details }
@@ -72,6 +75,10 @@ function AdminAudit.Record(adminId, action, targetId, details)
         print('[feather-admin] Audit queue full; action could not be persisted.')
     end
     if webhook then webhook:sendMessage('Admin Action', message) end
+end
+
+function AdminAudit.Record(adminId, action, targetId, details)
+    return AdminAudit.RecordTarget(adminId, action, playerIdentity(targetId), details)
 end
 
 local function cleanFilter(value, maximum)

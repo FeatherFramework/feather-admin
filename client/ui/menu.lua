@@ -200,8 +200,17 @@ function AdminUI.IsSelfTarget(target)
     return targetId ~= nil and targetId == GetPlayerServerId(PlayerId())
 end
 
-function AdminUI.CanUseOnTarget(action, target)
+function AdminUI.CanUseOnTarget(action, ...)
     if not AdminUI.CanUse(action) then return false end
+    local target
+    if select('#', ...) == 0 then
+        target = AdminUI.GetTarget()
+    else
+        target = select(1, ...)
+    end
+    -- An explicit nil represents an offline target. It must not fall back
+    -- to the last live menu target, which may be the acting administrator.
+    if target == nil then return true end
     if not AdminUI.IsSelfTarget(target) then return true end
 
     local hierarchy = type(Config.hierarchy) == 'table' and Config.hierarchy or {}
