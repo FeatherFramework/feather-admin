@@ -37,6 +37,13 @@ Config = {
     },
     -----------------------------------------------------
 
+    -- Limits offline character searches in Staff Management.
+    staff = {
+        searchLimit = 25,    -- Maximum matching characters shown at once.
+        minSearchLength = 2  -- Minimum characters required for a search.
+    },
+    -----------------------------------------------------
+
     -- Limits and messages used by persistent moderation tools.
     moderation = {
         searchLimit = 25,       -- Maximum offline results shown at once.
