@@ -229,6 +229,21 @@ function AdminUI.RequireUseOnTarget(action, ...)
     return false
 end
 
+function AdminUI.CanUseAnyAction(actions)
+    for _, action in ipairs(actions or {}) do
+        if AdminUI.CanUse(action) then return true end
+    end
+    return false
+end
+
+function AdminUI.RequireAnyUseOnTarget(actions, ...)
+    for _, action in ipairs(actions or {}) do
+        if AdminUI.CanUseOnTarget(action, ...) then return true end
+    end
+    AdminUI.NotifyActionDenied()
+    return false
+end
+
 function AdminUI.CanUseAny(prefix)
     for action, allowed in pairs(AdminPermissions) do
         if allowed and action:sub(1, #prefix) == prefix then return true end
