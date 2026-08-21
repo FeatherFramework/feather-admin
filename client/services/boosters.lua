@@ -42,9 +42,10 @@ local function moveNoclipPed(ped, forwardAmount, strafeAmount, verticalAmount, s
     if length <= 0.0 then return end
 
     local distance = speed * GetFrameTime()
-    local coords = GetEntityCoords(ped)
+    local coords = GetEntityCoords(ped, false, false)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
     if forwardAmount ~= 0.0 then SetEntityHeading(ped, rotation.z) end
+
     SetEntityCoordsNoOffset(ped,
         coords.x + (x / length) * distance,
         coords.y + (y / length) * distance,
@@ -163,10 +164,10 @@ local actionHandlers = {
     end,
     heal = function()
         local ped = PlayerPedId()
-        SetEntityHealth(ped, GetEntityMaxHealth(ped))
+        SetEntityHealth(ped, GetEntityMaxHealth(ped, false), 0)
     end,
     kill = function()
-        SetEntityHealth(PlayerPedId(), 0)
+        SetEntityHealth(PlayerPedId(), 0, 0)
     end,
     disable_fow = function()
         Feather.Map.setFOW(true)
@@ -176,6 +177,17 @@ local actionHandlers = {
 RegisterNetEvent('feather-admin:booster:apply', function(action)
     local handler = actionHandlers[action]
     if handler then handler() end
+end)
+
+RegisterNetEvent('feather-admin:booster:death:request', function(requestId)
+    Feather.RPC.Notify('feather-admin:booster:death:result', {
+        requestId = requestId,
+        dead = IsEntityDead(PlayerPedId())
+    })
+end)
+
+RegisterNetEvent('feather-admin:booster:action:result', function(messageKey)
+    Feather.Notify.RightNotify(AdminTranslate(messageKey), 3000)
 end)
 
 RegisterNetEvent('feather-admin:booster:toggle:result', function(requestId, succeeded)
