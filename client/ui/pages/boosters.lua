@@ -41,9 +41,13 @@ function AdminUI.OpenBoosters(includeLocalActions)
                         AdminBoosters.Request(action.action, AdminUI.GetTarget(), requestId)
                     end)
                 else
-                    AdminUI.RunAction(label, function()
+                    if action.action == 'revive' then
                         AdminBoosters.Request(action.action, AdminUI.GetTarget())
-                    end)
+                    else
+                        AdminUI.RunAction(label, function()
+                            AdminBoosters.Request(action.action, AdminUI.GetTarget())
+                        end)
+                    end
                 end
             end, AdminUI.Styles.button)
         end
@@ -78,7 +82,7 @@ function AdminUI.OpenBoosters(includeLocalActions)
 
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), function()
-        if includeLocalActions then AdminUI.OpenSelfTools() else AdminUI.OpenSelectedPlayer() end
+        if includeLocalActions then AdminUI.OpenSelfTools() else AdminUI.OpenSelectedPlayerTools() end
     end)
     AdminUI.OpenPage(pageKey)
 end
