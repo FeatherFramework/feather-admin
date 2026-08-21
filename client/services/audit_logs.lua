@@ -27,6 +27,7 @@ RegisterNetEvent('feather-admin:audit:result', function(rows, page, hasNext, err
         Feather.Notify.RightNotify(AdminTranslate(errorKey), 3000)
         return
     end
+
     AdminAuditLogs.rows = type(rows) == 'table' and rows or {}
     AdminAuditLogs.page = tonumber(page) or 1
     AdminAuditLogs.hasNext = hasNext == true
