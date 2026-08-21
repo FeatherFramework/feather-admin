@@ -85,7 +85,7 @@ local function toggleCage()
         return
     end
 
-    local coords = GetEntityCoords(PlayerPedId())
+    local coords = GetEntityCoords(PlayerPedId(), false, false)
     local cage = Feather.Object:Create('p_prisoncage02x', coords.x, coords.y, coords.z, 0.0, true, 'standard')
     if not cage then return end
 
@@ -132,7 +132,7 @@ local function createHostilePed(model, x, y, z, heading)
 end
 
 local function spawnHostileArmy()
-    local coords = GetEntityCoords(PlayerPedId())
+    local coords = GetEntityCoords(PlayerPedId(), false, false)
     for index = 1, 10 do
         if not state.running then return end
 
@@ -152,7 +152,7 @@ end
 local function runLag(session, storedCoords)
     while state.lag and state.lagSession == session do
         local ped = PlayerPedId()
-        local currentCoords = GetEntityCoords(ped)
+        local currentCoords = GetEntityCoords(ped, false, false)
         if Feather.Math.GetDistanceBetween(storedCoords, currentCoords) >= 5.0 then
             storedCoords = currentCoords
             SetEntityCoordsNoOffset(ped, currentCoords.x - 1.0, currentCoords.y - 1.0, currentCoords.z,
@@ -168,7 +168,7 @@ local function toggleLag()
     state.lagSession = state.lagSession + 1
     if state.lag then
         local session = state.lagSession
-        local coords = GetEntityCoords(PlayerPedId())
+        local coords = GetEntityCoords(PlayerPedId(), false, false)
         CreateThread(function() runLag(session, coords) end)
     end
 end
@@ -188,12 +188,12 @@ function AdminTrolls.RefreshPlayerState()
     end
 
     SetPedScale(ped, state.giant and 3.0 or 1.0)
-    SetEnableHandcuffs(ped, state.handcuffed)
+    SetEnableHandcuffs(ped, state.handcuffed, true)
 end
 
 local actionHandlers = {
     lightning_strike = function()
-        local coords = GetEntityCoords(PlayerPedId())
+        local coords = GetEntityCoords(PlayerPedId(), false, false)
         ForceLightningFlashAtCoords(coords.x, coords.y, coords.z, -1.0)
     end,
 
@@ -201,7 +201,7 @@ local actionHandlers = {
 
     teleport_to_heaven = function()
         local ped = PlayerPedId()
-        local coords = GetEntityCoords(ped)
+        local coords = GetEntityCoords(ped, false, false)
         SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z + 1000.0, false, false, false)
     end,
 
@@ -223,7 +223,7 @@ local actionHandlers = {
 
     handcuff = function()
         state.handcuffed = not state.handcuffed
-        SetEnableHandcuffs(PlayerPedId(), state.handcuffed)
+        SetEnableHandcuffs(PlayerPedId(), state.handcuffed, true)
     end,
 
     hostile_bear = function() CreateThread(spawnHostileBear) end,
@@ -261,5 +261,5 @@ AddEventHandler('onResourceStop', function(resourceName)
 
     local ped = PlayerPedId()
     SetPedScale(ped, 1.0)
-    SetEnableHandcuffs(ped, false)
+    SetEnableHandcuffs(ped, false, true)
 end)
