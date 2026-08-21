@@ -3,6 +3,8 @@
 -- Change the numbers to match the levels in your server's roles table.
 Config.permissions = {
     ['menu.open'] = 50,
+    ['server.overview'] = 50,
+    ['server.announce'] = 75,
     ['players.view'] = 50,
     ['player.info'] = 50,
     ['player.go_to'] = 50,
@@ -25,6 +27,7 @@ Config.permissions = {
     ['staff.view'] = 99,
     ['staff.search'] = 99,
     ['staff.search_identifiers'] = 99,
+    ['staff.history'] = 99,
     ['staff.role.assign'] = 99,
 
     ['economy.dollars.add'] = 99,
