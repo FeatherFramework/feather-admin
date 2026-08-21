@@ -7,7 +7,7 @@ local function loadModel(model)
         return false
     end
 
-    RequestModel(model)
+    RequestModel(model, false)
     local timeout = math.max(1000, tonumber(Config.pedChanger.modelLoadTimeout) or 10000)
     local timeoutAt = GetGameTimer() + timeout
 
@@ -30,19 +30,19 @@ local function applyModel(model)
     end
 
     local oldPed = PlayerPedId()
-    local coords = GetEntityCoords(oldPed)
+    local coords = GetEntityCoords(oldPed, false, false)
     local heading = GetEntityHeading(oldPed)
-    local oldMaxHealth = math.max(1, GetEntityMaxHealth(oldPed))
+    local oldMaxHealth = math.max(1, GetEntityMaxHealth(oldPed, false))
     local healthRatio = math.max(0.0, GetEntityHealth(oldPed) / oldMaxHealth)
 
-    SetPlayerModel(PlayerId(), model)
+    SetPlayerModel(PlayerId(), model, false)
     Wait(0)
 
     local newPed = PlayerPedId()
     Citizen.InvokeNative(0x283978A15512B2FE, newPed, true)
     SetEntityCoordsNoOffset(newPed, coords.x, coords.y, coords.z, false, false, false)
     SetEntityHeading(newPed, heading)
-    SetEntityHealth(newPed, math.floor(GetEntityMaxHealth(newPed) * healthRatio))
+    SetEntityHealth(newPed, math.floor(GetEntityMaxHealth(newPed, false) * healthRatio), 0)
     SetModelAsNoLongerNeeded(model)
 
     if AdminBoosters and AdminBoosters.RefreshPlayerState then
