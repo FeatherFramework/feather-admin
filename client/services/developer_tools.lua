@@ -38,7 +38,7 @@ local function runEntityInspector(session)
         if IsPlayerFreeAiming(player) then
             local found, entity = GetEntityPlayerIsFreeAimingAt(player)
             if found and entity ~= 0 and DoesEntityExist(entity) then
-                local coords = GetEntityCoords(entity)
+                local coords = GetEntityCoords(entity, false, false)
                 local text = ('Coords: %s\nHeading: %.2f\nModel: %s'):format(
                     tostring(coords),
                     GetEntityHeading(entity),
@@ -93,7 +93,7 @@ function AdminDeveloperTools.CopyCoordinates(format)
     local ped = PlayerPedId()
     if ped == 0 or not DoesEntityExist(ped) then return false end
 
-    local coords = GetEntityCoords(ped)
+    local coords = GetEntityCoords(ped, false, false)
     local values = {
         vector3 = ('vector3(%.3f, %.3f, %.3f)'):format(coords.x, coords.y, coords.z),
         vector4 = ('vector4(%.3f, %.3f, %.3f, %.3f)'):format(
