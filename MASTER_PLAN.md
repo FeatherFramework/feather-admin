@@ -2,7 +2,7 @@
 
 This plan keeps Feather Admin organized around the kind of work a staff member is performing. New features should register themselves with the appropriate navigation section instead of adding more hard-coded buttons to the main menu.
 
-Progress is tracked with checkboxes: `[x]` is implemented and `[ ]` is still planned. Update this file whenever a roadmap feature is completed or its scope changes.
+Progress is tracked with explicit symbols: `✅` is implemented and `⬜` is still planned. Update this file whenever a roadmap feature is completed or its scope changes.
 
 ## Navigation Structure
 
@@ -68,99 +68,100 @@ Every new action must:
 
 ## Phase 1 - Server Operations
 
-- [x] **Server Overview**
+- ✅ **Server Overview**
    - Show player count, uptime, OneSync state, and required Feather resource health.
    - Keep the first version read-only.
 
-- [x] **Announcements**
+- ✅ **Announcements**
    - Send a server-wide message with a required message and optional title.
    - Add length limits, cooldowns, confirmation, and durable logging.
 
-- [ ] **World Controls**
+- ⬜ **World Controls**
    - Add time and weather controls only through the server's authoritative sync resource.
    - Use an adapter so Feather Admin never competes with another weather script.
 
-- [ ] **Entity Cleanup**
+- ⬜ **Entity Cleanup**
    - Clean abandoned peds, objects, wagons, or vehicles by explicit category.
    - Show a preview/count and require confirmation before deletion.
    - Exclude player-owned, occupied, mission, and protected entities.
 
-- [ ] **Detailed Resource Health**
+- ⬜ **Detailed Resource Health**
    - Show resource states and dependency failures.
    - Defer resource restart controls until an allowlist and recovery safeguards exist.
 
 ## Phase 2 - Moderation Center
 
-- [ ] **Active Ban Browser**
+- ✅ **Active Ban Browser**
    - Search, page, inspect, and revoke active bans without first locating a character.
 
-- [ ] **Player Reports**
+- ✅ **Player Reports**
    - Let players submit categorized reports with cooldowns.
    - Staff can claim, release, teleport to, reply to, and close reports.
 
-- [ ] **Staff Cases**
-   - Convert serious reports into durable cases linked to warnings, kicks, bans, notes, and audit rows.
+- ✅ **Staff Cases**
+   - Convert serious reports into durable cases linked to the source report, warnings, kicks, bans, and audit rows.
+   - Add note links when the separate Player Notes feature is implemented.
 
-- [ ] **Player Notes**
+- ⬜ **Player Notes**
    - Store internal notes with author, character, timestamps, and edit history.
    - Separate note permissions from moderation-action permissions.
 
-- [ ] **Optional Sanctions**
+- ⬜ **Optional Sanctions**
    - Add mute or jail only after their owning chat/jail resources expose authoritative APIs.
    - Avoid standalone state that other resources cannot enforce.
 
 ## Phase 3 - Player and Character Support
 
-- [ ] **Inventory Inspection and Removal**
+- ⬜ **Inventory Inspection and Removal**
    - View inventory, inspect metadata, and remove items with confirmation.
    - Keep the existing Give Item flow as a separate permission.
 
-- [ ] **Weapon and Ammo Support**
+- ⬜ **Weapon and Ammo Support**
    - Integrate through Feather Weapons rather than manipulating loadouts directly.
 
-- [ ] **Horse and Wagon Assistance**
+- ⬜ **Horse and Wagon Assistance**
    - Find, bring, repair, revive, or dismiss owned entities through their owning resource APIs.
 
-- [ ] **Character Repair Tools**
+- ⬜ **Character Repair Tools**
    - Add narrowly scoped repairs for known failure states.
    - Avoid broad character resets that can erase legitimate progress.
 
 ## Phase 4 - Staff Operations
 
-- [ ] **Staff Duty**
+- ⬜ **Staff Duty**
    - Track on-duty state, duty start/end, and active admin character.
    - Optionally require duty for disruptive actions without making emergency access impossible.
 
-- [ ] **Staff Chat**
+- ⬜ **Staff Chat**
    - Add permission-scoped staff communication with rate limits and audit options.
 
-- [ ] **Staff Activity Summary**
+- ⬜ **Staff Activity Summary**
    - Summarize durable action counts and duty sessions without turning raw counts into performance scores.
 
-- [ ] **Permission Viewer**
+- ⬜ **Permission Viewer**
    - Show the current character's role level and available action groups for troubleshooting.
 
 ## Phase 5 - Developer and Diagnostics
 
-- [ ] **Routing Bucket Viewer**
+- ⬜ **Routing Bucket Viewer**
    - Display the current instance and permitted membership information through Feather Core's protected instance API.
 
-- [ ] **Entity Manager**
+- ⬜ **Entity Manager**
    - Inspect nearby entities, ownership, model, network ID, and mission state.
    - Restrict deletion to a separately permitted and confirmed action.
 
-- [ ] **Zone and Interior Diagnostics**
+- ⬜ **Zone and Interior Diagnostics**
    - Display zone, interior, room, and coordinate information for resource development.
 
 ## Phase 6 - Release Readiness
 
-- [ ] Add repeatable permission, hierarchy, RPC, database, and navigation tests.
-- [ ] Verify every page's Back route and every main-page Close route.
-- [ ] Complete translation-key and configuration audits after each phase.
-- [ ] Add database migrations for existing installations alongside clean-install schemas.
-- [ ] Document upgrade steps and breaking changes for server owners.
-- [ ] Profile large player directories, audit tables, and moderation searches with realistic data volumes.
+- ⬜ Add repeatable permission, hierarchy, RPC, database, and navigation tests.
+- ⬜ Verify every page's Back route and every main-page Close route.
+- ⬜ Complete translation-key and configuration audits after each phase.
+- ⬜ Add database migrations for existing installations alongside clean-install schemas.
+- ⬜ Document upgrade steps and breaking changes for server owners.
+- ⬜ Profile large player directories, audit tables, and moderation searches with realistic data volumes.
 
 ## Recommended Build Order
 
-Next, build the **Active Ban Browser**. It will exercise the Moderation Center navigation with a database-backed feature before more complex reports or entity cleanup are introduced.
+Next, build **Player Notes**. World Controls should wait until its authoritative time and weather integration has been selected.
