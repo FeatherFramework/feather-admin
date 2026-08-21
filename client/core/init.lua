@@ -11,7 +11,14 @@ AdminStaff = {
     results = {},
     selectedTarget = nil,
     selectedRole = nil,
+    roleFilterId = nil,
+    reason = '',
     searchQuery = nil,
+    searchPage = 1,
+    searchHasNext = false,
+    history = {},
+    historyPage = 1,
+    historyHasNext = false,
     origin = 'online'
 }
 
