@@ -126,6 +126,90 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ]])
 
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS feather_admin_reports (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            reporter_license VARCHAR(100) NOT NULL,
+            reporter_name VARCHAR(100) NULL,
+            reporter_character_id BIGINT UNSIGNED NULL,
+            reporter_character_name VARCHAR(150) NULL,
+            category VARCHAR(50) NOT NULL,
+            message VARCHAR(500) NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'open',
+            assigned_admin_license VARCHAR(100) NULL,
+            assigned_admin_name VARCHAR(100) NULL,
+            assigned_admin_character_id BIGINT UNSIGNED NULL,
+            assigned_admin_character_name VARCHAR(150) NULL,
+            resolution VARCHAR(500) NULL,
+            closed_admin_license VARCHAR(100) NULL,
+            closed_admin_name VARCHAR(100) NULL,
+            closed_admin_character_id BIGINT UNSIGNED NULL,
+            closed_admin_character_name VARCHAR(150) NULL,
+            claimed_at DATETIME NULL,
+            closed_at DATETIME NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            INDEX idx_fa_reports_status_created (status, created_at),
+            INDEX idx_fa_reports_reporter_status (reporter_license, status),
+            INDEX idx_fa_reports_assigned_status (assigned_admin_license, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ]])
+
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS feather_admin_cases (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            source_report_id BIGINT UNSIGNED NULL,
+            target_license VARCHAR(100) NOT NULL,
+            target_name VARCHAR(100) NULL,
+            target_character_id BIGINT UNSIGNED NULL,
+            target_character_name VARCHAR(150) NULL,
+            title VARCHAR(100) NOT NULL,
+            summary VARCHAR(500) NOT NULL,
+            priority VARCHAR(20) NOT NULL DEFAULT 'normal',
+            status VARCHAR(20) NOT NULL DEFAULT 'open',
+            created_admin_license VARCHAR(100) NULL,
+            created_admin_name VARCHAR(100) NULL,
+            created_admin_character_id BIGINT UNSIGNED NULL,
+            created_admin_character_name VARCHAR(150) NULL,
+            assigned_admin_license VARCHAR(100) NULL,
+            assigned_admin_name VARCHAR(100) NULL,
+            assigned_admin_character_id BIGINT UNSIGNED NULL,
+            assigned_admin_character_name VARCHAR(150) NULL,
+            resolution VARCHAR(500) NULL,
+            closed_admin_license VARCHAR(100) NULL,
+            closed_admin_name VARCHAR(100) NULL,
+            closed_admin_character_id BIGINT UNSIGNED NULL,
+            closed_admin_character_name VARCHAR(150) NULL,
+            claimed_at DATETIME NULL,
+            closed_at DATETIME NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE INDEX idx_fa_cases_source_report (source_report_id),
+            INDEX idx_fa_cases_status_created (status, created_at),
+            INDEX idx_fa_cases_target_status (target_license, status),
+            INDEX idx_fa_cases_assigned_status (assigned_admin_license, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ]])
+
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS feather_admin_case_links (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            case_id BIGINT UNSIGNED NOT NULL,
+            link_type VARCHAR(30) NOT NULL,
+            link_id BIGINT UNSIGNED NOT NULL,
+            label VARCHAR(150) NULL,
+            details VARCHAR(500) NULL,
+            admin_license VARCHAR(100) NULL,
+            admin_name VARCHAR(100) NULL,
+            admin_character_id BIGINT UNSIGNED NULL,
+            admin_character_name VARCHAR(150) NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE INDEX idx_fa_case_links_unique (case_id, link_type, link_id),
+            INDEX idx_fa_case_links_case (case_id, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ]])
+
     AdminDatabase.ready = true
     local callbacks = AdminDatabase.callbacks
     AdminDatabase.callbacks = {}
