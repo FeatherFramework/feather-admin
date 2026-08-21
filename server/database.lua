@@ -99,6 +99,33 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ]])
 
+    MySQL.query.await([[
+        CREATE TABLE IF NOT EXISTS feather_admin_role_changes (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            target_license VARCHAR(100) NOT NULL,
+            target_name VARCHAR(100) NULL,
+            target_character_id BIGINT UNSIGNED NOT NULL,
+            target_character_name VARCHAR(150) NOT NULL,
+            old_role_id BIGINT UNSIGNED NOT NULL,
+            old_role_name VARCHAR(100) NOT NULL,
+            old_role_level INT NOT NULL,
+            new_role_id BIGINT UNSIGNED NOT NULL,
+            new_role_name VARCHAR(100) NOT NULL,
+            new_role_level INT NOT NULL,
+            reason VARCHAR(200) NOT NULL,
+            admin_license VARCHAR(100) NULL,
+            admin_name VARCHAR(100) NOT NULL,
+            admin_character_id BIGINT UNSIGNED NULL,
+            admin_character_name VARCHAR(150) NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            INDEX idx_fa_role_changes_character (target_character_id),
+            INDEX idx_fa_role_changes_target_license (target_license),
+            INDEX idx_fa_role_changes_admin_license (admin_license),
+            INDEX idx_fa_role_changes_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ]])
+
     AdminDatabase.ready = true
     local callbacks = AdminDatabase.callbacks
     AdminDatabase.callbacks = {}
