@@ -48,6 +48,6 @@ function AdminUI.OpenTeleports()
     end
 
     AdminUI.AddFooter(page)
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenMain)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenSelfTools)
     AdminUI.OpenPage('teleports')
 end
