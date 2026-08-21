@@ -29,6 +29,7 @@ client_scripts {
     'client/core/init.lua',
     'translations/*.lua',
     'client/ui/menu.lua',
+    'client/ui/navigation.lua',
     'client/services/*.lua',
     'client/ui/pages/players.lua',
     'client/ui/pages/ped_changer.lua',
@@ -44,6 +45,8 @@ client_scripts {
     'client/ui/pages/self_tools.lua',
     'client/ui/pages/moderation.lua',
     'client/ui/pages/audit_logs.lua',
+    'client/ui/pages/server_overview.lua',
+    'client/ui/pages/announcements.lua',
     'client/ui/pages/main.lua',
     'client/core/main.lua'
 }
