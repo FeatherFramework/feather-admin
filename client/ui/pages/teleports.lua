@@ -4,18 +4,18 @@ function AdminUI.OpenTeleports()
     local page = AdminUI.RegisterPage('teleports')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('teleport_header'))
 
-    local function runTeleport(label, callback)
+    local function runTeleport(successKey, callback)
         AdminUI.Close()
         CreateThread(function()
             Wait(250)
-            AdminUI.RunAction(label, callback)
+            AdminTeleports.NotifyResult(callback(), successKey)
         end)
     end
 
     if AdminUI.CanUse('teleport.waypoint') then
         local waypointLabel = AdminTranslate('teleport_to_waypoint')
         AdminUI.AddButton(page, waypointLabel, function()
-            runTeleport(waypointLabel, AdminTeleports.ToWaypoint)
+            runTeleport('teleport_waypoint_success', AdminTeleports.ToWaypoint)
         end)
     end
     if AdminUI.CanUse('teleport.auto_waypoint') then
@@ -38,7 +38,7 @@ function AdminUI.OpenTeleports()
                 return
             end
 
-            runTeleport(coordinatesLabel, function()
+            runTeleport('teleport_coordinates_success', function()
                 return AdminTeleports.ToCoordinates(x, y, z, heading)
             end)
         end)
