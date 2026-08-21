@@ -89,7 +89,8 @@ function AdminModeration.SearchPlayers(query)
     return true
 end
 
-function AdminModeration.Unban(banId)
+function AdminModeration.Unban(banId, origin)
+    AdminModeration.unbanOrigin = origin or 'history'
     Feather.RPC.Notify('feather-admin:moderation:unban', { banId = banId })
 end
 
@@ -109,5 +110,14 @@ end)
 
 RegisterNetEvent('feather-admin:moderation:result', function(messageKey)
     Feather.Notify.RightNotify(AdminTranslate(messageKey), 3000)
-    if messageKey == 'ban_revoked' then AdminModeration.RequestHistory() end
+    if messageKey ~= 'ban_revoked' then return end
+
+    local origin = AdminModeration.unbanOrigin
+    AdminModeration.unbanOrigin = nil
+    if origin == 'active_bans' then
+        AdminActiveBans.selected = nil
+        AdminActiveBans.Request(AdminActiveBans.page)
+    else
+        AdminModeration.RequestHistory()
+    end
 end)
