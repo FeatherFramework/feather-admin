@@ -42,7 +42,7 @@ function AdminUI.OpenTrolls()
 
     AdminUI.AddFooter(page)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenSelectedPlayer)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenSelectedPlayerTools)
 
     AdminUI.OpenPage('trolls')
 end
