@@ -47,6 +47,9 @@ client_scripts {
     'client/ui/pages/audit_logs.lua',
     'client/ui/pages/server_overview.lua',
     'client/ui/pages/announcements.lua',
+    'client/ui/pages/active_bans.lua',
+    'client/ui/pages/reports.lua',
+    'client/ui/pages/cases.lua',
     'client/ui/pages/main.lua',
     'client/core/main.lua'
 }
