@@ -28,7 +28,7 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Apply several optional player effects
 - Open the menu with a key or chat command
 - Store admin actions in the database and review them from a paginated Admin Logs page
-- Search online or offline characters and assign staff roles with account-level hierarchy protection
+- Search and filter online or offline characters, assign staff roles with required reasons, and review role-change history
 - Filter admin logs by administrator, player, action, or date
 - Record admin actions in the server console and optionally Discord
 
@@ -121,8 +121,10 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `logging.webhook`: optionally send admin action logs to a Discord webhook
 - `economy.maxAmount`: limit the size of a single balance adjustment
 - `inventory.maxGrantQuantity`: limit the quantity in one admin item grant
-- `staff.searchLimit`: limit the number of offline staff-search results
+- `staff.searchLimit`: set the number of offline staff-search results per page
+- `staff.historyLimit`: set the number of role-history records per page
 - `staff.minSearchLength`: require a minimum staff-search length
+- `staff.maxReasonLength`: limit required role-change reasons
 - `moderation.searchLimit`: limit offline search results
 - `moderation.minSearchLength`: require a minimum offline-search length
 - `moderation.historyLimit`: limit the history records shown
@@ -146,7 +148,7 @@ Choose **Player List** to select another connected player. Selected-player tools
 
 Choose **Inventory** for a selected player to browse configured item categories, choose an item and quantity, and confirm the grant. Item limits, available slots, and weight are validated by Feather Inventory before anything is added.
 
-Owners can open **Staff Management** from the main menu, select an online character or search for an offline character, choose a configured role, and confirm the change. Search accepts a character ID, account name, character name, or complete `license:` identifier. All characters matching the account are shown separately. A role can never be assigned above the acting character's own level. Self-edits and changes to equal- or higher-ranked accounts are blocked; use the emergency recovery command when no eligible owner character is available.
+Owners can open **Staff Management** from the main menu, select an online character or search for an offline character, filter by role, choose a configured role, enter a required reason, and confirm the change. Search accepts a character ID, account name, character name, or complete `license:` identifier. Results and role history are paginated, and every promotion, demotion, or other role change is stored against the affected character. A role can never be assigned above the acting character's own level. Self-edits and changes to equal- or higher-ranked accounts are blocked; use the emergency recovery command when no eligible owner character is available.
 
 Use **Offline Players** to search moderation records for someone who is not connected. Names use prefix matching; license searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for status and appearance actions that apply to your own character.
 
