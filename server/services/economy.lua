@@ -12,6 +12,28 @@ local function validAmount(value)
     return amount
 end
 
+FeatherAdmin.RegisterRPC('feather-admin:economy:summary', function(params, _, src)
+    local field, operation = params.field, params.operation
+    if economyFields[field] ~= true or (operation ~= 'add' and operation ~= 'remove') then return end
+
+    local target = FeatherAdmin.RequireTarget(src, ('economy.%s.%s'):format(field, operation), params.playerId)
+    if target == nil then return end
+
+    local character = FeatherAdmin.Core.Character.GetCharacter({ src = target })
+    local char = character and character.char
+    if not char then return end
+
+    local characterName = ('%s %s'):format(char.first_name or '', char.last_name or ''):match('^%s*(.-)%s*$')
+    TriggerClientEvent('feather-admin:economy:summary', src, {
+        playerId = target,
+        characterName = characterName,
+        dollars = char.dollars,
+        gold = char.gold,
+        tokens = char.tokens,
+        xp = char.xp
+    })
+end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 160 })
+
 FeatherAdmin.RegisterRPC('feather-admin:economy:adjust', function(params, _, src)
     local playerId, field, operation, value = params.playerId, params.field, params.operation, params.value
     if economyFields[field] ~= true or (operation ~= 'add' and operation ~= 'remove') then return end
