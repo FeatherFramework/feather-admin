@@ -1,10 +1,30 @@
+local selectedActions = {
+    teleportation = { 'player.go_to', 'player.bring', 'player.send_back', 'player.spectate' },
+    character = {
+        'economy.dollars.add', 'economy.dollars.remove', 'economy.gold.add', 'economy.gold.remove',
+        'economy.tokens.add', 'economy.tokens.remove', 'economy.xp.add', 'economy.xp.remove',
+        'character.restore_model', 'inventory.give'
+    },
+    status = {
+        'booster.invincibility', 'booster.invisibility', 'booster.infinite_stamina', 'booster.heal',
+        'booster.revive', 'booster.kill', 'booster.disable_fow', 'troll.freeze', 'troll.handcuff'
+    },
+    appearance = { 'ped.change', 'troll.make_ped_giant' },
+    effects = {
+        'troll.lightning_strike', 'troll.teleport_to_heaven', 'troll.cage',
+        'troll.force_cinematic_camera', 'troll.hostile_ped_army', 'troll.kick_from_vehicle',
+        'troll.hostile_bear', 'troll.lag'
+    }
+}
+
 function AdminUI.OpenSelectedPlayer()
     if not AdminUI.CanUse('players.view') then return end
     local page = AdminUI.RegisterPage('selected_player')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('selected_player_header'))
 
-    if AdminUI.CanUseOnTarget('player.info') then
+    if AdminUI.CanUse('player.info') then
         AdminUI.AddButton(page, AdminTranslate('player_information'), function()
+            if not AdminUI.RequireUseOnTarget('player.info') then return end
             AdminPlayerManagement.RequestInfo(AdminUI.GetTarget())
         end)
     end
@@ -15,28 +35,27 @@ function AdminUI.OpenSelectedPlayer()
         end)
     end
 
-    if AdminUI.CanUseOnTarget('staff.role.assign') then
+    if AdminUI.CanUse('staff.role.assign') then
         AdminUI.AddButton(page, AdminTranslate('staff_role'), function()
+            if not AdminUI.RequireUseOnTarget('staff.role.assign') then return end
             AdminStaff.Request(AdminUI.GetTarget())
         end)
     end
 
-    if AdminUI.CanUseOnTarget('player.go_to') or AdminUI.CanUseOnTarget('player.bring')
-        or AdminUI.CanUseOnTarget('player.send_back') or AdminUI.CanUseOnTarget('player.spectate') then
-        AdminUI.AddButton(page, AdminTranslate('teleportation'), AdminUI.OpenPlayerManagement)
+    if AdminUI.CanUseAnyAction(selectedActions.teleportation) then
+        AdminUI.AddButton(page, AdminTranslate('teleportation'), function()
+            if AdminUI.RequireAnyUseOnTarget(selectedActions.teleportation) then AdminUI.OpenPlayerManagement() end
+        end)
     end
 
-    if AdminUI.CanUseOnTarget('economy.dollars.add') or AdminUI.CanUseOnTarget('economy.dollars.remove')
-        or AdminUI.CanUseOnTarget('economy.gold.add') or AdminUI.CanUseOnTarget('economy.gold.remove')
-        or AdminUI.CanUseOnTarget('economy.tokens.add') or AdminUI.CanUseOnTarget('economy.tokens.remove')
-        or AdminUI.CanUseOnTarget('economy.xp.add') or AdminUI.CanUseOnTarget('economy.xp.remove')
-        or AdminUI.CanUseOnTarget('character.restore_model') or AdminUI.CanUseOnTarget('inventory.give') then
-        AdminUI.AddButton(page, AdminTranslate('character_management'), AdminUI.OpenCharacterManagement)
+    if AdminUI.CanUseAnyAction(selectedActions.character) then
+        AdminUI.AddButton(page, AdminTranslate('character_management'), function()
+            if AdminUI.RequireAnyUseOnTarget(selectedActions.character) then AdminUI.OpenCharacterManagement() end
+        end)
     end
 
-
-    if AdminUI.CanUsePlayerStatus(false) or AdminUI.CanUseOnTarget('ped.change')
-        or AdminUI.CanUseOnTarget('troll.make_ped_giant') or AdminUI.CanUseSpecialEffects() then
+    if AdminUI.CanUseAnyAction(selectedActions.status) or AdminUI.CanUseAnyAction(selectedActions.appearance)
+        or AdminUI.CanUseAnyAction(selectedActions.effects) then
         AdminUI.AddButton(page, AdminTranslate('player_tools'), AdminUI.OpenSelectedPlayerTools)
     end
 
@@ -214,21 +233,24 @@ function AdminUI.OpenSelectedPlayerTools()
     if not target then return end
     local page = AdminUI.RegisterPage('selected_player_tools')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('player_tools'))
-    if AdminUI.CanUsePlayerStatus(false) then
+    if AdminUI.CanUseAnyAction(selectedActions.status) then
         AdminUI.AddButton(page, AdminTranslate('player_status'), function()
+            if not AdminUI.RequireAnyUseOnTarget(selectedActions.status, target) then return end
             AdminUI.SetTarget(target)
             AdminUI.OpenBoosters(false)
         end)
     end
-    if AdminUI.CanUseOnTarget('ped.change') or AdminUI.CanUseOnTarget('troll.make_ped_giant') then
+    if AdminUI.CanUseAnyAction(selectedActions.appearance) then
         AdminUI.AddButton(page, AdminTranslate('appearance'), function()
+            if not AdminUI.RequireAnyUseOnTarget(selectedActions.appearance, target) then return end
             AdminUI.SetTarget(target)
             AdminUI.OpenAppearance('selected_player_tools', target)
         end)
     end
-    if AdminUI.CanUseSpecialEffects() then
+    if AdminUI.CanUseAnyAction(selectedActions.effects) then
         AdminUI.AddLine(page)
         AdminUI.AddButton(page, AdminTranslate('special_effects'), function()
+            if not AdminUI.RequireAnyUseOnTarget(selectedActions.effects, target) then return end
             AdminUI.SetTarget(target)
             AdminUI.OpenTrolls()
         end)
