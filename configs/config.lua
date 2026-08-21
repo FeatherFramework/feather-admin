@@ -25,6 +25,45 @@ Config = {
     },
     -----------------------------------------------------
 
+    -- Resources displayed on the read-only Server Overview page.
+    serverOverview = {
+        resources = {
+            'feather-core',
+            'feather-menu',
+            'feather-inventory',
+            'feather-character',
+            'feather-admin'
+        }
+    },
+    -----------------------------------------------------
+
+    -- Limits and timing for server-wide staff announcements.
+    announcements = {
+        maxTitleLength = 60,    -- Maximum optional title length.
+        maxMessageLength = 300, -- Maximum required message length.
+        cooldownSeconds = 30,   -- Delay between announcements from one staff member.
+        duration = 8000         -- Time the announcement remains visible in milliseconds.
+    },
+    -----------------------------------------------------
+
+    -- Player report command, limits, and available categories.
+    reports = {
+        enabled = true,          -- Set to false to disable player report submission.
+        command = 'report',      -- Used in chat as /report <category> <message>.
+        cooldownSeconds = 120,   -- Delay between reports from one player.
+        maxOpenPerPlayer = 3,    -- Maximum open or claimed reports per account.
+        maxMessageLength = 500,  -- Maximum player report length.
+        maxResolutionLength = 500, -- Maximum staff closing-resolution length.
+        pageLimit = 20,          -- Reports shown on each staff page.
+        categories = {
+            { value = 'player', labelKey = 'report_category_player' },
+            { value = 'bug', labelKey = 'report_category_bug' },
+            { value = 'question', labelKey = 'report_category_question' },
+            { value = 'other', labelKey = 'report_category_other' }
+        }
+    },
+    -----------------------------------------------------
+
     -- Limits a single economy adjustment to a safe amount.
     economy = {
         maxAmount = 1000000
@@ -39,14 +78,17 @@ Config = {
 
     -- Limits offline character searches in Staff Management.
     staff = {
-        searchLimit = 25,    -- Maximum matching characters shown at once.
-        minSearchLength = 2  -- Minimum characters required for a search.
+        searchLimit = 20,       -- Characters shown on each search page.
+        historyLimit = 20,      -- Role changes shown on each history page.
+        minSearchLength = 2,    -- Minimum characters required for a search.
+        maxReasonLength = 200   -- Maximum required role-change reason length.
     },
     -----------------------------------------------------
 
     -- Limits and messages used by persistent moderation tools.
     moderation = {
         searchLimit = 25,       -- Maximum offline results shown at once.
+        activeBanLimit = 20,    -- Active bans shown on each browser page.
         minSearchLength = 2,    -- Minimum characters required for offline search.
         historyLimit = 50,      -- Maximum history records returned at once.
         maxReasonLength = 200,  -- Maximum ban or warning reason length.
@@ -61,6 +103,22 @@ Config = {
             { label = '30 Days', minutes = 43200 }
         },
         banMessage = 'You are banned from this server.'
+    },
+    -----------------------------------------------------
+
+    -- Persistent staff cases created from serious player reports.
+    cases = {
+        pageLimit = 20,          -- Cases shown on each queue page.
+        activityLimit = 20,      -- Recent records available for linking.
+        maxTitleLength = 100,    -- Maximum case title length.
+        maxSummaryLength = 500,  -- Maximum opening summary length.
+        maxResolutionLength = 500,
+        priorities = {
+            { value = 'normal', labelKey = 'case_priority_normal' },
+            { value = 'high', labelKey = 'case_priority_high' },
+            { value = 'critical', labelKey = 'case_priority_critical' },
+            { value = 'low', labelKey = 'case_priority_low' }
+        }
     },
     -----------------------------------------------------
 

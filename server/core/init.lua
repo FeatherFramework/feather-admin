@@ -42,10 +42,14 @@ function FeatherAdmin.Deny(src)
     Feather.Notify.RightNotify(src, 'You do not have permission to use Feather Admin.', 4000)
 end
 
+function FeatherAdmin.DenyAction(src)
+    Feather.Notify.RightNotify(src, 'You do not have permission for that action.', 3000)
+end
+
 function FeatherAdmin.RequirePermission(src, action)
     if FeatherAdmin.CanUse(src, action) then return true end
 
-    FeatherAdmin.Deny(src)
+    FeatherAdmin.DenyAction(src)
 
     return false
 end

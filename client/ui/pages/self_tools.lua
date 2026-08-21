@@ -3,6 +3,10 @@ function AdminUI.OpenSelfTools()
     local page = AdminUI.RegisterPage('self_tools')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('self_tools_header'))
 
+    if AdminUI.CanUseAny('teleport.') then
+        AdminUI.AddButton(page, AdminTranslate('travel'), AdminUI.OpenTeleports)
+    end
+
     if AdminUI.CanUsePlayerStatus(true) then
         AdminUI.AddButton(page, AdminTranslate('player_status'), function()
             AdminUI.OpenBoosters(true)

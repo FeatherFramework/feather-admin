@@ -1,6 +1,10 @@
-function AdminUI.OpenAppearance(parentPage)
+function AdminUI.OpenAppearance(parentPage, target)
+    if target ~= nil then AdminUI.SetTarget(target) end
     if parentPage then AdminUI.appearanceParent = parentPage end
-    if not AdminUI.CanUseOnTarget('ped.change') and not AdminUI.CanUseOnTarget('troll.make_ped_giant') then return end
+    if not AdminUI.CanUseOnTarget('ped.change') and not AdminUI.CanUseOnTarget('troll.make_ped_giant') then
+        AdminUI.NotifyActionDenied()
+        return
+    end
 
     local page = AdminUI.RegisterPage('appearance')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('appearance_header'))
@@ -22,6 +26,8 @@ function AdminUI.OpenAppearance(parentPage)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), function()
         if AdminUI.appearanceParent == 'self_tools' then
             AdminUI.OpenSelfTools()
+        elseif AdminUI.appearanceParent == 'selected_player_tools' then
+            AdminUI.OpenSelectedPlayerTools()
         else
             AdminUI.OpenSelectedPlayer()
         end

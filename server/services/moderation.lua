@@ -8,6 +8,19 @@ local function licenseForSource(src)
     return FeatherAdmin.Core.User.GetLicense(src)
 end
 
+local function onlineSourceForCharacter(license, characterId)
+    characterId = tonumber(characterId)
+    for _, rawId in ipairs(GetPlayers()) do
+        local playerId = tonumber(rawId)
+        local character = playerId and FeatherAdmin.Core.Character.GetCharacter({ src = playerId })
+        local char = character and character.char
+        if char and tonumber(char.id) == characterId and licenseForSource(playerId) == license then
+            return playerId
+        end
+    end
+    return nil
+end
+
 local function adminIdentity(src)
     local character = FeatherAdmin.Core.Character.GetCharacter({ src = src })
     local char = character and character.char or {}
@@ -141,47 +154,75 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:search', function(params, _, 
     local query = params.query
     if not FeatherAdmin.RequirePermission(src, 'moderation.search') or not schemaReady then return end
     query = trim(query)
+    local roleId = tonumber(params.roleId)
     local minimum = math.max(1, tonumber(Config.moderation.minSearchLength) or 2)
     if #query < minimum or #query > 100 then return end
+    if roleId and (roleId < 1 or roleId % 1 ~= 0
+        or not MySQL.scalar.await('SELECT 1 FROM roles WHERE id = ? LIMIT 1', { roleId })) then return end
 
     local limit = math.max(1, math.min(tonumber(Config.moderation.searchLimit) or 25, 100))
+    local roleClause = roleId and 'AND r.id = ?' or ''
+    local function withRole(values)
+        if roleId then values[#values + 1] = roleId end
+        return values
+    end
     local rows
     if query:sub(1, 8):lower() == 'license:' then
         if not FeatherAdmin.RequirePermission(src, 'moderation.search_identifiers') then return end
         rows = MySQL.query.await(([=[
             SELECT u.license, u.username AS playerName, c.id AS characterId,
-                   CONCAT(c.first_name, ' ', c.last_name) AS characterName
+                   CONCAT(c.first_name, ' ', c.last_name) AS characterName,
+                   r.id AS roleId, r.name AS roleName, r.level AS roleLevel
             FROM users u
             LEFT JOIN characters c ON c.user_id = u.id
-            WHERE u.license = ?
+            LEFT JOIN roles r ON r.id = c.role_id
+            WHERE u.license = ? %s
             ORDER BY u.username, c.id
             LIMIT %d
-        ]=]):format(limit), { query })
+        ]=]):format(roleClause, limit), withRole({ query }))
+    elseif query:match('^%d+$') then
+        rows = MySQL.query.await(([=[
+            SELECT u.license, u.username AS playerName, c.id AS characterId,
+                   CONCAT(c.first_name, ' ', c.last_name) AS characterName,
+                   r.id AS roleId, r.name AS roleName, r.level AS roleLevel
+            FROM characters c
+            INNER JOIN users u ON u.id = c.user_id
+            LEFT JOIN roles r ON r.id = c.role_id
+            WHERE c.id = ? %s LIMIT 1
+        ]=]):format(roleClause), withRole({ tonumber(query) }))
     else
         local first, last = query:match('^(%S+)%s+(.+)$')
         local queryPrefix = query .. '%'
         if first and last then
             rows = MySQL.query.await(([=[
                 SELECT u.license, u.username AS playerName, c.id AS characterId,
-                       CONCAT(c.first_name, ' ', c.last_name) AS characterName
+                       CONCAT(c.first_name, ' ', c.last_name) AS characterName,
+                       r.id AS roleId, r.name AS roleName, r.level AS roleLevel
                 FROM users u
                 LEFT JOIN characters c ON c.user_id = u.id
-                WHERE u.username LIKE ?
-                   OR (c.first_name LIKE ? AND c.last_name LIKE ?)
+                LEFT JOIN roles r ON r.id = c.role_id
+                WHERE (u.username LIKE ?
+                   OR (c.first_name LIKE ? AND c.last_name LIKE ?)) %s
                 ORDER BY u.username, c.id
                 LIMIT %d
-            ]=]):format(limit), { queryPrefix, first .. '%', last .. '%' })
+            ]=]):format(roleClause, limit), withRole({ queryPrefix, first .. '%', last .. '%' }))
         else
             rows = MySQL.query.await(([=[
         SELECT u.license, u.username AS playerName, c.id AS characterId,
-               CONCAT(c.first_name, ' ', c.last_name) AS characterName
+               CONCAT(c.first_name, ' ', c.last_name) AS characterName,
+               r.id AS roleId, r.name AS roleName, r.level AS roleLevel
         FROM users u
         LEFT JOIN characters c ON c.user_id = u.id
-        WHERE u.username LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?
+        LEFT JOIN roles r ON r.id = c.role_id
+        WHERE (u.username LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?) %s
         ORDER BY u.username, c.id
         LIMIT %d
-            ]=]):format(limit), { queryPrefix, queryPrefix, queryPrefix })
+            ]=]):format(roleClause, limit), withRole({ queryPrefix, queryPrefix, queryPrefix }))
         end
+    end
+    for _, row in ipairs(rows or {}) do
+        row.serverId = onlineSourceForCharacter(row.license, row.characterId)
+        row.isOnline = row.serverId ~= nil
     end
     TriggerClientEvent('feather-admin:moderation:search:result', src, rows or {})
     AdminAudit.Record(src, 'moderation.search', nil, query)

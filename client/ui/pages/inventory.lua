@@ -30,7 +30,7 @@ function AdminUI.OpenInventoryCategories()
     end
 
     AdminUI.AddFooter(page)
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenSelectedPlayer)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenCharacterManagement)
     AdminUI.OpenPage('inventory_categories')
 end
 

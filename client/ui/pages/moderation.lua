@@ -7,6 +7,29 @@ local function targetLabel(target)
     return tostring(name or AdminTranslate('not_available'))
 end
 
+local function targetDetails(target)
+    if not target then return AdminTranslate('not_available') end
+    local details = {
+        ('%s: %s'):format(AdminTranslate('status'),
+            AdminTranslate(target.serverId and 'online' or 'offline')),
+        ('%s: %s'):format(AdminTranslate('character_name'),
+            tostring(target.characterName or AdminTranslate('not_available'))),
+        ('%s: %s'):format(AdminTranslate('account_name'),
+            tostring(target.serverName or target.playerName or AdminTranslate('not_available')))
+    }
+    if target.serverId then
+        details[#details + 1] = ('%s: %s'):format(AdminTranslate('server_id'), tostring(target.serverId))
+    end
+    if target.characterId then
+        details[#details + 1] = ('%s: %s'):format(AdminTranslate('character_id'), tostring(target.characterId))
+    end
+    if target.roleName then
+        details[#details + 1] = ('%s: %s (%s)'):format(AdminTranslate('role_name'),
+            tostring(target.roleName), tostring(target.roleLevel or 0))
+    end
+    return table.concat(details, '\n')
+end
+
 local actionDefinitions = {
     warn = { permission = 'moderation.warn', label = 'warn_player' },
     kick = { permission = 'moderation.kick', label = 'kick_player', onlineOnly = true },
@@ -46,7 +69,11 @@ end
 
 function AdminUI.OpenModerationConfirmation(action, reason, duration)
     local definition = actionDefinitions[action]
-    if not definition or not AdminUI.CanUseOnTarget(definition.permission, AdminModeration.target and AdminModeration.target.serverId) then return end
+    if not definition or not AdminUI.CanUseOnTarget(definition.permission,
+            AdminModeration.target and AdminModeration.target.serverId) then
+        AdminUI.NotifyActionDenied()
+        return
+    end
 
     local parsedDuration
     if action == 'ban' then
@@ -98,6 +125,7 @@ end
 function AdminUI.OpenModeration()
     if not AdminUI.CanUse('moderation.view') then return end
 
+    AdminModeration.searchOrigin = 'moderation'
     local query
     local page = AdminUI.RegisterPage('moderation')
 
@@ -208,7 +236,10 @@ function AdminUI.OpenModerationTarget()
 
     local form = AdminModeration.form
     local actions = availableActions(target)
-    if #actions == 0 then return end
+    if #actions == 0 then
+        AdminUI.NotifyActionDenied()
+        return
+    end
 
     local selectedIndex = 0
     for index, option in ipairs(actions) do
@@ -220,7 +251,7 @@ function AdminUI.OpenModerationTarget()
 
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('moderation_target_header'))
 
-    AdminUI.AddText(page, targetLabel(target))
+    AdminUI.AddText(page, targetDetails(target))
 
     AdminUI.AddLine(page)
 
@@ -259,7 +290,13 @@ function AdminUI.OpenModerationTarget()
     AdminUI.AddFooter(page)
 
     AdminUI.AddFooterButton(page, AdminTranslate('back'), function()
-        if target.serverId then AdminUI.OpenSelectedPlayer() else AdminUI.OpenModerationSearchResults() end
+        if target.serverId then
+            AdminUI.OpenSelectedPlayer()
+        elseif AdminModeration.searchOrigin == 'players' then
+            AdminUI.OpenOfflinePlayer(AdminModeration.target)
+        else
+            AdminUI.OpenModerationSearchResults()
+        end
     end)
 
     AdminUI.OpenPage('moderation_target')

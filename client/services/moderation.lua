@@ -1,7 +1,8 @@
 AdminModeration = {
     target = nil,
     results = {},
-    form = {}
+    form = {},
+    searchOrigin = 'players'
 }
 
 local function validReason(reason)
@@ -16,7 +17,15 @@ function AdminModeration.ValidateReason(reason)
 end
 
 function AdminModeration.SelectOnline(serverId)
-    AdminModeration.target = { serverId = tonumber(serverId) }
+    serverId = tonumber(serverId)
+    local target = { serverId = serverId, isOnline = true }
+    for _, player in ipairs(ClientAllPlayers) do
+        if tonumber(player.serverId) == serverId then
+            for key, value in pairs(player) do target[key] = value end
+            break
+        end
+    end
+    AdminModeration.target = target
     AdminModeration.form = {}
     AdminUI.OpenModerationTarget()
 end
@@ -67,13 +76,32 @@ function AdminModeration.Search(query)
     return true
 end
 
-function AdminModeration.Unban(banId)
+function AdminModeration.SearchPlayers(query)
+    if type(query) ~= 'string' or query:match('^%s*$') then return false end
+    AdminPlayerDirectory.query = query:match('^%s*(.-)%s*$')
+    local minimum = math.max(1, tonumber(Config.moderation.minSearchLength) or 2)
+    if #AdminPlayerDirectory.query < minimum or #AdminPlayerDirectory.query > 100 then return false end
+    AdminModeration.searchOrigin = 'players'
+    Feather.RPC.Notify('feather-admin:moderation:search', {
+        query = AdminPlayerDirectory.query,
+        roleId = AdminPlayerDirectory.roleFilterId
+    })
+    return true
+end
+
+function AdminModeration.Unban(banId, origin)
+    AdminModeration.unbanOrigin = origin or 'history'
     Feather.RPC.Notify('feather-admin:moderation:unban', { banId = banId })
 end
 
 RegisterNetEvent('feather-admin:moderation:search:result', function(results)
     AdminModeration.results = type(results) == 'table' and results or {}
-    AdminUI.OpenModerationSearchResults()
+    if AdminModeration.searchOrigin == 'players' then
+        AdminPlayerDirectory.results = AdminModeration.results
+        AdminUI.OpenPlayerSearchResults()
+    else
+        AdminUI.OpenModerationSearchResults()
+    end
 end)
 
 RegisterNetEvent('feather-admin:moderation:history:result', function(history)
@@ -82,5 +110,14 @@ end)
 
 RegisterNetEvent('feather-admin:moderation:result', function(messageKey)
     Feather.Notify.RightNotify(AdminTranslate(messageKey), 3000)
-    if messageKey == 'ban_revoked' then AdminModeration.RequestHistory() end
+    if messageKey ~= 'ban_revoked' then return end
+
+    local origin = AdminModeration.unbanOrigin
+    AdminModeration.unbanOrigin = nil
+    if origin == 'active_bans' then
+        AdminActiveBans.selected = nil
+        AdminActiveBans.Request(AdminActiveBans.page)
+    else
+        AdminModeration.RequestHistory()
+    end
 end)

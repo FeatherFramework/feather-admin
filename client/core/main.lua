@@ -1,7 +1,8 @@
 local AdminKeyListener = nil
 
-RegisterNetEvent('feather-admin:players:sync', function(players)
+RegisterNetEvent('feather-admin:players:sync', function(players, roles)
     ClientAllPlayers = players or {}
+    AdminPlayerDirectory.roles = type(roles) == 'table' and roles or AdminPlayerDirectory.roles
     if InMenu and AdminUI.currentPage == 'players' then
         AdminUI.OpenPlayers()
     end
@@ -50,13 +51,51 @@ end)
 AddEventHandler('Feather:Character:Logout', function()
     AdminPermissions = {}
     ClientAllPlayers = {}
+    AdminPlayerDirectory.query = ''
+    AdminPlayerDirectory.results = {}
+    AdminPlayerDirectory.selected = nil
+    AdminPlayerDirectory.roles = {}
+    AdminPlayerDirectory.roleFilterId = nil
     AdminStaff.roles = {}
     AdminStaff.players = {}
     AdminStaff.results = {}
     AdminStaff.selectedTarget = nil
+    AdminStaff.pendingTarget = nil
     AdminStaff.selectedRole = nil
+    AdminStaff.roleFilterId = nil
+    AdminStaff.reason = ''
     AdminStaff.searchQuery = nil
+    AdminStaff.searchPage = 1
+    AdminStaff.searchHasNext = false
+    AdminStaff.history = {}
+    AdminStaff.historyPage = 1
+    AdminStaff.historyHasNext = false
     AdminStaff.origin = 'online'
+    AdminServerOverview.snapshot = nil
+    AdminAnnouncements.form = { title = '', message = '' }
+    AdminAnnouncements.pending = false
+    AdminAnnouncements.requestSession = AdminAnnouncements.requestSession + 1
+    AdminActiveBans.rows = {}
+    AdminActiveBans.query = ''
+    AdminActiveBans.page = 1
+    AdminActiveBans.hasNext = false
+    AdminActiveBans.selected = nil
+    AdminModeration.unbanOrigin = nil
+    AdminReports.rows = {}
+    AdminReports.page = 1
+    AdminReports.hasNext = false
+    AdminReports.status = 'open'
+    AdminReports.selected = nil
+    AdminReports.resolution = ''
+    AdminCases.rows = {}
+    AdminCases.page = 1
+    AdminCases.hasNext = false
+    AdminCases.status = 'open'
+    AdminCases.selected = nil
+    AdminCases.links = {}
+    AdminCases.activity = {}
+    AdminCases.createForm = { title = '', summary = '', priority = 'normal', reportId = nil }
+    AdminCases.resolution = ''
     AdminUI.targetPlayer = nil
     AdminUI.toggleStates = {}
     AdminUI.pendingToggles = {}

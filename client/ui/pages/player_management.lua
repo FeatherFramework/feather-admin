@@ -32,6 +32,13 @@ function AdminUI.OpenPlayerInfo(info)
     AdminUI.AddLine(page)
     AdminUI.AddText(page, economyText)
     AdminUI.AddLine(page)
+    if AdminUI.CanUseOnTarget('moderation.history', info.serverId) then
+        AdminUI.AddButton(page, AdminTranslate('view_moderation_history'), function()
+            AdminModeration.SelectOnline(info.serverId)
+            AdminModeration.RequestHistory()
+        end)
+        AdminUI.AddLine(page)
+    end
     local identifiers = type(info.identifiers) == 'table' and info.identifiers or {}
     if #identifiers == 0 then
         AdminUI.AddText(page, AdminTranslate('identifiers'))
@@ -71,12 +78,17 @@ function AdminUI.OpenPlayerManagement()
     if not AdminUI.CanUseAny('player.') then return end
 
     local page = AdminUI.RegisterPage('player_management')
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('movement_header'))
+    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('teleportation'))
 
     if AdminUI.CanUseOnTarget('player.go_to') then
         local label = AdminTranslate('go_to_player')
         AdminUI.AddButton(page, label, function()
             AdminPlayerManagement.GoTo(AdminUI.GetTarget())
+            AdminUI.Close()
+        end)
+
+        AdminUI.AddButton(page, AdminTranslate('return_to_previous_location'), function()
+            AdminPlayerManagement.ReturnToPreviousLocation()
             AdminUI.Close()
         end)
     end

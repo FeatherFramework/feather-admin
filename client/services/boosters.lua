@@ -44,12 +44,18 @@ local function moveNoclipPed(ped, forwardAmount, strafeAmount, verticalAmount, s
     local distance = speed * GetFrameTime()
     local coords = GetEntityCoords(ped)
     SetEntityVelocity(ped, 0.0, 0.0, 0.0)
-    if forwardAmount ~= 0.0 then SetEntityHeading(ped, rotation.z) end
     SetEntityCoordsNoOffset(ped,
         coords.x + (x / length) * distance,
         coords.y + (y / length) * distance,
         coords.z + (z / length) * distance,
         false, false, false)
+end
+
+local function faceNoclipPedForward(ped)
+    -- Camera yaw points toward the camera in RedM's entity-heading space.
+    -- Turn the ped around so its forward direction matches the view direction.
+    local heading = (GetGameplayCamRot(2).z + 180.0) % 360.0
+    SetEntityHeading(ped, heading)
 end
 
 local function runInfiniteStamina()
@@ -73,6 +79,10 @@ local function runNoclip(session)
             state.noclipPed = ped
             setNoclipPed(ped, true)
         end
+
+        -- Keep the model aligned with the camera even while idle. Without
+        -- this, movement tasks can briefly turn the ped toward the camera.
+        faceNoclipPedForward(ped)
 
         -- Suppress the gameplay actions assigned to the noclip controls.
         DisablePlayerFiring(PlayerId(), true)
@@ -180,6 +190,21 @@ end)
 
 RegisterNetEvent('feather-admin:booster:toggle:result', function(requestId, succeeded)
     AdminUI.ResolveServerToggle(requestId, succeeded)
+end)
+
+RegisterNetEvent('feather-admin:booster:death:check', function(requestId)
+    local player = PlayerId()
+    local ped = PlayerPedId()
+    local isDead = IsPlayerDead(player) == true
+        or (ped ~= 0 and DoesEntityExist(ped) and IsEntityDead(ped) == true)
+    Feather.RPC.Notify('feather-admin:booster:death:result', {
+        requestId = requestId,
+        isDead = isDead
+    })
+end)
+
+RegisterNetEvent('feather-admin:booster:result', function(messageKey)
+    Feather.Notify.RightNotify(AdminTranslate(messageKey), 3000)
 end)
 
 AddEventHandler('onResourceStop', function(resourceName)

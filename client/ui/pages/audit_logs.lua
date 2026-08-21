@@ -164,6 +164,16 @@ function AdminUI.OpenAuditLogs()
     end
 
     AdminUI.AddFooter(page)
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenMain)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), function()
+        AdminUI.OpenNavigationSection('staff_oversight')
+    end)
     AdminUI.OpenPage('audit_logs')
 end
+
+AdminUI.RegisterNavigationItem('staff_oversight', {
+    key = 'admin_logs',
+    labelKey = 'admin_logs',
+    order = 20,
+    permission = 'audit.view',
+    open = function() AdminAuditLogs.Request(1) end
+})

@@ -3,6 +3,8 @@
 -- Change the numbers to match the levels in your server's roles table.
 Config.permissions = {
     ['menu.open'] = 50,
+    ['server.overview'] = 50,
+    ['server.announce'] = 75,
     ['players.view'] = 50,
     ['player.info'] = 50,
     ['player.go_to'] = 50,
@@ -11,6 +13,7 @@ Config.permissions = {
     ['player.spectate'] = 50,
 
     ['moderation.view'] = 50,
+    ['moderation.bans.view'] = 75,
     ['moderation.search'] = 50,
     ['moderation.search_identifiers'] = 75,
     ['moderation.history'] = 50,
@@ -19,12 +22,25 @@ Config.permissions = {
     ['moderation.unban'] = 75,
     ['moderation.kick'] = 50,
 
+    ['reports.view'] = 50,
+    ['reports.claim'] = 50,
+    ['reports.close'] = 50,
+    ['reports.manage'] = 75,
+
+    ['cases.view'] = 50,
+    ['cases.create'] = 50,
+    ['cases.claim'] = 50,
+    ['cases.link'] = 50,
+    ['cases.close'] = 75,
+    ['cases.manage'] = 75,
+
     ['audit.view'] = 75,
     ['audit.sensitive'] = 99,
 
     ['staff.view'] = 99,
     ['staff.search'] = 99,
     ['staff.search_identifiers'] = 99,
+    ['staff.history'] = 99,
     ['staff.role.assign'] = 99,
 
     ['economy.dollars.add'] = 99,

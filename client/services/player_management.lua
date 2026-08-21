@@ -37,6 +37,11 @@ function AdminPlayerManagement.GoTo(target)
     return true
 end
 
+function AdminPlayerManagement.ReturnToPreviousLocation()
+    Feather.RPC.Notify('feather-admin:player:return', {})
+    return true
+end
+
 function AdminPlayerManagement.Bring(target)
     Feather.RPC.Notify('feather-admin:player:bring', { playerId = target })
     return true

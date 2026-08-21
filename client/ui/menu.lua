@@ -195,6 +195,10 @@ function AdminUI.CanUse(action)
     return AdminPermissions[action] == true
 end
 
+function AdminUI.NotifyActionDenied()
+    Feather.Notify.RightNotify(AdminTranslate('action_not_permitted'), 3000)
+end
+
 function AdminUI.IsSelfTarget(target)
     local targetId = tonumber(target or AdminUI.GetTarget())
     return targetId ~= nil and targetId == GetPlayerServerId(PlayerId())
@@ -216,6 +220,28 @@ function AdminUI.CanUseOnTarget(action, ...)
     local hierarchy = type(Config.hierarchy) == 'table' and Config.hierarchy or {}
     local allowSelf = type(hierarchy.allowSelf) == 'table' and hierarchy.allowSelf or {}
     return allowSelf[action] == true
+end
+
+function AdminUI.RequireUseOnTarget(action, ...)
+    if AdminUI.CanUseOnTarget(action, ...) then return true end
+
+    AdminUI.NotifyActionDenied()
+    return false
+end
+
+function AdminUI.CanUseAnyAction(actions)
+    for _, action in ipairs(actions or {}) do
+        if AdminUI.CanUse(action) then return true end
+    end
+    return false
+end
+
+function AdminUI.RequireAnyUseOnTarget(actions, ...)
+    for _, action in ipairs(actions or {}) do
+        if AdminUI.CanUseOnTarget(action, ...) then return true end
+    end
+    AdminUI.NotifyActionDenied()
+    return false
 end
 
 function AdminUI.CanUseAny(prefix)
@@ -274,7 +300,8 @@ function AdminUI.RunServerToggleAction(label, action, element, callback)
     }
     callback(requestId)
 
-    SetTimeout(10000, function()
+    CreateThread(function()
+        Wait(10000)
         AdminUI.pendingToggles[requestId] = nil
     end)
     return true
