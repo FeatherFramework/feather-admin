@@ -25,6 +25,27 @@ Config = {
     },
     -----------------------------------------------------
 
+    -- Resources displayed on the read-only Server Overview page.
+    serverOverview = {
+        resources = {
+            'feather-core',
+            'feather-menu',
+            'feather-inventory',
+            'feather-character',
+            'feather-admin'
+        }
+    },
+    -----------------------------------------------------
+
+    -- Limits and timing for server-wide staff announcements.
+    announcements = {
+        maxTitleLength = 60,    -- Maximum optional title length.
+        maxMessageLength = 300, -- Maximum required message length.
+        cooldownSeconds = 30,   -- Delay between announcements from one staff member.
+        duration = 8000         -- Time the announcement remains visible in milliseconds.
+    },
+    -----------------------------------------------------
+
     -- Limits a single economy adjustment to a safe amount.
     economy = {
         maxAmount = 1000000
@@ -39,8 +60,10 @@ Config = {
 
     -- Limits offline character searches in Staff Management.
     staff = {
-        searchLimit = 25,    -- Maximum matching characters shown at once.
-        minSearchLength = 2  -- Minimum characters required for a search.
+        searchLimit = 20,       -- Characters shown on each search page.
+        historyLimit = 20,      -- Role changes shown on each history page.
+        minSearchLength = 2,    -- Minimum characters required for a search.
+        maxReasonLength = 200   -- Maximum required role-change reason length.
     },
     -----------------------------------------------------
 
