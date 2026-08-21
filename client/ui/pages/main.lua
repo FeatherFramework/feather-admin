@@ -11,32 +11,26 @@ function AdminUI.OpenMain()
         end)
     end
 
-    if AdminUI.CanUse('moderation.view') and AdminUI.CanUse('moderation.search') then
-        AdminUI.AddButton(page, AdminTranslate('offline_players'), function()
-            AdminUI.OpenModeration()
+    if AdminUI.HasNavigationItems('server_operations') then
+        AdminUI.AddButton(page, AdminTranslate('server_operations'), function()
+            AdminUI.OpenNavigationSection('server_operations')
         end)
     end
 
-    if AdminUI.CanUse('audit.view') then
-        AdminUI.AddButton(page, AdminTranslate('admin_logs'), function()
-            AdminAuditLogs.Request(1)
+    if AdminUI.HasNavigationItems('moderation_center') then
+        AdminUI.AddButton(page, AdminTranslate('moderation_center'), function()
+            AdminUI.OpenNavigationSection('moderation_center')
         end)
     end
 
-    if AdminUI.CanUse('staff.view') then
-        AdminUI.AddButton(page, AdminTranslate('staff_management'), function()
-            AdminStaff.Request()
+    if AdminUI.HasNavigationItems('staff_oversight') then
+        AdminUI.AddButton(page, AdminTranslate('staff_oversight'), function()
+            AdminUI.OpenNavigationSection('staff_oversight')
         end)
     end
 
-    if AdminUI.CanUseAny('teleport.') then
-        AdminUI.AddButton(page, AdminTranslate('travel'), function()
-            AdminUI.OpenTeleports()
-        end)
-    end
-
-    if AdminUI.CanUsePlayerStatus(true) or AdminUI.CanUse('ped.change')
-        or AdminUI.CanUse('troll.make_ped_giant') then
+    if AdminUI.CanUseAny('teleport.') or AdminUI.CanUsePlayerStatus(true)
+        or AdminUI.CanUse('ped.change') or AdminUI.CanUse('troll.make_ped_giant') then
         AdminUI.AddButton(page, AdminTranslate('self_tools'), function()
             AdminUI.SetTarget(GetPlayerServerId(PlayerId()))
             AdminUI.OpenSelfTools()
