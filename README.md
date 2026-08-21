@@ -13,6 +13,9 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Kick an online player from the Moderation page with a required reason
 - Issue persistent warnings and review moderation history
 - Apply permanent or temporary account bans
+- Browse, search, inspect, and revoke currently active bans
+- Convert serious player reports into durable staff cases with priorities, ownership, linked records, and resolutions
+- Accept persistent player reports that staff can claim, release, investigate, and close
 - See online or offline status directly on player search results
 - Revoke active bans from the in-game menu
 - Block banned accounts before they enter the server
@@ -66,8 +69,8 @@ Feather Admin creates its moderation and durable action-audit database tables au
 
 Every menu action has a minimum numeric role level in `configs/permissions.lua`. The default tiers are:
 
-- Level `50` — Moderator: player support, warnings, kicks, spectating, travel, healing, and reviving
-- Level `75` — Senior Admin: bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
+- Level `50` — Moderator: player support, reports, staff cases, warnings, kicks, spectating, travel, healing, and reviving
+- Level `75` — Senior Admin: report and case oversight, case closure, bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
 - Level `99` — Owner: staff role management, economy adjustments, sensitive log details, and the most disruptive special effects
 
 These are numeric checks; the role names are only friendly labels. You can rename the roles without changing permission behavior.
@@ -130,6 +133,9 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `staff.minSearchLength`: require a minimum staff-search length
 - `staff.maxReasonLength`: limit required role-change reasons
 - `moderation.searchLimit`: limit offline search results
+- `moderation.activeBanLimit`: set the number of active bans shown per page
+- `reports`: configure the report command, categories, cooldown, limits, and page size
+- `cases`: configure case priorities, page size, and text limits
 - `moderation.minSearchLength`: require a minimum offline-search length
 - `moderation.historyLimit`: limit the history records shown
 - `moderation.maxReasonLength`: set the maximum warning or ban reason length
@@ -159,6 +165,12 @@ Player searches use prefix matching for names. License searches require the comp
 Senior staff can open **Staff & Oversight**, then **Admin Logs**, to review durable action records. Choose an action from the categorized action picker, filter completed or blocked attempts, filter names by their beginning, and enter dates as `MM-DD-YYYY`. License identifiers and economy details are visible only to staff with `audit.sensitive` permission.
 
 Staff with `server.announce` permission can open **Server Operations**, then **Announcements**, enter an optional title and required message, review the confirmation page, and send it to every connected player.
+
+Senior staff can open **Moderation Center**, then **Active Bans**, to browse current bans, search by name, inspect details, and confirm a revocation. Exact-license searches require `moderation.search_identifiers` permission.
+
+Players can submit a report with `/report <category> <message>`. Staff can open **Moderation Center**, then **Player Reports**, to claim reports, go to an online reporter, release claimed work, and close a report with a required resolution.
+
+Staff can convert a player report into a case from its details page. Cases keep the subject, priority, assigned staff member, source report, linked warning/kick/ban/audit records, and final resolution together in one durable file.
 
 Every page has a **Back** button. Use **Close** on the main page or tap **ESC** to exit the menu.
 
