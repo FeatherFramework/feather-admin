@@ -28,6 +28,12 @@ Config.hierarchy = {
         ['moderation.ban'] = false,
         ['moderation.unban'] = false,
 
+        -- Staff cases
+        ['cases.create'] = false,
+        ['cases.claim'] = false,
+        ['cases.link'] = false,
+        ['cases.close'] = false,
+
         -- Economy and character
         ['economy.dollars.add'] = true,
         ['economy.dollars.remove'] = true,
