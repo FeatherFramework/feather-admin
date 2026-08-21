@@ -25,6 +25,7 @@ Config.permissions = {
     ['staff.view'] = 99,
     ['staff.search'] = 99,
     ['staff.search_identifiers'] = 99,
+    ['staff.history'] = 99,
     ['staff.role.assign'] = 99,
 
     ['economy.dollars.add'] = 99,
