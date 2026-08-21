@@ -40,6 +40,8 @@ function AdminUI.OpenBoosters(includeLocalActions)
                     AdminUI.RunServerToggleAction(label, action.action, element, function(requestId)
                         AdminBoosters.Request(action.action, AdminUI.GetTarget(), requestId)
                     end)
+                elseif action.action == 'revive' then
+                    AdminBoosters.Request(action.action, AdminUI.GetTarget())
                 else
                     AdminUI.RunAction(label, function()
                         AdminBoosters.Request(action.action, AdminUI.GetTarget())
