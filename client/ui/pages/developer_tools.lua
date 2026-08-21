@@ -15,22 +15,23 @@ function AdminUI.OpenDeveloperTools()
         end)
     end
 
-    local coordinateActions = {
-        { key = 'copy_vector3', format = 'vector3' },
-        { key = 'copy_vector4', format = 'vector4' },
-        { key = 'copy_xyz', format = 'xyz' },
-        { key = 'copy_heading', format = 'heading' }
-    }
     if AdminUI.CanUse('developer.copy_coordinates') then
-        for _, entry in ipairs(coordinateActions) do
-            local action = entry
-            local label = AdminTranslate(action.key)
-            AdminUI.AddButton(page, label, function()
-                AdminUI.RunAction(label, function()
-                    return AdminDeveloperTools.CopyCoordinates(action.format)
-                end)
-            end)
-        end
+        local options = {
+            { display = AdminTranslate('position_vector3'), value = 'vector3' },
+            { display = AdminTranslate('position_vector4'), value = 'vector4' },
+            { display = AdminTranslate('position_xyz'), value = 'xyz' },
+            { display = AdminTranslate('position_heading'), value = 'heading' }
+        }
+        local selected = options[1].value
+        local selectedLabel = options[1].display
+        AdminUI.AddArrows(page, AdminTranslate('position_format'), options, 0, function(data)
+            selected = data.value.value
+            selectedLabel = data.value.display
+        end)
+        AdminUI.AddButton(page, AdminTranslate('copy'), function()
+            local message = ('%s %s'):format(selectedLabel, AdminTranslate('copied'))
+            AdminUI.RunAction(message, function() return AdminDeveloperTools.CopyCoordinates(selected) end)
+        end)
     end
 
     AdminUI.AddFooter(page)
