@@ -29,7 +29,9 @@ end
 
 function AdminModeration.ValidateBan(reason, duration)
     if not validReason(reason) then return false, 'reason' end
+
     duration = (duration == nil or duration == '') and 0 or tonumber(duration)
+
     local maximum = tonumber(Config.moderation.maxBanMinutes) or 525600
     if not duration or duration < 0 or duration > maximum or duration % 1 ~= 0 then return false, 'duration' end
     return true, nil, duration
@@ -46,6 +48,7 @@ end
 
 function AdminModeration.Warn(reason)
     if not validReason(reason) then return false end
+
     Feather.RPC.Notify('feather-admin:moderation:warn', { target = AdminModeration.target, reason = reason })
     return true
 end
@@ -53,6 +56,7 @@ end
 function AdminModeration.Kick(reason)
     local target = AdminModeration.target
     if not target or not target.serverId or not validReason(reason) then return false end
+
     Feather.RPC.Notify('feather-admin:moderation:kick', { playerId = target.serverId, reason = reason })
     return true
 end
@@ -63,6 +67,7 @@ end
 
 function AdminModeration.Search(query)
     if type(query) ~= 'string' or query:match('^%s*$') then return false end
+
     Feather.RPC.Notify('feather-admin:moderation:search', { query = query })
     return true
 end
