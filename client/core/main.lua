@@ -75,6 +75,27 @@ AddEventHandler('Feather:Character:Logout', function()
     AdminAnnouncements.form = { title = '', message = '' }
     AdminAnnouncements.pending = false
     AdminAnnouncements.requestSession = AdminAnnouncements.requestSession + 1
+    AdminActiveBans.rows = {}
+    AdminActiveBans.query = ''
+    AdminActiveBans.page = 1
+    AdminActiveBans.hasNext = false
+    AdminActiveBans.selected = nil
+    AdminModeration.unbanOrigin = nil
+    AdminReports.rows = {}
+    AdminReports.page = 1
+    AdminReports.hasNext = false
+    AdminReports.status = 'open'
+    AdminReports.selected = nil
+    AdminReports.resolution = ''
+    AdminCases.rows = {}
+    AdminCases.page = 1
+    AdminCases.hasNext = false
+    AdminCases.status = 'open'
+    AdminCases.selected = nil
+    AdminCases.links = {}
+    AdminCases.activity = {}
+    AdminCases.createForm = { title = '', summary = '', priority = 'normal', reportId = nil }
+    AdminCases.resolution = ''
     AdminUI.targetPlayer = nil
     AdminUI.toggleStates = {}
     AdminUI.pendingToggles = {}
