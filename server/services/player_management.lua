@@ -63,6 +63,20 @@ FeatherAdmin.RegisterRPC('feather-admin:player:go_to', function(params, _, src)
     end
 end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 128 })
 
+FeatherAdmin.RegisterRPC('feather-admin:player:return', function(_, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'player.go_to') then return end
+    local destination = returnLocations[src]
+    if destination == nil then
+        notify(src, 'No previous location is saved.')
+        return
+    end
+
+    returnLocations[src] = nil
+    TriggerClientEvent('feather-admin:player:teleport', src, destination)
+    AdminAudit.Record(src, 'player.return', src)
+    notify(src, 'Returned to your previous location.')
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 64 })
+
 FeatherAdmin.RegisterRPC('feather-admin:player:bring', function(params, _, src)
     local playerId = params.playerId
     local target = FeatherAdmin.RequireTarget(src, 'player.bring', playerId)
