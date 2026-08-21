@@ -55,7 +55,14 @@ AddEventHandler('Feather:Character:Logout', function()
     AdminStaff.results = {}
     AdminStaff.selectedTarget = nil
     AdminStaff.selectedRole = nil
+    AdminStaff.roleFilterId = nil
+    AdminStaff.reason = ''
     AdminStaff.searchQuery = nil
+    AdminStaff.searchPage = 1
+    AdminStaff.searchHasNext = false
+    AdminStaff.history = {}
+    AdminStaff.historyPage = 1
+    AdminStaff.historyHasNext = false
     AdminStaff.origin = 'online'
     AdminUI.targetPlayer = nil
     AdminUI.toggleStates = {}
