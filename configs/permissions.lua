@@ -13,6 +13,7 @@ Config.permissions = {
     ['player.spectate'] = 50,
 
     ['moderation.view'] = 50,
+    ['moderation.bans.view'] = 75,
     ['moderation.search'] = 50,
     ['moderation.search_identifiers'] = 75,
     ['moderation.history'] = 50,
@@ -20,6 +21,18 @@ Config.permissions = {
     ['moderation.ban'] = 75,
     ['moderation.unban'] = 75,
     ['moderation.kick'] = 50,
+
+    ['reports.view'] = 50,
+    ['reports.claim'] = 50,
+    ['reports.close'] = 50,
+    ['reports.manage'] = 75,
+
+    ['cases.view'] = 50,
+    ['cases.create'] = 50,
+    ['cases.claim'] = 50,
+    ['cases.link'] = 50,
+    ['cases.close'] = 75,
+    ['cases.manage'] = 75,
 
     ['audit.view'] = 75,
     ['audit.sensitive'] = 99,
