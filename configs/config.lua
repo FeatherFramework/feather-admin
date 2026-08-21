@@ -39,8 +39,10 @@ Config = {
 
     -- Limits offline character searches in Staff Management.
     staff = {
-        searchLimit = 25,    -- Maximum matching characters shown at once.
-        minSearchLength = 2  -- Minimum characters required for a search.
+        searchLimit = 20,       -- Characters shown on each search page.
+        historyLimit = 20,      -- Role changes shown on each history page.
+        minSearchLength = 2,    -- Minimum characters required for a search.
+        maxReasonLength = 200   -- Maximum required role-change reason length.
     },
     -----------------------------------------------------
 
