@@ -5,6 +5,22 @@ local state = {
     autoWaypointSession = 0
 }
 
+local mapAppHash = joaat('Map')
+
+local function closeMapApp()
+    if not IsUiappActiveByHash(mapAppHash) then return end
+
+    CloseUiappByHash(mapAppHash)
+
+    local deadline = GetGameTimer() + 1500
+    Wait(0)
+
+    while IsUiappTransitioningByHash(mapAppHash)
+        and GetGameTimer() < deadline do
+        Wait(0)
+    end
+end
+
 local function sameWaypoint(first, second)
     if not first or not second then return false end
     return Feather.Math.GetDistanceBetween(first, second) < 1.0
@@ -20,8 +36,12 @@ local function runAutoWaypoint(session)
         if IsWaypointActive() then
             local waypoint = GetWaypointCoords()
             if not sameWaypoint(waypoint, lastWaypoint) then
-                local result = Feather.Teleport:ToWaypoint()
-                if result.success then lastWaypoint = waypoint end
+                -- Capture the waypoint first. Closing the Map app can leave
+                -- its active flag set during the transition, so that flag
+                -- must not decide whether teleporting is allowed.
+                closeMapApp()
+                local result = Feather.Teleport:ToCoords(waypoint, { mode = 'surface' })
+                if succeeded(result) then lastWaypoint = waypoint end
             end
         else
             lastWaypoint = nil
