@@ -371,6 +371,10 @@ Feather.Locale.register('en_us', {
     inventory_inventory_full = 'The player inventory has no available slots.',
     inventory_item_limit = 'That item would exceed its inventory limit.',
     inventory_weight_limit = 'That item would exceed the inventory weight limit.',
+    -- feather-inventory's GrantItem previously skipped the per-inventory
+    -- blacklist entirely; it now reports this code when the target inventory
+    -- is explicitly barred from holding the item.
+    inventory_item_restricted = 'That inventory cannot hold that item.',
     inventory_database_error = 'The item could not be saved.',
     inventory_grant_failed = 'The item could not be granted.',
 
