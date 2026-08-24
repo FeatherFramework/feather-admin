@@ -377,6 +377,8 @@ Feather.Locale.register('en_us', {
     inventory_item_restricted = 'That inventory cannot hold that item.',
     inventory_database_error = 'The item could not be saved.',
     inventory_grant_failed = 'The item could not be granted.',
+    inventory_unique_requires_issuer = 'That item must be issued by the resource that owns it, not granted here.',
+    inventory_catalog_unavailable = 'The item catalog is unavailable right now.',
 
     -- Player tools
     toggle_god_mode = 'God Mode',
