@@ -1,5 +1,45 @@
 local Inventory = exports['feather-inventory'].initiate()
 
+-- Minimum feather-inventory API contract this file is written against.
+local REQUIRED_INVENTORY_CONTRACT = 2
+
+-- Set once the contract has been verified. Every RPC below refuses to run
+-- while this is false, so a version mismatch degrades to "the inventory admin
+-- tools are unavailable" rather than to silently misread results.
+local ContractSatisfied = false
+
+---
+-- Verify the inventory contract before serving any inventory RPC.
+--
+-- A key-existence check cannot detect a changed return shape -- contract 2
+-- reshaped every return without renaming a single export, so the API looks
+-- identical and answers differently. This is the only gate that catches that.
+--
+-- The version is read from what the PROVIDER reports, never copied from our
+-- own required value: comparing a requirement against itself is a check that
+-- can never fail.
+CreateThread(function()
+    if GetResourceState('feather-inventory') ~= 'started' then
+        print('[feather-admin] feather-inventory is not started; inventory admin tools are disabled.')
+        return
+    end
+
+    local reported = Inventory.GetCapabilities and Inventory.GetCapabilities() or nil
+    if type(reported) ~= 'table' or reported.ok ~= true or type(reported.value) ~= 'table' then
+        print('[feather-admin] feather-inventory capabilities are unavailable; inventory admin tools are disabled.')
+        return
+    end
+
+    local contractVersion = tonumber(reported.value.contractVersion) or 0
+    if contractVersion < REQUIRED_INVENTORY_CONTRACT then
+        print(('[feather-admin] feather-inventory contract %d is too old (requires %d); inventory admin tools are disabled.')
+            :format(contractVersion, REQUIRED_INVENTORY_CONTRACT))
+        return
+    end
+
+    ContractSatisfied = true
+end)
+
 -- feather-inventory contract 2 answers in result envelopes:
 --   { ok = true,  value = <result> }
 --   { ok = false, error = { code, message, details } }
@@ -16,6 +56,10 @@ end
 
 FeatherAdmin.RegisterRPC('feather-admin:inventory:catalog', function(_, _, src)
     if not FeatherAdmin.RequirePermission(src, 'inventory.give') then return end
+
+    if not ContractSatisfied then
+        return TriggerClientEvent('feather-admin:inventory:result', src, false, 'inventory_catalog_unavailable')
+    end
 
     local listed = Inventory.Items.GetDefinitions()
     if failed(listed) then
@@ -57,6 +101,10 @@ end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 64 })
 FeatherAdmin.RegisterRPC('feather-admin:inventory:give', function(params, _, src)
     local target = FeatherAdmin.RequireTarget(src, 'inventory.give', params.playerId)
     if not target then return end
+
+    if not ContractSatisfied then
+        return TriggerClientEvent('feather-admin:inventory:result', src, false, 'inventory_catalog_unavailable')
+    end
 
     local itemName = type(params.itemName) == 'string' and params.itemName:match('^%s*(.-)%s*$') or ''
     local quantity = tonumber(params.quantity)
