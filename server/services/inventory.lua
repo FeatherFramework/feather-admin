@@ -7,6 +7,7 @@ local REQUIRED_INVENTORY_CONTRACT = 2
 -- while this is false, so a version mismatch degrades to "the inventory admin
 -- tools are unavailable" rather than to silently misread results.
 local ContractSatisfied = false
+local InspectionContractSatisfied = false
 
 ---
 -- Verify the inventory contract before serving any inventory RPC.
@@ -38,6 +39,12 @@ CreateThread(function()
     end
 
     ContractSatisfied = true
+    local features = type(reported.value.features) == 'table' and reported.value.features or {}
+    InspectionContractSatisfied = features.characterInventoryLookup == true
+        and features.adminExactRemoval == true
+    if not InspectionContractSatisfied then
+        print('[feather-admin] feather-inventory inspection capabilities are unavailable; inspection tools are disabled.')
+    end
 end)
 
 -- feather-inventory contract 2 answers in result envelopes:
@@ -53,6 +60,79 @@ end)
 local function failed(result)
     return type(result) ~= 'table' or result.ok ~= true
 end
+
+local function inventoryTarget(params)
+    local serverId = tonumber(params and params.serverId)
+    if serverId and GetPlayerName(serverId) then
+        local identity = FeatherAdmin.Identity.Resolve(serverId)
+        if identity and identity.accountId and identity.characterId then
+            return { serverId = serverId, accountId = identity.accountId,
+                accountName = identity.accountName or identity.serverName,
+                characterId = identity.characterId, characterName = identity.characterName }
+        end
+    end
+    local accountId = type(params and params.accountId) == 'string' and params.accountId or nil
+    local characterId = type(params and params.characterId) == 'string' and params.characterId or nil
+    if not accountId or not characterId then return nil end
+    local row = MySQL.single.await([[SELECT a.id AS accountId, a.display_name AS accountName,
+        p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName
+        FROM core_accounts a INNER JOIN character_profiles p
+          ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci
+        WHERE a.id = ? AND p.character_id = ? AND a.status = 'active' AND p.status = 'active' LIMIT 1]],
+        { accountId, characterId })
+    return row
+end
+
+local function targetAudit(row)
+    return { accountId = row.accountId, name = row.accountName,
+        characterId = row.characterId, characterName = row.characterName }
+end
+
+FeatherAdmin.RegisterRPC('feather-admin:inventory:inspect', function(params, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'inventory.inspect') or not InspectionContractSatisfied then return end
+    local target = inventoryTarget(params)
+    if not target or not FeatherAdmin.CheckTargetAccountHierarchy(
+            src, 'inventory.inspect', target.accountId, target.serverId) then return end
+    local resolved = exports['feather-inventory']:GetCharacterInventory(target.characterId)
+    if failed(resolved) then
+        return TriggerClientEvent('feather-admin:inventory:inspect:result', src, false,
+            'inventory_inspection_unavailable')
+    end
+    local listed = Inventory.Inventory.GetInventoryItems(resolved.value.id)
+    if failed(listed) then
+        return TriggerClientEvent('feather-admin:inventory:inspect:result', src, false,
+            'inventory_inspection_unavailable')
+    end
+    local rows = {}
+    for _, item in ipairs(listed.value) do
+        rows[#rows + 1] = { id = tonumber(item.id), name = item.name,
+            displayName = item.display_name or item.name, description = item.description,
+            slot = tonumber(item.slot_index), weight = tonumber(item.weight), metadata = item.metadata }
+    end
+    TriggerClientEvent('feather-admin:inventory:inspect:result', src, true, nil,
+        target, rows, resolved.value)
+end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 192 })
+
+FeatherAdmin.RegisterRPC('feather-admin:inventory:remove-instance', function(params, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'inventory.remove') or not InspectionContractSatisfied then return end
+    local target, instanceId = inventoryTarget(params), tonumber(params.instanceId)
+    if not target or not instanceId or instanceId % 1 ~= 0
+        or not FeatherAdmin.CheckTargetAccountHierarchy(
+            src, 'inventory.remove', target.accountId, target.serverId) then return end
+    local removed = exports['feather-inventory']:RemoveCharacterInventoryInstance(
+        target.characterId, instanceId, 'admin_remove')
+    if failed(removed) then
+        local code = type(removed) == 'table' and removed.error and removed.error.code or 'internal'
+        AdminAudit.RecordTarget(src, 'inventory.remove.failed', targetAudit(target),
+            ('instance=%s reason=%s'):format(instanceId, tostring(code)))
+        return TriggerClientEvent('feather-admin:inventory:remove:result', src, false,
+            'inventory_remove_' .. tostring(code))
+    end
+    AdminAudit.RecordTarget(src, 'inventory.remove', targetAudit(target),
+        ('instance=%s item=%s'):format(instanceId, tostring(removed.value.itemName)))
+    TriggerClientEvent('feather-admin:inventory:remove:result', src, true,
+        'inventory_item_removed', removed.value.displayName or removed.value.itemName)
+end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 192 })
 
 FeatherAdmin.RegisterRPC('feather-admin:inventory:catalog', function(_, _, src)
     if not FeatherAdmin.RequirePermission(src, 'inventory.give') then return end
