@@ -24,7 +24,10 @@ FeatherAdmin.RegisterRPC('feather-admin:active-bans:list', function(params, _, s
     local limit = math.max(1, math.min(tonumber(Config.moderation.activeBanLimit) or 20, 100))
     local offset = (page - 1) * limit
     local searchClause, values = '', {}
-    if query:sub(1, 8):lower() == 'license:' then
+    if #query == 36 and query:match('^[%x%-]+$') then
+        searchClause = 'AND account_id = ?'
+        values[#values + 1] = query
+    elseif query:sub(1, 8):lower() == 'license:' then
         if not FeatherAdmin.RequirePermission(src, 'moderation.search_identifiers') then return end
         searchClause = 'AND license = ?'
         values[#values + 1] = query
@@ -36,7 +39,7 @@ FeatherAdmin.RegisterRPC('feather-admin:active-bans:list', function(params, _, s
     end
 
     local rows = MySQL.query.await(([=[
-        SELECT id, player_name AS playerName, character_id AS characterId,
+        SELECT id, account_id AS accountId, player_name AS playerName, character_id AS characterId,
                character_name AS characterName, reason,
                admin_name AS adminName, admin_character_name AS adminCharacterName,
                DATE_FORMAT(expires_at, '%%m-%%d-%%Y %%h:%%i %%p') AS expiresAt,
