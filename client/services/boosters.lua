@@ -183,6 +183,17 @@ local actionHandlers = {
     end
 }
 
+RegisterNetEvent('feather-admin:booster:revive', function()
+    local ped = PlayerPedId()
+    ResurrectPed(ped)
+    SetAttributeCoreValue(ped, 0, 100)
+    SetEntityHealth(ped, 600, 1)
+    SetAttributeCoreValue(ped, 1, 100)
+    RestorePedStamina(ped, 100.0)
+    DisplayHud(true)
+    DisplayRadar(true)
+end)
+
 RegisterNetEvent('feather-admin:booster:apply', function(action)
     local handler = actionHandlers[action]
     if handler then handler() end
@@ -196,7 +207,12 @@ RegisterNetEvent('feather-admin:booster:death:check', function(requestId)
     local player = PlayerId()
     local ped = PlayerPedId()
     local isDead = IsPlayerDead(player) == true
-        or (ped ~= 0 and DoesEntityExist(ped) and IsEntityDead(ped) == true)
+        or (ped ~= 0 and DoesEntityExist(ped) and (
+            GetEntityHealth(ped) <= 0
+            or IsEntityDead(ped) == true
+            or (type(IsPedDeadOrDying) == 'function' and IsPedDeadOrDying(ped, true) == true)
+            or (type(IsPedFatallyInjured) == 'function' and IsPedFatallyInjured(ped) == true)
+        ))
     Feather.RPC.Notify('feather-admin:booster:death:result', {
         requestId = requestId,
         isDead = isDead
