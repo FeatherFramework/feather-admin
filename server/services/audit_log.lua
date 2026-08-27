@@ -5,42 +5,35 @@ local knownActions = {}
 
 local webhook
 local webhookUrl = tostring(Config.logging.webhook or '')
-if webhookUrl ~= '' then
-    webhook = FeatherAdmin.Core.Discord.Webhook.setup(
-        webhookUrl,
-        Config.logging.webhookName,
-        Config.logging.webhookAvatar
-    )
-end
 
 local function playerIdentity(playerId)
     if playerId == nil then return { label = 'none' } end
     local name = tostring(GetPlayerName(playerId) or 'unknown'):gsub('[%c]', ' ')
     local license = FeatherAdmin.Core.User.GetLicense(playerId)
-    local character = FeatherAdmin.Core.Character.GetCharacter({ src = playerId })
-    local char = character and character.char or {}
-    local characterName
-    if char.first_name then
-        characterName = ('%s %s'):format(char.first_name, char.last_name or ''):gsub('%s+$', '')
-    end
+    local identity = FeatherAdmin.Identity.Resolve(playerId) or {}
+    local characterName = identity.characterName
     if characterName then
         return {
-            label = ('%s (%s), character=%s (%s)'):format(name, tostring(playerId), characterName, tostring(char.id)),
-            license = license, name = name, characterId = tonumber(char.id), characterName = characterName
+            label = ('%s (%s), character=%s (%s)'):format(name, tostring(playerId), characterName,
+                tostring(identity.characterId)),
+            accountId = identity.accountId, license = license, name = name,
+            characterId = identity.characterId, characterName = characterName
         }
     end
-    return { label = ('%s (%s), character=none'):format(name, tostring(playerId)), license = license, name = name }
+    return { label = ('%s (%s), character=none'):format(name, tostring(playerId)),
+        accountId = identity.accountId, license = license, name = name }
 end
 
 local function persist(record)
     MySQL.insert.await([[
         INSERT INTO feather_admin_actions
-            (admin_license, admin_name, admin_character_id, admin_character_name,
-             action, target_license, target_name, target_character_id, target_character_name, details)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (admin_account_id, admin_license, admin_name, admin_character_id, admin_character_name,
+             action, target_account_id, target_license, target_name, target_character_id, target_character_name, details)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ]], {
-        record.admin.license, record.admin.name, record.admin.characterId, record.admin.characterName,
-        record.action, record.target.license, record.target.name, record.target.characterId,
+        record.admin.accountId, record.admin.license, record.admin.name, record.admin.characterId,
+        record.admin.characterName, record.action, record.target.accountId, record.target.license,
+        record.target.name, record.target.characterId,
         record.target.characterName, record.details
     })
 end
@@ -74,7 +67,12 @@ function AdminAudit.RecordTarget(adminId, action, target, details)
     else
         print('[feather-admin] Audit queue full; action could not be persisted.')
     end
-    if webhook then webhook:sendMessage('Admin Action', message) end
+    if webhookUrl ~= '' then
+        if not webhook and AdminWebhook and AdminWebhook.Create then
+            webhook = AdminWebhook.Create(webhookUrl, Config.logging.webhookName, Config.logging.webhookAvatar)
+        end
+        if webhook then webhook:Send('Admin Action', message) end
+    end
 end
 
 function AdminAudit.Record(adminId, action, targetId, details)
