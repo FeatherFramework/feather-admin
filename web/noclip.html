@@ -35,8 +35,32 @@
     </section>
     <script>
         const panel = document.getElementById('noclip');
+        const copyToClipboard = async (text) => {
+            const value = String(text || '');
+            if (!value) return;
+            try {
+                await navigator.clipboard.writeText(value);
+                return;
+            } catch (_) {
+                // Hidden RedM NUI pages can be denied modern clipboard access.
+            }
+            const textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            textarea.remove();
+        };
         window.addEventListener('message', ({ data }) => {
-            if (!data || data.type !== 'noclip') return;
+            if (!data) return;
+            if (data.type === 'clipboard') {
+                copyToClipboard(data.text);
+                return;
+            }
+            if (data.type !== 'noclip') return;
             panel.classList.toggle('visible', data.visible === true);
             if (!data.visible) return;
             for (const field of ['title', 'forward', 'strafe', 'vertical', 'speed', 'exit']) {
