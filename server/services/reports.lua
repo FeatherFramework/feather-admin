@@ -22,25 +22,23 @@ local function categoryMap()
 end
 
 local function characterIdentity(src)
-    local character = FeatherAdmin.Core.Character.GetCharacter({ src = src })
-    local char = character and character.char
+    local resolved = FeatherAdmin.Identity.Resolve(src)
     local license = FeatherAdmin.Core.User.GetLicense(src)
-    if not char or not license then return nil end
-    local characterName = ('%s %s'):format(char.first_name or '', char.last_name or ''):match('^%s*(.-)%s*$')
+    if not resolved or not resolved.characterId or not license then return nil end
     return {
+        accountId = resolved.accountId,
         license = license,
-        name = GetPlayerName(src),
-        characterId = tonumber(char.id),
-        characterName = characterName ~= '' and characterName or nil
+        name = resolved.accountName or resolved.serverName,
+        characterId = resolved.characterId,
+        characterName = resolved.characterName
     }
 end
 
-local function onlineSource(license, characterId)
-    characterId = tonumber(characterId)
+local function onlineSource(accountId, characterId)
     for _, rawId in ipairs(GetPlayers()) do
         local playerId = tonumber(rawId)
         local identity = playerId and characterIdentity(playerId)
-        if identity and identity.license == license
+        if identity and identity.accountId == accountId
             and (characterId == nil or identity.characterId == characterId) then return playerId end
     end
 end
@@ -51,7 +49,7 @@ local function onlineReporters()
         local playerId = tonumber(rawId)
         local identity = playerId and characterIdentity(playerId)
         if identity and identity.characterId then
-            sources[('%s:%s'):format(identity.license, identity.characterId)] = playerId
+            sources[('%s:%s'):format(identity.accountId, identity.characterId)] = playerId
         end
     end
     return sources
@@ -68,15 +66,16 @@ end
 
 local function reportTarget(row)
     return {
+        accountId = row.reporter_account_id,
         license = row.reporter_license,
         name = row.reporter_name,
-        characterId = tonumber(row.reporter_character_id),
+        characterId = row.reporter_character_id,
         characterName = row.reporter_character_name
     }
 end
 
 local function notifyReporter(row, messageKey)
-    local playerId = onlineSource(row.reporter_license, row.reporter_character_id)
+    local playerId = onlineSource(row.reporter_account_id, row.reporter_character_id)
     if playerId then TriggerClientEvent('feather-admin:reports:player:update', playerId, messageKey, row.id) end
 end
 
@@ -101,13 +100,13 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:submit', function(params, _, src
 
     local maximumOpen = math.max(1, math.min(tonumber(config.maxOpenPerPlayer) or 3, 20))
     local openCount = tonumber(MySQL.scalar.await([[SELECT COUNT(*) FROM feather_admin_reports
-        WHERE reporter_license = ? AND status IN ('open', 'claimed')]], { identity.license })) or 0
+        WHERE reporter_account_id = ? AND status IN ('open', 'claimed')]], { identity.accountId })) or 0
     if openCount >= maximumOpen then return submissionResult(src, false, 'report_limit_reached') end
 
     local reportId = MySQL.insert.await([[INSERT INTO feather_admin_reports
-        (reporter_license, reporter_name, reporter_character_id, reporter_character_name, category, message)
-        VALUES (?, ?, ?, ?, ?, ?)]], {
-        identity.license, identity.name, identity.characterId, identity.characterName, category, message
+        (reporter_account_id, reporter_license, reporter_name, reporter_character_id, reporter_character_name, category, message)
+        VALUES (?, ?, ?, ?, ?, ?, ?)]], {
+        identity.accountId, identity.license, identity.name, identity.characterId, identity.characterName, category, message
     })
     if not reportId then return submissionResult(src, false, 'report_submit_failed') end
     lastSubmission[src] = now
@@ -136,10 +135,10 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:list', function(params, _, src)
     local statusClause = status == 'all' and '' or 'WHERE status = ?'
     local values = status == 'all' and {} or { status }
     local rows = MySQL.query.await(([=[
-        SELECT id, reporter_license, reporter_name AS reporterName,
+        SELECT id, reporter_account_id AS reporterAccountId, reporter_license, reporter_name AS reporterName,
                reporter_character_id AS reporterCharacterId,
                reporter_character_name AS reporterCharacterName,
-               category, message, status, assigned_admin_license,
+               category, message, status, assigned_admin_account_id AS assignedAdminAccountId, assigned_admin_license,
                assigned_admin_name AS assignedAdminName,
                assigned_admin_character_name AS assignedAdminCharacterName,
                (SELECT id FROM feather_admin_cases WHERE source_report_id = feather_admin_reports.id LIMIT 1) AS caseId,
@@ -154,14 +153,14 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:list', function(params, _, src)
         LIMIT %d OFFSET %d
     ]=]):format(statusClause, limit + 1, offset), values) or {}
 
-    local actorLicense = FeatherAdmin.Core.User.GetLicense(src)
+    local actor = characterIdentity(src)
     local reporters = onlineReporters()
     local hasNext = #rows > limit
     if hasNext then table.remove(rows) end
     for _, row in ipairs(rows) do
-        row.reporterServerId = reporters[('%s:%s'):format(row.reporter_license, row.reporterCharacterId)]
+        row.reporterServerId = reporters[('%s:%s'):format(row.reporterAccountId, row.reporterCharacterId)]
         row.reporterOnline = row.reporterServerId ~= nil
-        row.assignedToSelf = row.assigned_admin_license ~= nil and row.assigned_admin_license == actorLicense
+        row.assignedToSelf = actor ~= nil and row.assignedAdminAccountId == actor.accountId
         row.reporter_license = nil
         row.assigned_admin_license = nil
     end
@@ -175,10 +174,10 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:claim', function(params, _, src)
     if not reportId or reportId < 1 or reportId % 1 ~= 0 or not admin then return end
 
     local changed = MySQL.update.await([[UPDATE feather_admin_reports
-        SET status = 'claimed', assigned_admin_license = ?, assigned_admin_name = ?,
+        SET status = 'claimed', assigned_admin_account_id = ?, assigned_admin_license = ?, assigned_admin_name = ?,
             assigned_admin_character_id = ?, assigned_admin_character_name = ?, claimed_at = NOW()
         WHERE id = ? AND status = 'open']], {
-        admin.license, admin.name, admin.characterId, admin.characterName, reportId
+        admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, reportId
     })
     if not changed or changed < 1 then return result(src, false, 'report_claim_failed') end
     local row = MySQL.single.await('SELECT * FROM feather_admin_reports WHERE id = ?', { reportId })
@@ -194,13 +193,13 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:release', function(params, _, sr
     if not reportId or reportId < 1 or reportId % 1 ~= 0 then return end
     local row = MySQL.single.await('SELECT * FROM feather_admin_reports WHERE id = ?', { reportId })
     if not row or row.status ~= 'claimed' then return result(src, false, 'report_release_failed') end
-    local actorLicense = FeatherAdmin.Core.User.GetLicense(src)
-    if row.assigned_admin_license ~= actorLicense and not FeatherAdmin.CanUse(src, 'reports.manage') then
+    local actor = characterIdentity(src)
+    if not actor or (row.assigned_admin_account_id ~= actor.accountId and not FeatherAdmin.CanUse(src, 'reports.manage')) then
         return result(src, false, 'action_not_permitted')
     end
 
     local changed = MySQL.update.await([[UPDATE feather_admin_reports
-        SET status = 'open', assigned_admin_license = NULL, assigned_admin_name = NULL,
+        SET status = 'open', assigned_admin_account_id = NULL, assigned_admin_license = NULL, assigned_admin_name = NULL,
             assigned_admin_character_id = NULL, assigned_admin_character_name = NULL, claimed_at = NULL
         WHERE id = ? AND status = 'claimed']], { reportId })
     if not changed or changed < 1 then return result(src, false, 'report_release_failed') end
@@ -220,15 +219,15 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:close', function(params, _, src)
     if not row or row.status ~= 'claimed' then return result(src, false, 'report_close_failed') end
     local admin = characterIdentity(src)
     if not admin then return result(src, false, 'report_close_failed') end
-    if row.assigned_admin_license ~= admin.license and not FeatherAdmin.CanUse(src, 'reports.manage') then
+    if row.assigned_admin_account_id ~= admin.accountId and not FeatherAdmin.CanUse(src, 'reports.manage') then
         return result(src, false, 'action_not_permitted')
     end
 
     local changed = MySQL.update.await([[UPDATE feather_admin_reports
-        SET status = 'closed', resolution = ?, closed_admin_license = ?, closed_admin_name = ?,
+        SET status = 'closed', resolution = ?, closed_admin_account_id = ?, closed_admin_license = ?, closed_admin_name = ?,
             closed_admin_character_id = ?, closed_admin_character_name = ?, closed_at = NOW()
         WHERE id = ? AND status = 'claimed']], {
-        resolution, admin.license, admin.name, admin.characterId, admin.characterName, reportId
+        resolution, admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, reportId
     })
     if not changed or changed < 1 then return result(src, false, 'report_close_failed') end
     row.resolution = resolution
