@@ -3,20 +3,20 @@ local function getPlayerList()
     for _, playerId in ipairs(GetPlayers()) do
         local id = math.tointeger(tonumber(playerId) or -1)
         if id and id >= 0 then
-            local character = FeatherAdmin.Core.Character.GetCharacter({ src = id })
-            local char = character and character.char or {}
-            local firstName = tostring(char.first_name or '')
-            local lastName = tostring(char.last_name or '')
-            local characterName = ('%s %s'):format(firstName, lastName):match('^%s*(.-)%s*$')
+            local identity = FeatherAdmin.Identity.Resolve(id) or {}
+            local staff = FeatherAdmin.Identity.GetStaff(identity) or {}
+            local firstName = tostring(identity.firstName or '')
+            local lastName = tostring(identity.lastName or '')
             players[#players + 1] = {
                 serverId = id,
                 serverName = GetPlayerName(id),
-                characterId = tonumber(char.id),
+                accountId = identity.accountId,
+                characterId = identity.characterId,
                 firstName = firstName,
                 lastName = lastName,
-                characterName = characterName ~= '' and characterName or nil,
-                roleName = char.role_name,
-                roleLevel = tonumber(char.role_level) or 0
+                characterName = identity.characterName,
+                roleName = staff.roleName,
+                roleLevel = staff.roleLevel or 0
             }
         end
     end
