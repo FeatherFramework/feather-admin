@@ -8,363 +8,256 @@ local function licenseForSource(src)
     return FeatherAdmin.Core.User.GetLicense(src)
 end
 
-local function onlineSourceForCharacter(license, characterId)
-    characterId = tonumber(characterId)
-    for _, rawId in ipairs(GetPlayers()) do
-        local playerId = tonumber(rawId)
-        local character = playerId and FeatherAdmin.Core.Character.GetCharacter({ src = playerId })
-        local char = character and character.char
-        if char and tonumber(char.id) == characterId and licenseForSource(playerId) == license then
-            return playerId
+local function runtimeLicense(src)
+    for _, identifier in ipairs(GetPlayerIdentifiers(src)) do
+        if type(identifier) == 'string' and identifier:sub(1, 8):lower() == 'license:' then
+            return identifier:lower()
         end
     end
-    return nil
 end
 
-local function adminIdentity(src)
-    local character = FeatherAdmin.Core.Character.GetCharacter({ src = src })
-    local char = character and character.char or {}
-    local characterName = char.first_name and (('%s %s'):format(char.first_name, char.last_name or '')) or nil
-    return licenseForSource(src), GetPlayerName(src) or ('Source %s'):format(src),
-        tonumber(char.id), characterName
+local function licenseForAccount(accountId)
+    local row = MySQL.single.await([[
+        SELECT identifier_type, identifier_value FROM core_account_identifiers
+        WHERE account_id = ? AND identifier_type IN ('license', 'license2')
+        ORDER BY identifier_type LIMIT 1
+    ]], { accountId })
+    return row and ('%s:%s'):format(row.identifier_type, row.identifier_value) or nil
+end
+
+local function onlineSource(accountId, characterId)
+    for _, rawId in ipairs(GetPlayers()) do
+        local src = tonumber(rawId)
+        local identity = src and FeatherAdmin.Identity.Resolve(src) or nil
+        if identity and identity.accountId == accountId
+            and (not characterId or identity.characterId == characterId) then return src end
+    end
+end
+
+local function snapshot(src)
+    local identity = FeatherAdmin.Identity.Resolve(src)
+    if not identity then return nil end
+    return {
+        serverId = tonumber(src), accountId = identity.accountId,
+        license = licenseForSource(src) or licenseForAccount(identity.accountId),
+        playerName = identity.accountName or identity.serverName,
+        characterId = identity.characterId, characterName = identity.characterName
+    }
 end
 
 local function resolveTarget(target)
     if type(target) ~= 'table' then return nil end
+    local src = tonumber(target.serverId)
+    if src and GetPlayerName(src) then return snapshot(src) end
 
-    local serverId = tonumber(target.serverId)
-    if serverId and GetPlayerName(serverId) then
-        local license = licenseForSource(serverId)
-        if not license then return nil end
-        local character = FeatherAdmin.Core.Character.GetCharacter({ src = serverId })
-        local char = character and character.char or {}
-        return {
-            serverId = serverId,
-            license = license,
-            playerName = GetPlayerName(serverId),
-            characterId = tonumber(char.id),
-            characterName = char.first_name and (('%s %s'):format(char.first_name, char.last_name or '')) or nil
-        }
+    local accountId, characterId = trim(target.accountId), trim(target.characterId)
+    if accountId == '' then
+        local kind, value = trim(target.license):match('^([^:]+):(.+)$')
+        if not kind or not value then return nil end
+        accountId = MySQL.scalar.await([[SELECT account_id FROM core_account_identifiers
+            WHERE identifier_type = ? AND identifier_value = ? LIMIT 1]], { kind:lower(), value:lower() })
     end
-
-    local license = trim(target.license)
-    if license == '' then return nil end
-
-    local requestedCharacterId = target.characterId
+    if type(accountId) ~= 'string' or accountId == '' then return nil end
     local row
-    if requestedCharacterId ~= nil then
-        requestedCharacterId = tonumber(requestedCharacterId)
-        if not requestedCharacterId or requestedCharacterId < 1 or requestedCharacterId % 1 ~= 0 then return nil end
-
-        -- Both values came from the client. The join proves that the chosen
-        -- character actually belongs to the supplied account before its
-        -- identity is written into moderation history.
-        row = MySQL.single.await([[
-            SELECT u.license, u.username, c.id AS character_id,
-                   CONCAT(c.first_name, ' ', c.last_name) AS character_name
-            FROM users u
-            INNER JOIN characters c ON c.user_id = u.id
-            WHERE u.license = ? AND c.id = ?
-            LIMIT 1
-        ]], { license, requestedCharacterId })
+    if characterId ~= '' then
+        row = MySQL.single.await([[SELECT a.id AS account_id, a.display_name, p.character_id,
+            CONCAT(p.first_name, ' ', p.last_name) AS character_name
+            FROM core_accounts a INNER JOIN character_profiles p
+              ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci
+            WHERE a.id = ? AND p.character_id = ? AND a.status = 'active' AND p.status = 'active' LIMIT 1]],
+            { accountId, characterId })
     else
-        -- A license identifies the account, not one of its characters. When
-        -- no character was selected, leave character attribution empty
-        -- instead of guessing the oldest or newest character.
-        row = MySQL.single.await([[
-            SELECT u.license, u.username,
-                   NULL AS character_id, NULL AS character_name
-            FROM users u
-            WHERE u.license = ?
-            LIMIT 1
-        ]], { license })
+        row = MySQL.single.await([[SELECT id AS account_id, display_name, NULL AS character_id,
+            NULL AS character_name FROM core_accounts WHERE id = ? AND status = 'active' LIMIT 1]], { accountId })
     end
-
     if not row then return nil end
-    return {
-        license = row.license,
-        playerName = row.username,
-        characterId = row.character_id,
-        characterName = row.character_name
-    }
+    return { accountId = row.account_id, license = licenseForAccount(row.account_id),
+        playerName = row.display_name, characterId = row.character_id, characterName = row.character_name,
+        serverId = onlineSource(row.account_id, row.character_id) }
 end
 
 local function validReason(reason)
     reason = trim(reason)
     local maximum = math.min(tonumber(Config.moderation.maxReasonLength) or 200, 200)
-    if reason == '' or #reason > maximum then return nil end
-    return reason
+    return reason ~= '' and #reason <= maximum and reason or nil
 end
 
 local function notify(src, key)
     TriggerClientEvent('feather-admin:moderation:result', src, key)
 end
 
-AdminDatabase.OnReady(function()
-    schemaReady = true
-end)
+AdminDatabase.OnReady(function() schemaReady = true end)
 
 local function checkConnectionBan(src, playerName)
-    local license = licenseForSource(src)
-    if not license then return nil end
-
-    local schemaDeadline = GetGameTimer() + 10000
-    while not schemaReady and GetGameTimer() < schemaDeadline do Wait(100) end
-    if not schemaReady then
-        return 'The moderation service is still starting. Please try again shortly.'
+    local license = runtimeLicense(src)
+    if not license then
+        print(('[feather-admin] ban gate source=%s result=no_license'):format(tostring(src)))
+        return nil
     end
-
-    local ban = MySQL.single.await([[
-        SELECT reason, expires_at
-        FROM feather_admin_bans
-        WHERE license = ? AND active = 1
-          AND (expires_at IS NULL OR expires_at > NOW())
-        ORDER BY id DESC LIMIT 1
-    ]], { license })
-    if not ban then return nil end
-
-    local message = tostring(Config.moderation.banMessage or 'You are banned from this server.')
-    message = ('%s\nReason: %s'):format(message, ban.reason)
+    local identifierValue = license:sub(9)
+    local accountId = MySQL.scalar.await([[SELECT account_id FROM core_account_identifiers
+        WHERE identifier_type = 'license' AND identifier_value = ? LIMIT 1]], { identifierValue })
+    local deadline = GetGameTimer() + 10000
+    while not schemaReady and GetGameTimer() < deadline do Wait(100) end
+    if not schemaReady then return 'The moderation service is still starting. Please try again shortly.' end
+    local ban
+    if accountId then
+        ban = MySQL.single.await([[SELECT reason, expires_at FROM feather_admin_bans
+            WHERE account_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > NOW())
+            ORDER BY id DESC LIMIT 1]], { accountId })
+    else
+        ban = MySQL.single.await([[SELECT reason, expires_at FROM feather_admin_bans
+            WHERE license = ? AND active = 1 AND (expires_at IS NULL OR expires_at > NOW())
+            ORDER BY id DESC LIMIT 1]], { license })
+    end
+    if not ban then
+        print(('[feather-admin] ban gate source=%s account=%s result=allowed'):format(
+            tostring(src), tostring(accountId or 'unresolved')))
+        return nil
+    end
+    local message = ('%s\nReason: %s'):format(Config.moderation.banMessage or 'You are banned from this server.', ban.reason)
     if ban.expires_at then message = ('%s\nExpires: %s'):format(message, ban.expires_at) end
-
-    print(('[feather-admin] Blocked banned player connection: player=%s license=%s reason=%s expires=%s'):format(
-        tostring(playerName or 'unknown'):gsub('[%c]', ' '),
-        tostring(license),
-        tostring(ban.reason):gsub('[%c]', ' '),
-        tostring(ban.expires_at or 'permanent')
-    ))
-
+    print(('[feather-admin] Blocked banned account: player=%s account=%s reason=%s'):format(
+        tostring(playerName), tostring(accountId or 'unresolved'), tostring(ban.reason)))
     return message
 end
 
 exports('checkConnectionBan', checkConnectionBan)
-
 FeatherAdmin.Core.Connection.RegisterGate('feather-admin:moderation', {
-    resource = GetCurrentResourceName(),
-    export = 'checkConnectionBan'
-}, {
-    priority = 50,
-    timeoutMs = 12000,
-    failClosed = true,
-    label = 'moderation status',
-    failureMessage = 'The moderation service could not verify your account. Please try again shortly.'
-})
+    resource = GetCurrentResourceName(), export = 'checkConnectionBan'
+}, { priority = 50, timeoutMs = 12000, failClosed = true, label = 'moderation status',
+    failureMessage = 'The moderation service could not verify your account. Please try again shortly.' })
 
 FeatherAdmin.RegisterRPC('feather-admin:moderation:search', function(params, _, src)
-    local query = params.query
     if not FeatherAdmin.RequirePermission(src, 'moderation.search') or not schemaReady then return end
-    query = trim(query)
-    local roleId = tonumber(params.roleId)
+    local query = trim(params.query)
     local minimum = math.max(1, tonumber(Config.moderation.minSearchLength) or 2)
     if #query < minimum or #query > 100 then return end
-    if roleId and (roleId < 1 or roleId % 1 ~= 0
-        or not MySQL.scalar.await('SELECT 1 FROM roles WHERE id = ? LIMIT 1', { roleId })) then return end
-
     local limit = math.max(1, math.min(tonumber(Config.moderation.searchLimit) or 25, 100))
-    local roleClause = roleId and 'AND r.id = ?' or ''
-    local function withRole(values)
-        if roleId then values[#values + 1] = roleId end
-        return values
-    end
-    local rows
+    local clause, values
     if query:sub(1, 8):lower() == 'license:' then
         if not FeatherAdmin.RequirePermission(src, 'moderation.search_identifiers') then return end
-        rows = MySQL.query.await(([=[
-            SELECT u.license, u.username AS playerName, c.id AS characterId,
-                   CONCAT(c.first_name, ' ', c.last_name) AS characterName,
-                   r.id AS roleId, r.name AS roleName, r.level AS roleLevel
-            FROM users u
-            LEFT JOIN characters c ON c.user_id = u.id
-            LEFT JOIN roles r ON r.id = c.role_id
-            WHERE u.license = ? %s
-            ORDER BY u.username, c.id
-            LIMIT %d
-        ]=]):format(roleClause, limit), withRole({ query }))
-    elseif query:match('^%d+$') then
-        rows = MySQL.query.await(([=[
-            SELECT u.license, u.username AS playerName, c.id AS characterId,
-                   CONCAT(c.first_name, ' ', c.last_name) AS characterName,
-                   r.id AS roleId, r.name AS roleName, r.level AS roleLevel
-            FROM characters c
-            INNER JOIN users u ON u.id = c.user_id
-            LEFT JOIN roles r ON r.id = c.role_id
-            WHERE c.id = ? %s LIMIT 1
-        ]=]):format(roleClause), withRole({ tonumber(query) }))
+        local kind, value = query:match('^([^:]+):(.+)$')
+        clause, values = [[EXISTS (SELECT 1 FROM core_account_identifiers i
+            WHERE i.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci
+            AND i.identifier_type = ? AND i.identifier_value = ?)]], { kind:lower(), value:lower() }
+    elseif #query == 36 and query:match('^[%x%-]+$') then
+        clause, values = '(a.id = ? OR p.character_id = ?)', { query, query }
     else
-        local first, last = query:match('^(%S+)%s+(.+)$')
-        local queryPrefix = query .. '%'
-        if first and last then
-            rows = MySQL.query.await(([=[
-                SELECT u.license, u.username AS playerName, c.id AS characterId,
-                       CONCAT(c.first_name, ' ', c.last_name) AS characterName,
-                       r.id AS roleId, r.name AS roleName, r.level AS roleLevel
-                FROM users u
-                LEFT JOIN characters c ON c.user_id = u.id
-                LEFT JOIN roles r ON r.id = c.role_id
-                WHERE (u.username LIKE ?
-                   OR (c.first_name LIKE ? AND c.last_name LIKE ?)) %s
-                ORDER BY u.username, c.id
-                LIMIT %d
-            ]=]):format(roleClause, limit), withRole({ queryPrefix, first .. '%', last .. '%' }))
-        else
-            rows = MySQL.query.await(([=[
-        SELECT u.license, u.username AS playerName, c.id AS characterId,
-               CONCAT(c.first_name, ' ', c.last_name) AS characterName,
-               r.id AS roleId, r.name AS roleName, r.level AS roleLevel
-        FROM users u
-        LEFT JOIN characters c ON c.user_id = u.id
-        LEFT JOIN roles r ON r.id = c.role_id
-        WHERE (u.username LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?) %s
-        ORDER BY u.username, c.id
-        LIMIT %d
-            ]=]):format(roleClause, limit), withRole({ queryPrefix, queryPrefix, queryPrefix }))
-        end
+        local prefix = query .. '%'
+        clause, values = '(a.display_name LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ?)', { prefix, prefix, prefix }
     end
-    for _, row in ipairs(rows or {}) do
-        row.serverId = onlineSourceForCharacter(row.license, row.characterId)
+    local rows = MySQL.query.await(([[SELECT a.id AS accountId, a.display_name AS playerName,
+        p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName,
+        s.role_name AS roleName, COALESCE(s.role_level, 0) AS roleLevel
+        FROM core_accounts a LEFT JOIN character_profiles p
+          ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci AND p.status = 'active'
+        LEFT JOIN feather_admin_staff_accounts s
+          ON s.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci AND s.active = 1
+        WHERE a.status = 'active' AND %s ORDER BY a.display_name, p.created_at LIMIT %d]]):format(clause, limit), values) or {}
+    for _, row in ipairs(rows) do
+        row.license = licenseForAccount(row.accountId)
+        row.serverId = onlineSource(row.accountId, row.characterId)
         row.isOnline = row.serverId ~= nil
     end
-    TriggerClientEvent('feather-admin:moderation:search:result', src, rows or {})
+    TriggerClientEvent('feather-admin:moderation:search:result', src, rows)
     AdminAudit.Record(src, 'moderation.search', nil, query)
 end, { windowMs = 3000, maxCalls = 1, maxPayloadBytes = 256 })
 
-FeatherAdmin.RegisterRPC('feather-admin:moderation:warn', function(params, _, src)
-    local targetData, reason = params.target, params.reason
-    if not FeatherAdmin.RequirePermission(src, 'moderation.warn') or not schemaReady then return end
-    local target, cleanReason = resolveTarget(targetData), validReason(reason)
-    if not target or not cleanReason then return end
-    if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.warn', target.license, target.serverId) then return end
-    local adminLicense, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
+local function insertAction(tableName, target, reason, admin)
+    return MySQL.insert.await(([[INSERT INTO %s
+        (account_id, license, player_name, character_id, character_name, reason,
+         admin_license, admin_account_id, admin_name, admin_character_id, admin_character_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]]):format(tableName),
+        { target.accountId, target.license, target.playerName, target.characterId, target.characterName, reason,
+          admin.license, admin.accountId, admin.playerName, admin.characterId, admin.characterName })
+end
 
-    MySQL.insert.await([[
-        INSERT INTO feather_admin_warnings
-            (license, player_name, character_id, character_name, reason, admin_license, admin_name,
-             admin_character_id, admin_character_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason,
-        adminLicense, adminName, adminCharacterId, adminCharacterName })
-    AdminAudit.Record(src, 'moderation.warn', target.serverId, ('license=%s reason=%s'):format(target.license, cleanReason))
-    -- When an admin warns themselves, the admin result below is sufficient;
-    -- sending the target warning too would notify the same client twice.
+FeatherAdmin.RegisterRPC('feather-admin:moderation:warn', function(params, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'moderation.warn') or not schemaReady then return end
+    local target, reason, admin = resolveTarget(params.target), validReason(params.reason), snapshot(src)
+    if not target or not reason or not admin
+        or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'moderation.warn', target.accountId, target.serverId) then return end
+    insertAction('feather_admin_warnings', target, reason, admin)
+    AdminAudit.Record(src, 'moderation.warn', target.serverId, ('account=%s reason=%s'):format(target.accountId, reason))
     if target.serverId and target.serverId ~= src then
-        FeatherAdmin.Core.Notify.RightNotify(target.serverId, ('Warning: %s'):format(cleanReason), 5000)
+        FeatherAdmin.Notify(target.serverId, ('Warning: %s'):format(reason), 5000)
     end
     notify(src, 'player_warned')
 end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 1024 })
 
 FeatherAdmin.RegisterRPC('feather-admin:moderation:kick', function(params, _, src)
-    local playerId, reason = params.playerId, params.reason
     if not schemaReady then return end
-    local targetId = FeatherAdmin.RequireTarget(src, 'moderation.kick', playerId)
-    local cleanReason = validReason(reason)
-    if not targetId or not cleanReason then return end
-
-    local target = resolveTarget({ serverId = targetId })
-    if not target then return end
-    local adminLicense, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
-
-    MySQL.insert.await([[
-        INSERT INTO feather_admin_kicks
-            (license, player_name, character_id, character_name, reason, admin_license, admin_name,
-             admin_character_id, admin_character_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason,
-        adminLicense, adminName, adminCharacterId, adminCharacterName })
-    AdminAudit.Record(src, 'moderation.kick', targetId, ('license=%s reason=%s'):format(target.license, cleanReason))
+    local targetId, reason = FeatherAdmin.RequireTarget(src, 'moderation.kick', params.playerId), validReason(params.reason)
+    local target, admin = targetId and snapshot(targetId) or nil, snapshot(src)
+    if not target or not reason or not admin then return end
+    insertAction('feather_admin_kicks', target, reason, admin)
+    AdminAudit.Record(src, 'moderation.kick', targetId, ('account=%s reason=%s'):format(target.accountId, reason))
     notify(src, 'player_kicked')
-    DropPlayer(targetId, cleanReason)
+    DropPlayer(targetId, reason)
 end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 512 })
 
 FeatherAdmin.RegisterRPC('feather-admin:moderation:ban', function(params, _, src)
-    local targetData, reason, durationMinutes = params.target, params.reason, params.durationMinutes
     if not FeatherAdmin.RequirePermission(src, 'moderation.ban') or not schemaReady then return end
-    local target, cleanReason = resolveTarget(targetData), validReason(reason)
-    local duration = tonumber(durationMinutes)
-    local maximumDuration = tonumber(Config.moderation.maxBanMinutes) or 525600
-    if not target or not cleanReason or not duration or duration < 0
-        or duration > maximumDuration or duration % 1 ~= 0 then return end
-    local adminLicense, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
-    if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.ban', target.license, target.serverId) then return end
-
-    MySQL.update.await('UPDATE feather_admin_bans SET active = 0 WHERE license = ? AND active = 1', { target.license })
-    MySQL.insert.await([[
-        INSERT INTO feather_admin_bans
-            (license, player_name, character_id, character_name, reason, expires_at, admin_license, admin_name,
-             admin_character_id, admin_character_name)
-        VALUES (?, ?, ?, ?, ?, IF(? > 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), NULL), ?, ?, ?, ?)
-    ]], { target.license, target.playerName, target.characterId, target.characterName, cleanReason,
-        duration, duration, adminLicense, adminName, adminCharacterId, adminCharacterName })
-    AdminAudit.Record(src, 'moderation.ban', target.serverId,
-        ('license=%s duration=%s reason=%s'):format(target.license, duration == 0 and 'permanent' or duration, cleanReason))
+    local target, reason, admin = resolveTarget(params.target), validReason(params.reason), snapshot(src)
+    local duration, maximum = tonumber(params.durationMinutes), tonumber(Config.moderation.maxBanMinutes) or 525600
+    if not target or not target.license or not reason or not admin or not duration or duration < 0
+        or duration > maximum or duration % 1 ~= 0
+        or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'moderation.ban', target.accountId, target.serverId) then return end
+    MySQL.update.await('UPDATE feather_admin_bans SET active = 0 WHERE account_id = ? AND active = 1', { target.accountId })
+    MySQL.insert.await([[INSERT INTO feather_admin_bans
+        (account_id, license, player_name, character_id, character_name, reason, expires_at,
+         admin_license, admin_account_id, admin_name, admin_character_id, admin_character_name)
+        VALUES (?, ?, ?, ?, ?, ?, IF(? > 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), NULL), ?, ?, ?, ?, ?)]],
+        { target.accountId, target.license, target.playerName, target.characterId, target.characterName, reason,
+          duration, duration, admin.license, admin.accountId, admin.playerName, admin.characterId, admin.characterName })
+    AdminAudit.Record(src, 'moderation.ban', target.serverId, ('account=%s duration=%s reason=%s'):format(target.accountId, duration, reason))
     notify(src, 'player_banned')
-    if target.serverId then DropPlayer(target.serverId, cleanReason) end
+    if target.serverId then DropPlayer(target.serverId, reason) end
 end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 1024 })
 
 FeatherAdmin.RegisterRPC('feather-admin:moderation:history', function(params, _, src)
-    local targetData = params.target
     if not FeatherAdmin.RequirePermission(src, 'moderation.history') or not schemaReady then return end
-    local target = resolveTarget(targetData)
-    if not target then
-        if type(targetData) == 'table' and targetData.serverId ~= nil then
-            notify(src, 'player_not_online')
-        end
-        return
-    end
-    if not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.history', target.license, target.serverId) then return end
+    local target = resolveTarget(params.target)
+    if not target or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'moderation.history', target.accountId, target.serverId) then return end
     local limit = math.max(1, math.min(tonumber(Config.moderation.historyLimit) or 50, 100))
-    local bans = MySQL.query.await(([=[
-        SELECT id, 'ban' AS kind, reason, admin_name AS adminName,
-               admin_character_name AS adminCharacterName,
-               DATE_FORMAT(expires_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS expiresAt,
-               DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
-               revoked_by AS revokedBy, revoked_by_character_name AS revokedByCharacterName,
-               DATE_FORMAT(revoked_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS revokedAt,
-               CASE WHEN active = 0 THEN 'revoked'
-                    WHEN expires_at IS NOT NULL AND expires_at <= NOW() THEN 'expired'
-                    ELSE 'active' END AS status
-        FROM feather_admin_bans WHERE license = ? ORDER BY id DESC LIMIT %d
-    ]=]):format(limit), { target.license }) or {}
-    local warnings = MySQL.query.await(([=[
-        SELECT id, 'warning' AS kind, reason, admin_name AS adminName,
-               admin_character_name AS adminCharacterName,
-               NULL AS expiresAt,
-               DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
-               NULL AS revokedBy, NULL AS revokedByCharacterName, NULL AS revokedAt,
-               'warning' AS status
-        FROM feather_admin_warnings WHERE license = ? ORDER BY id DESC LIMIT %d
-    ]=]):format(limit), { target.license }) or {}
-    local kicks = MySQL.query.await(([=[
-        SELECT id, 'kick' AS kind, reason, admin_name AS adminName,
-               admin_character_name AS adminCharacterName,
-               NULL AS expiresAt,
-               DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
-               NULL AS revokedBy, NULL AS revokedByCharacterName, NULL AS revokedAt,
-               'kick' AS status
-        FROM feather_admin_kicks WHERE license = ? ORDER BY id DESC LIMIT %d
-    ]=]):format(limit), { target.license }) or {}
-    local records = bans
-    for _, warning in ipairs(warnings) do records[#records + 1] = warning end
-    for _, kick in ipairs(kicks) do records[#records + 1] = kick end
+    local records = MySQL.query.await(([[SELECT id, 'ban' AS kind, reason,
+        admin_name AS adminName, admin_character_name AS adminCharacterName,
+        DATE_FORMAT(expires_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS expiresAt,
+        DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt,
+        revoked_by AS revokedBy, revoked_by_character_name AS revokedByCharacterName,
+        DATE_FORMAT(revoked_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS revokedAt,
+        CASE WHEN active = 0 AND revoked_at IS NOT NULL THEN 'revoked'
+             WHEN active = 0 THEN 'superseded'
+             WHEN expires_at IS NOT NULL AND expires_at <= NOW() THEN 'expired'
+             ELSE 'active' END AS status
+        FROM feather_admin_bans WHERE account_id = ? ORDER BY id DESC LIMIT %d]]):format(limit),
+        { target.accountId }) or {}
+    local sets = { { 'warning', 'feather_admin_warnings' }, { 'kick', 'feather_admin_kicks' } }
+    for _, set in ipairs(sets) do
+        local rows = MySQL.query.await(([[SELECT id, '%s' AS kind, reason, admin_name AS adminName,
+            admin_character_name AS adminCharacterName, DATE_FORMAT(created_at, '%%Y-%%m-%%d %%H:%%i:%%s') AS createdAt
+            FROM %s WHERE account_id = ? ORDER BY id DESC LIMIT %d]]):format(set[1], set[2], limit), { target.accountId }) or {}
+        for _, row in ipairs(rows) do records[#records + 1] = row end
+    end
     table.sort(records, function(a, b) return tostring(a.createdAt) > tostring(b.createdAt) end)
     while #records > limit do table.remove(records) end
     TriggerClientEvent('feather-admin:moderation:history:result', src, records)
 end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 512 })
 
 FeatherAdmin.RegisterRPC('feather-admin:moderation:unban', function(params, _, src)
-    local banId = params.banId
     if not FeatherAdmin.RequirePermission(src, 'moderation.unban') or not schemaReady then return end
-    banId = tonumber(banId)
+    local banId = tonumber(params.banId)
     if not banId or banId % 1 ~= 0 then return end
-    local ban = MySQL.single.await('SELECT license FROM feather_admin_bans WHERE id = ? AND active = 1', { banId })
-    if not ban or not FeatherAdmin.CheckTargetHierarchy(src, 'moderation.unban', ban.license, nil) then return end
-    local _, adminName, adminCharacterId, adminCharacterName = adminIdentity(src)
-    local changed = MySQL.update.await([[
-        UPDATE feather_admin_bans
-        SET active = 0, revoked_by = ?, revoked_by_character_id = ?,
-            revoked_by_character_name = ?, revoked_at = NOW()
-        WHERE id = ? AND active = 1
-    ]], { adminName, adminCharacterId, adminCharacterName, banId })
-    if not changed or changed < 1 then return end
-    AdminAudit.Record(src, 'moderation.unban', nil, ('ban_id=%s'):format(banId))
-    notify(src, 'ban_revoked')
+    local ban = MySQL.single.await('SELECT account_id FROM feather_admin_bans WHERE id = ? AND active = 1', { banId })
+    if not ban or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'moderation.unban', ban.account_id, nil) then return end
+    local admin = snapshot(src)
+    if not admin then return end
+    local changed = MySQL.update.await([[UPDATE feather_admin_bans SET active = 0, revoked_by = ?,
+        revoked_by_account_id = ?, revoked_by_character_id = ?, revoked_by_character_name = ?, revoked_at = NOW()
+        WHERE id = ? AND active = 1]], { admin.playerName, admin.accountId, admin.characterId, admin.characterName, banId })
+    if changed and changed > 0 then
+        AdminAudit.Record(src, 'moderation.unban', nil, ('ban_id=%s account=%s'):format(banId, ban.account_id))
+        notify(src, 'ban_revoked')
+    end
 end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 128 })
