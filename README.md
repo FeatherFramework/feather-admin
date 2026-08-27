@@ -2,12 +2,24 @@
 
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Its default permissions use numeric staff levels `50`, `75`, and `99`.
 
+> [!WARNING]
+> The Contract 1 identity cutover is active. Online player identity,
+> staff authorization, Inventory grants, moderation, reports, Staff Cases,
+> and action auditing now use Core account sessions and UUID Character
+> profiles. Legacy economy and staff-role mutation handlers have been removed;
+> those screens remain hidden until dedicated providers are implemented.
+
+The moderation database foundation now records canonical Core account UUIDs
+for targets, acting staff, and ban revocations. Moderation search, warnings,
+kicks, bans, history, active-ban review, reports, Staff Cases, and revocation
+now use that contract.
+
 ## Features
 
 - Browse connected players and search online or offline characters through one Players directory
 - Review player capacity, uptime, OneSync mode, and configured Feather resource health
 - Send confirmed server-wide announcements with configurable limits and cooldowns
-- View character details, economy values, role level, and identifiers
+- View character details, account staff level, and identifiers
 - Teleport to a player, bring them to you, or send them back
 - Spectate another player, including players outside normal streaming range
 - Kick an online player from the Moderation page with a required reason
@@ -15,12 +27,14 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Apply permanent or temporary account bans
 - Browse, search, inspect, and revoke currently active bans
 - Convert serious player reports into durable staff cases with priorities, ownership, linked records, and resolutions
+- Add account-scoped internal player notes with immutable edit history and Staff Case linking
 - Accept persistent player reports that staff can claim, release, investigate, and close
 - See online or offline status directly on player search results
 - Revoke active bans from the in-game menu
 - Block banned accounts before they enter the server
-- Add or remove dollars, gold, tokens, and experience
 - Give configured inventory items to online players with quantity and capacity checks
+- Inspect online or offline Character inventories, review instance metadata, and remove items through guarded confirmation
+- Issue unique weapons and grant mapped ammunition to online or offline characters through Feather Weapons and Feather Inventory
 - Restore a player's saved character model, clothing, and appearance
 - Use clearly grouped Teleportation, Character Management, Player Tools, and Special Effects pages
 - Toggle god mode, invisibility, infinite stamina, and noclip
@@ -33,7 +47,6 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - Apply several optional player effects
 - Open the menu with a key or chat command
 - Store admin actions in the database and review them from a paginated Admin Logs page
-- Search and filter online or offline characters, assign staff roles with required reasons, and review role-change history
 - Filter admin logs by administrator, player, action, or date
 - Record admin actions in the server console and optionally Discord
 
@@ -42,10 +55,13 @@ Feather Admin adds an in-game admin menu to RedM servers that use the Feather Fr
 - `feather-core`
 - `feather-menu`
 - `feather-inventory`
+- `feather-weapons`
 
 These resources must already be installed. They also need to start before Feather Admin.
 
-Feather Admin creates its moderation and durable action-audit database tables automatically when the resource starts. No SQL import is required.
+Feather Admin creates its tables automatically on a clean installation. For an
+existing database, back it up and run
+`database/character_uuid_cutover.sql` before starting the updated resource.
 
 ## Installation
 
@@ -60,56 +76,56 @@ Feather Admin creates its moderation and durable action-audit database tables au
    ensure feather-core
    ensure feather-menu
    ensure feather-inventory
+   ensure feather-weapons
    ensure feather-admin
    ```
 
 7. Save `server.cfg` and restart your server.
 
+## Contract 1 staff bootstrap
+
+Staff authority is assigned to the stable Core account UUID, not to whichever
+Character is selected. With the player connected and a UUID Character active,
+run this once from the server console:
+
+```text
+AdminGrantStaff <serverId> <0-100> [role name]
+```
+
+Example:
+
+```text
+AdminGrantStaff 1 99 Owner
+```
+
+Alternatively, grant the configured `feather.admin.bootstrap` ACE. The ACE is
+intended for installation/recovery and supplies `bootstrapLevel` from
+`configs/config.lua`.
+
+Then run:
+
+```text
+AdminIdentitySmokeTest <serverId>
+```
+
+All seven checks must pass before testing the menu.
+
 ## Permissions
 
-Every menu action has a minimum numeric role level in `configs/permissions.lua`. The default tiers are:
+Every enabled menu action has a minimum numeric account-staff level in `configs/permissions.lua`. The default tiers are:
 
 - Level `50` — Moderator: player support, reports, staff cases, warnings, kicks, spectating, travel, healing, and reviving
 - Level `75` — Senior Admin: report and case oversight, case closure, bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
-- Level `99` — Owner: staff role management, economy adjustments, sensitive log details, and the most disruptive special effects
+- Level `99` — Owner: sensitive log details and the most disruptive special effects
 
 These are numeric checks; the role names are only friendly labels. You can rename the roles without changing permission behavior.
-
-For an existing Feather database, add the two staff levels once:
-
-```sql
-INSERT INTO roles (name, level)
-SELECT 'moderator', 50
-WHERE NOT EXISTS (SELECT 1 FROM roles WHERE level = 50);
-
-INSERT INTO roles (name, level)
-SELECT 'senior_admin', 75
-WHERE NOT EXISTS (SELECT 1 FROM roles WHERE level = 75);
-```
 
 Adjust individual values to fit your staff structure. Keep `menu.open` at or below the lowest staff level that should be able to open the menu.
 
 Buttons a staff member cannot use are hidden. Self-target buttons also follow `configs/hierarchy.lua`. Every request is checked again by the server, so changing the local menu does not grant permission.
 
-Staff also cannot target an account with an equal or higher role level. This hierarchy is configured in `configs/hierarchy.lua`. The active character controls a staff member's authority, while the highest role held anywhere on the target account controls its protection.
-
-If an administrator cannot open the menu, confirm that their active character meets the numeric level configured for `menu.open`.
-
-### Emergency role recovery
-
-The server console can restore a character's role without an active admin character:
-
-```text
-featherSetRole <characterId> <roleLevel>
-```
-
-To allow a trusted server administrator to run the same command in game, add this ACE permission in `server.cfg`:
-
-```cfg
-add_ace group.admin feather.admin.recover allow
-```
-
-This ACE permits only the recovery command. It does not grant access to the admin menu on civilian characters. The selected numeric role level must identify exactly one row in the `roles` table.
+If an administrator cannot open the menu, confirm that their Core account has
+an active `feather_admin_staff_accounts` assignment or the bootstrap ACE.
 
 ## Configuration
 
@@ -119,19 +135,16 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `controls.openMenu`: choose the key used to open the menu; the default is `PGDN` (Page Down)
 - `commands.enabled`: turn chat-command access on or off
 - `commands.openMenu`: change the menu command; the default is `adminMenu`
-- `commands.recoverRole`: change the emergency role recovery command
-- `commands.recoverAce`: change the ACE permission required for in-game recovery
 - `configs/permissions.lua`: choose the minimum numeric role level for every admin action
 - `configs/hierarchy.lua`: control staff hierarchy, helpful exemptions, and allowed self-actions
 - `logging.webhook`: optionally send admin action logs to a Discord webhook
 - `serverOverview.resources`: choose which resources appear on Server Overview
 - `announcements`: configure title/message limits, cooldown, and display duration
-- `economy.maxAmount`: limit the size of a single balance adjustment
+- `economy.maxAmount`: reserved for the future provider-backed economy screen
 - `inventory.maxGrantQuantity`: limit the quantity in one admin item grant
-- `staff.searchLimit`: set the number of offline staff-search results per page
-- `staff.historyLimit`: set the number of role-history records per page
-- `staff.minSearchLength`: require a minimum staff-search length
-- `staff.maxReasonLength`: limit required role-change reasons
+- `weapons.maxAmmoGrantQuantity`: limit ammunition granted in one admin action
+- `weapons.issuedCondition`: set the starting condition of admin-issued weapons
+- `staff`: reserved limits for the future provider-backed staff directory
 - `moderation.searchLimit`: limit offline search results
 - `moderation.activeBanLimit`: set the number of active bans shown per page
 - `reports`: configure the report command, categories, cooldown, limits, and page size
@@ -146,6 +159,9 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 
 Only ped models listed in `configs/config.lua` can be used. This prevents players from requesting unapproved models.
 
+Admin owns its webhook delivery queue and retries rate limits or temporary
+server failures. Core is not required to provide Discord helpers.
+
 ## Usage
 
 With the default settings, a staff character at level `50` or higher can open the menu by pressing **Page Down** or entering this command in chat:
@@ -157,6 +173,12 @@ With the default settings, a staff character at level `50` or higher can open th
 Choose **Players** to browse connected players or search all characters by character ID, account name, character name, or complete license identifier. Results show whether each character is online or offline. Online characters expose live actions; offline characters expose database-safe moderation and staff-role tools. Selected-player actions are grouped under Player Information, Moderation, Teleportation, Character Management, Player Tools, and Special Effects.
 
 Open **Character Management**, then **Inventory**, to browse configured item categories, choose an item and quantity, and confirm the grant. Item limits, available slots, and weight are validated by Feather Inventory before anything is added.
+
+Open **Character Management**, then **Weapons and Ammunition**, to issue a new
+unique weapon or grant ammunition to the selected online or offline character.
+Weapon definitions and ammunition mappings come directly from Feather Weapons;
+Inventory applies its normal capacity rules. Each weapon issuance creates a new
+serial-numbered instance and every action is audited.
 
 Owners can select an online or offline character through **Players**, open **Staff Role**, choose a configured role, enter a required reason, and confirm the change. The Players search includes a role filter, and role history is paginated. Every promotion, demotion, or other role change is stored against the affected character. A role can never be assigned above the acting character's own level. Self-edits and changes to equal- or higher-ranked accounts are blocked; use the emergency recovery command when no eligible owner character is available.
 
