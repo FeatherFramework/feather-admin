@@ -3,7 +3,8 @@ local selectedActions = {
     character = {
         'economy.dollars.add', 'economy.dollars.remove', 'economy.gold.add', 'economy.gold.remove',
         'economy.tokens.add', 'economy.tokens.remove', 'economy.xp.add', 'economy.xp.remove',
-        'character.restore_model', 'inventory.give'
+        'character.restore_model', 'inventory.give', 'inventory.inspect',
+        'weapons.issue', 'weapons.ammo.grant'
     },
     status = {
         'booster.invincibility', 'booster.invisibility', 'booster.infinite_stamina', 'booster.heal',
@@ -32,6 +33,12 @@ function AdminUI.OpenSelectedPlayer()
     if AdminUI.CanUse('moderation.view') then
         AdminUI.AddButton(page, AdminTranslate('moderation'), function()
             AdminModeration.SelectOnline(AdminUI.GetTarget())
+        end)
+    end
+
+    if AdminUI.CanUse('notes.view') then
+        AdminUI.AddButton(page, AdminTranslate('player_notes'), function()
+            AdminPlayerNotes.OpenOnline(AdminUI.GetTarget())
         end)
     end
 
@@ -191,6 +198,24 @@ function AdminUI.OpenOfflinePlayer(target)
             AdminModeration.SelectOffline(target)
         end)
     end
+    if AdminUI.CanUse('notes.view') and target.accountId then
+        AdminUI.AddButton(page, AdminTranslate('player_notes'), function()
+            AdminPlayerNotes.OpenTarget(target)
+        end)
+    end
+    if AdminUI.CanUse('inventory.inspect') and target.accountId and target.characterId then
+        AdminUI.AddButton(page, AdminTranslate('inventory'), function()
+            AdminInventory.SetTarget(target)
+            AdminUI.OpenInventoryActions()
+        end)
+    end
+    if (AdminUI.CanUse('weapons.issue') or AdminUI.CanUse('weapons.ammo.grant'))
+        and target.accountId and target.characterId then
+        AdminUI.AddButton(page, AdminTranslate('weapons_and_ammo'), function()
+            AdminWeapons.SetTarget(target)
+            AdminWeapons.RequestCatalog()
+        end)
+    end
     if AdminUI.CanUse('staff.role.assign') and target.characterId then
         AdminUI.AddButton(page, AdminTranslate('staff_role'), function()
             AdminStaff.OpenCharacter(target)
@@ -214,8 +239,17 @@ function AdminUI.OpenCharacterManagement()
             AdminCharacter.RequestEconomySummary(AdminUI.GetTarget())
         end)
     end
-    if AdminUI.CanUseOnTarget('inventory.give') then
-        AdminUI.AddButton(page, AdminTranslate('inventory'), AdminInventory.RequestCatalog)
+    if AdminUI.CanUse('inventory.inspect') or AdminUI.CanUseOnTarget('inventory.give') then
+        AdminUI.AddButton(page, AdminTranslate('inventory'), function()
+            AdminInventory.SetOnlineTarget(AdminUI.GetTarget())
+            AdminUI.OpenInventoryActions()
+        end)
+    end
+    if AdminUI.CanUse('weapons.issue') or AdminUI.CanUse('weapons.ammo.grant') then
+        AdminUI.AddButton(page, AdminTranslate('weapons_and_ammo'), function()
+            AdminWeapons.SetOnlineTarget(AdminUI.GetTarget())
+            AdminWeapons.RequestCatalog()
+        end)
     end
     if AdminUI.CanUseOnTarget('character.restore_model') then
         AdminUI.AddButton(page, AdminTranslate('restore_character_appearance'), function()
