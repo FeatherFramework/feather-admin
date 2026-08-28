@@ -6,7 +6,7 @@ lua54 'yes'
 name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
-version '0.4.0'
+version '0.5.0'
 
 github_version_check 'true'
 github_version_type 'release'
@@ -27,6 +27,8 @@ shared_scripts {
 
 client_scripts {
     'client/core/init.lua',
+    'client/core/runtime.lua',
+    'client/core/teleport.lua',
     'translations/*.lua',
     'client/ui/menu.lua',
     'client/ui/navigation.lua',
@@ -50,6 +52,8 @@ client_scripts {
     'client/ui/pages/active_bans.lua',
     'client/ui/pages/reports.lua',
     'client/ui/pages/cases.lua',
+    'client/ui/pages/player_notes.lua',
+    'client/ui/pages/weapons_admin.lua',
     'client/ui/pages/main.lua',
     'client/core/main.lua'
 }

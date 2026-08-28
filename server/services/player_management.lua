@@ -2,7 +2,7 @@ local returnLocations = {}
 local spectateTargets = {}
 
 local function notify(playerId, text)
-    FeatherAdmin.Core.Notify.RightNotify(playerId, text, 2500)
+    FeatherAdmin.Notify(playerId, text, 2500)
 end
 
 local function getPlayerCoords(playerId)
@@ -30,21 +30,18 @@ FeatherAdmin.RegisterRPC('feather-admin:player:info:request', function(params, _
     local target = FeatherAdmin.RequireTarget(src, 'player.info', playerId)
     if target == nil then return end
 
-    local character = FeatherAdmin.Core.Character.GetCharacter({ src = target })
-    local char = character and character.char or {}
+    local identity = FeatherAdmin.Identity.Resolve(target) or {}
+    local staff = FeatherAdmin.Identity.GetStaff(identity) or {}
     local identifiers = GetPlayerIdentifiers(target)
     local info = {
         serverId = target,
         serverName = GetPlayerName(target) or 'Unknown',
-        characterId = char.id,
-        firstName = char.first_name,
-        lastName = char.last_name,
-        roleName = char.role_name,
-        roleLevel = char.role_level,
-        dollars = char.dollars,
-        gold = char.gold,
-        tokens = char.tokens,
-        xp = char.xp,
+        accountId = identity.accountId,
+        characterId = identity.characterId,
+        firstName = identity.firstName,
+        lastName = identity.lastName,
+        roleName = staff.roleName,
+        roleLevel = staff.roleLevel,
         identifiers = identifiers
     }
 

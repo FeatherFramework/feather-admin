@@ -1,5 +1,18 @@
 Config = {
 
+    -- Contract 1 staff authority is account-scoped. The ACE is the recovery
+    -- bootstrap for first installation; persistent assignments are stored by
+    -- Core account UUID rather than on a Character record.
+    identity = {
+        bootstrapAce = 'feather.admin.bootstrap',
+        bootstrapLevel = 99,
+        -- These dormant screens have no server mutation handlers in this
+        -- release. They remain hidden until dedicated staff/economy providers
+        -- replace the retired numeric Character/role-table implementation.
+        disabledActionPrefixes = { 'staff.', 'economy.' },
+        disabledActions = { ['character.restore_model'] = true }
+    },
+
     -- Keyboard shortcut used to open the admin menu.
     controls = {
         enabled = true,    -- Set to false to disable the shortcut.
@@ -11,9 +24,7 @@ Config = {
     commands = {
         enabled = true,                      -- Set to false to disable the command.
         openMenu = 'adminMenu',              -- Used in chat as /adminMenu.
-        suggestionKey = 'command_suggestion', -- Translation key for chat help text.
-        recoverRole = 'featherSetRole',       -- ACE-protected role recovery command.
-        recoverAce = 'feather.admin.recover'  -- ACE required to use role recovery in game.
+        suggestionKey = 'command_suggestion' -- Translation key for chat help text.
     },
     -----------------------------------------------------
 
@@ -48,7 +59,7 @@ Config = {
 
     -- Player report command, limits, and available categories.
     reports = {
-        enabled = true,          -- Set to false to disable player report submission.
+        enabled = true,          -- Enables the player /report command.
         command = 'report',      -- Used in chat as /report <category> <message>.
         cooldownSeconds = 120,   -- Delay between reports from one player.
         maxOpenPerPlayer = 3,    -- Maximum open or claimed reports per account.
@@ -73,6 +84,13 @@ Config = {
     -- Limits the quantity added by one admin item grant.
     inventory = {
         maxGrantQuantity = 100
+    },
+    -----------------------------------------------------
+
+    -- Limits Admin grants routed through Feather Weapons.
+    weapons = {
+        maxAmmoGrantQuantity = 500,
+        issuedCondition = 100
     },
     -----------------------------------------------------
 
@@ -119,6 +137,14 @@ Config = {
             { value = 'critical', labelKey = 'case_priority_critical' },
             { value = 'low', labelKey = 'case_priority_low' }
         }
+    },
+    -----------------------------------------------------
+
+    -- Internal account-scoped staff notes with immutable edit history.
+    notes = {
+        pageLimit = 20,
+        historyLimit = 20,
+        maxBodyLength = 1000
     },
     -----------------------------------------------------
 

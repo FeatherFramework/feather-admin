@@ -34,6 +34,12 @@ Config.permissions = {
     ['cases.close'] = 75,
     ['cases.manage'] = 75,
 
+    ['notes.view'] = 50,
+    ['notes.create'] = 50,
+    ['notes.edit'] = 75,
+    ['notes.archive'] = 75,
+    ['notes.history'] = 75,
+
     ['audit.view'] = 75,
     ['audit.sensitive'] = 99,
 
@@ -53,6 +59,11 @@ Config.permissions = {
     ['economy.xp.remove'] = 99,
     ['character.restore_model'] = 75,
     ['inventory.give'] = 75,
+    ['inventory.inspect'] = 50,
+    ['inventory.remove'] = 75,
+    ['inventory.manage'] = 75,
+    ['weapons.issue'] = 99,
+    ['weapons.ammo.grant'] = 75,
 
     ['booster.invincibility'] = 75,
     ['booster.invisibility'] = 75,

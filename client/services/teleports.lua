@@ -27,7 +27,13 @@ local function sameWaypoint(first, second)
 end
 
 local function succeeded(result)
-    return type(result) == 'table' and result.success == true
+    local success = type(result) == 'table' and result.success == true
+    if not success then
+        print(('[feather-admin] teleport failed reason=%s resultType=%s'):format(
+            tostring(type(result) == 'table' and result.reason or 'invalid_result'),
+            type(result)))
+    end
+    return success
 end
 
 local function runAutoWaypoint(session)

@@ -194,7 +194,10 @@ function AdminUI.OpenModerationHistory(history)
         end
         local status = entry.kind == 'warning' and AdminTranslate('warning')
             or entry.kind == 'kick' and AdminTranslate('kick')
-            or AdminTranslate(entry.status == 'active' and 'active_ban' or entry.status == 'revoked' and 'revoked_ban' or 'expired_ban')
+            or AdminTranslate(entry.status == 'active' and 'active_ban'
+                or entry.status == 'revoked' and 'revoked_ban'
+                or entry.status == 'superseded' and 'superseded_ban'
+                or 'expired_ban')
         local lines = {
             ('%s #%s'):format(status, entry.id),
             ('%s: %s'):format(AdminTranslate('reason'), entry.reason),

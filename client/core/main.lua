@@ -96,6 +96,19 @@ AddEventHandler('Feather:Character:Logout', function()
     AdminCases.activity = {}
     AdminCases.createForm = { title = '', summary = '', priority = 'normal', reportId = nil }
     AdminCases.resolution = ''
+    AdminPlayerNotes.target = nil
+    AdminPlayerNotes.rows = {}
+    AdminPlayerNotes.selected = nil
+    AdminPlayerNotes.history = {}
+    AdminInventory.target = nil
+    AdminInventory.inspected = {}
+    AdminInventory.inspection = nil
+    AdminWeapons.target = nil
+    AdminWeapons.weapons = {}
+    AdminWeapons.ammunition = {}
+    AdminWeapons.selected = nil
+    AdminWeapons.action = nil
+    AdminWeapons.quantity = ''
     AdminUI.targetPlayer = nil
     AdminUI.toggleStates = {}
     AdminUI.pendingToggles = {}

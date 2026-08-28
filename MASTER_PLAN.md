@@ -4,6 +4,28 @@ This plan keeps Feather Admin organized around the kind of work a staff member i
 
 Progress is tracked with explicit symbols: `✅` is implemented and `⬜` is still planned. Update this file whenever a roadmap feature is completed or its scope changes.
 
+## Contract 1 identity cutover status
+
+- ✅ Online identity resolves through Core account/session context and the Character profile provider.
+- ✅ Persistent staff authority is keyed by Core account UUID.
+- ✅ Admin character-reference columns use `CHAR(36)` on clean installs and have an existing-database migration.
+- ✅ Online player directory and action auditing preserve UUID Character IDs.
+- ✅ Moderation persistence has canonical target/admin account UUID columns and account-based hierarchy helpers.
+- ✅ Moderation search, warning, kick, ban, history, unban, and connection-gate handlers use Core accounts and UUID Character snapshots.
+- ✅ Moderation contract smoke coverage verifies identity, schema, connection identifiers, fail-closed targeting, and removal of retired joins.
+- ✅ Legacy-dependent domains fail closed during migration.
+- ✅ Retired numeric Character-table economy and staff-role handlers are removed;
+  their dormant UI remains fail-closed pending dedicated providers.
+- ✅ Moderation permissions are enabled after the account-contract handler cutover.
+- ✅ Reports persistence and handler ownership use reporter/assigned/closing account UUIDs.
+- ✅ Report contract and transactional workflow smoke tests pass; `/report` and Player Reports are enabled.
+- ✅ Staff Cases use canonical account and Character UUIDs for targets, creators,
+  assignments, closures, linked-record actors, hierarchy checks, and activity history.
+  Contract, rollback persistence, and live menu workflow tests pass.
+- ⬜ Economy and staff-directory workflows return through dedicated providers;
+  no legacy Character/User join fallback is permitted.
+- ⬜ A dedicated role/policy provider replaces the temporary Admin-owned staff assignment store.
+
 ## Navigation Structure
 
 ```text
@@ -100,11 +122,14 @@ Every new action must:
 
 - ✅ **Staff Cases**
    - Convert serious reports into durable cases linked to the source report, warnings, kicks, bans, and audit rows.
-   - Add note links when the separate Player Notes feature is implemented.
+   - ✅ Player Notes appear in account activity and can be linked as durable case evidence; live linking passes.
 
-- ⬜ **Player Notes**
+- ✅ **Player Notes**
    - Store internal notes with author, character, timestamps, and edit history.
    - Separate note permissions from moderation-action permissions.
+   - ✅ Account-scoped persistence, hierarchy enforcement, revision-conflict protection,
+     immutable edit/archive history, dedicated permissions, and the player-profile UI are implemented.
+     Online and offline live workflows pass.
 
 - ⬜ **Optional Sanctions**
    - Add mute or jail only after their owning chat/jail resources expose authoritative APIs.
@@ -112,12 +137,19 @@ Every new action must:
 
 ## Phase 3 - Player and Character Support
 
-- ⬜ **Inventory Inspection and Removal**
+- ✅ **Inventory Inspection and Removal**
    - View inventory, inspect metadata, and remove items with confirmation.
    - Keep the existing Give Item flow as a separate permission.
+   - ✅ UUID Character lookup, read-only instance inspection, separate permissions,
+     confirmed exact-instance removal, locked ownership validation, and destroy-guard
+     enforcement are implemented. Online/offline removal and equipped-weapon veto tests pass.
 
-- ⬜ **Weapon and Ammo Support**
+- ✅ **Weapon and Ammo Support**
    - Integrate through Feather Weapons rather than manipulating loadouts directly.
+   - ✅ Readiness and catalog contracts, unique issuance, atomic online/offline
+     ammunition grants, separate permissions, confirmations, limits, and auditing
+     are implemented. Contract coverage and live online/offline weapon issuance
+     and ammunition-grant workflows pass.
 
 - ⬜ **Horse and Wagon Assistance**
    - Find, bring, repair, revive, or dismiss owned entities through their owning resource APIs.
@@ -164,4 +196,7 @@ Every new action must:
 
 ## Recommended Build Order
 
-Next, build **Player Notes**. World Controls should wait until its authoritative time and weather integration has been selected.
+Next, build **Character Repair Tools** through Feather Character's authoritative
+profile and appearance contracts. Horse and Wagon Assistance should wait until
+their owning resources expose suitable APIs, and World Controls should wait until
+its time/weather integration is selected.

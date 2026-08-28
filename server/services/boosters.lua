@@ -76,7 +76,7 @@ FeatherAdmin.RegisterRPC('feather-admin:booster:death:result', function(params, 
         notify(pending.adminId, 'player_not_dead')
         return
     end
-    TriggerClientEvent('Feather:Character:Revive', target)
+    TriggerClientEvent('feather-admin:booster:revive', target)
     AdminAudit.Record(pending.adminId, 'booster.revive', target, 'verified_dead=true')
     notify(pending.adminId, 'player_revived')
 end, { windowMs = 3000, maxCalls = 3, maxPayloadBytes = 128 })

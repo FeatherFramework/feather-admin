@@ -34,6 +34,13 @@ Config.hierarchy = {
         ['cases.link'] = false,
         ['cases.close'] = false,
 
+        -- Internal player notes
+        ['notes.view'] = false,
+        ['notes.create'] = false,
+        ['notes.edit'] = false,
+        ['notes.archive'] = false,
+        ['notes.history'] = false,
+
         -- Economy and character
         ['economy.dollars.add'] = true,
         ['economy.dollars.remove'] = true,
@@ -45,6 +52,10 @@ Config.hierarchy = {
         ['economy.xp.remove'] = true,
         ['character.restore_model'] = true,
         ['inventory.give'] = true,
+        ['inventory.inspect'] = true,
+        ['inventory.remove'] = true,
+        ['weapons.issue'] = true,
+        ['weapons.ammo.grant'] = true,
 
         -- Player status
         ['booster.invincibility'] = true,

@@ -1,7 +1,116 @@
 FeatherAdmin = {}
 
-local Feather = exports['feather-core'].initiate()
+local Feather = {}
+Feather.RPC = {
+    Register = function(name, callback, options)
+        return exports['feather-core']:RegisterRPC(name, callback, options)
+    end
+}
+Feather.User = {
+    GetLicense = function(source)
+        local result = exports['feather-core']:GetPrimaryIdentifier(source)
+        return type(result) == 'table' and result.ok == true and result.value.identifier or nil
+    end
+}
+Feather.Connection = {
+    RegisterGate = function(name, callback, options)
+        return exports['feather-core']:RegisterConnectionGate(name, callback, options)
+    end
+}
 FeatherAdmin.Core = Feather
+FeatherAdmin.Identity = {}
+
+function FeatherAdmin.Notify(src, message, duration)
+    local result = exports['feather-core']:SendNotification({
+        source = src,
+        style = 'right',
+        message = message,
+        duration = duration
+    })
+    if type(result) ~= 'table' or result.ok ~= true then
+        print(('[feather-admin] notification failed source=%s code=%s'):format(
+            tostring(src), tostring(type(result) == 'table' and result.code or 'invalid_result')))
+    end
+    return result
+end
+
+local staffCache = {}
+
+local function CharacterProfile(characterId)
+    if type(characterId) ~= 'string' then return nil end
+    local provider = exports['feather-core']:GetProvider('character-profile', nil, 1)
+    if type(provider) ~= 'table' or provider.ok ~= true then return nil end
+    local result = provider.value.implementation.GetProfile(characterId)
+    return type(result) == 'table' and result.ok == true and result.value or nil
+end
+
+function FeatherAdmin.Identity.Resolve(src)
+    src = tonumber(src)
+    if not src then return nil end
+    local account = exports['feather-core']:GetAccountContext(src)
+    if type(account) ~= 'table' or account.ok ~= true then return nil end
+    local session = exports['feather-core']:GetSessionContext(src)
+    local sessionValue = type(session) == 'table' and session.ok == true and session.value or nil
+    local profile = sessionValue and CharacterProfile(sessionValue.characterId) or nil
+    local firstName = profile and profile.firstName or nil
+    local lastName = profile and profile.lastName or nil
+    local characterName = firstName and (('%s %s'):format(firstName, lastName or ''):gsub('%s+$', '')) or nil
+    return {
+        source = src,
+        accountId = account.value.accountId,
+        accountName = account.value.displayName,
+        characterId = profile and profile.characterId or nil,
+        firstName = firstName,
+        lastName = lastName,
+        characterName = characterName,
+        sessionId = sessionValue and sessionValue.sessionId or nil,
+        serverName = GetPlayerName(src)
+    }
+end
+
+function FeatherAdmin.Identity.Invalidate(accountId)
+    if accountId then staffCache[tostring(accountId)] = nil end
+end
+
+function FeatherAdmin.Identity.GetStaff(identity)
+    if type(identity) ~= 'table' or type(identity.accountId) ~= 'string' then return nil end
+    local ace = Config.identity and Config.identity.bootstrapAce
+    if type(ace) == 'string' and ace ~= '' and IsPlayerAceAllowed(identity.source, ace) then
+        return { roleLevel = tonumber(Config.identity.bootstrapLevel) or 99,
+            roleName = 'Bootstrap Admin', authoritySource = 'bootstrap_ace' }
+    end
+    local key = identity.accountId
+    if staffCache[key] ~= nil then return staffCache[key] or nil end
+    if not AdminDatabase or not AdminDatabase.ready then return nil end
+    local rows = MySQL.query.await([[
+        SELECT `role_level`, `role_name` FROM `feather_admin_staff_accounts`
+        WHERE `account_id` = ? AND `active` = 1 LIMIT 1
+    ]], { key }) or {}
+    local row = rows[1]
+    staffCache[key] = row and {
+        roleLevel = tonumber(row.role_level) or 0,
+        roleName = row.role_name,
+        authoritySource = 'staff_account'
+    } or false
+    return staffCache[key] or nil
+end
+
+function FeatherAdmin.Identity.GetStaffByAccountId(accountId)
+    if type(accountId) ~= 'string' or accountId == '' or not AdminDatabase or not AdminDatabase.ready then
+        return nil
+    end
+    if staffCache[accountId] ~= nil then return staffCache[accountId] or nil end
+    local row = MySQL.single.await([[
+        SELECT `role_level`, `role_name` FROM `feather_admin_staff_accounts`
+        WHERE `account_id` = ? AND `active` = 1 LIMIT 1
+    ]], { accountId })
+    staffCache[accountId] = row and {
+        roleLevel = tonumber(row.role_level) or 0,
+        roleName = row.role_name,
+        authoritySource = 'staff_account'
+    } or false
+    return staffCache[accountId] or nil
+end
 
 function FeatherAdmin.RegisterRPC(name, callback, options)
     return FeatherAdmin.Core.RPC.Register(name, function(params, respond, src)
@@ -11,12 +120,24 @@ function FeatherAdmin.RegisterRPC(name, callback, options)
 end
 
 function FeatherAdmin.GetRoleLevel(src)
-    local character = Feather.Character.GetCharacter({ src = src })
-    if character == nil or character.char == nil then return nil end
-    return tonumber(character.char.role_level)
+    local identity = FeatherAdmin.Identity.Resolve(src)
+    local staff = FeatherAdmin.Identity.GetStaff(identity)
+    return staff and staff.roleLevel or nil
+end
+
+function FeatherAdmin.IsActionEnabled(action)
+    local identityConfig = Config.identity or {}
+    if type(identityConfig.disabledActions) == 'table' and identityConfig.disabledActions[action] then
+        return false
+    end
+    for _, prefix in ipairs(identityConfig.disabledActionPrefixes or {}) do
+        if type(prefix) == 'string' and action:sub(1, #prefix) == prefix then return false end
+    end
+    return true
 end
 
 function FeatherAdmin.CanUse(src, action)
+    if not FeatherAdmin.IsActionEnabled(action) then return false end
     local requiredLevel = tonumber(Config.permissions[action])
     local roleLevel = FeatherAdmin.GetRoleLevel(src)
     return requiredLevel ~= nil and roleLevel ~= nil and roleLevel >= requiredLevel
@@ -29,7 +150,9 @@ function FeatherAdmin.GetPermissions(src)
 
     for action, configuredLevel in pairs(Config.permissions) do
         local requiredLevel = tonumber(configuredLevel)
-        if requiredLevel ~= nil and roleLevel >= requiredLevel then permissions[action] = true end
+        if requiredLevel ~= nil and roleLevel >= requiredLevel and FeatherAdmin.IsActionEnabled(action) then
+            permissions[action] = true
+        end
     end
     return permissions
 end
@@ -39,11 +162,11 @@ function FeatherAdmin.IsAuthorized(src)
 end
 
 function FeatherAdmin.Deny(src)
-    Feather.Notify.RightNotify(src, 'You do not have permission to use Feather Admin.', 4000)
+    FeatherAdmin.Notify(src, 'You do not have permission to use Feather Admin.', 4000)
 end
 
 function FeatherAdmin.DenyAction(src)
-    Feather.Notify.RightNotify(src, 'You do not have permission for that action.', 3000)
+    FeatherAdmin.Notify(src, 'You do not have permission for that action.', 3000)
 end
 
 function FeatherAdmin.RequirePermission(src, action)
@@ -66,7 +189,7 @@ local function hierarchyConfig()
 end
 
 local function targetDenied(src, action, targetId, targetLicense, reason)
-    FeatherAdmin.Core.Notify.RightNotify(src, 'You cannot target a player of equal or higher rank.', 4000)
+    FeatherAdmin.Notify(src, 'You cannot target a player of equal or higher rank.', 4000)
     AdminAudit.Record(src, ('%s.blocked'):format(action), targetId,
         ('reason=%s license=%s'):format(reason, tostring(targetLicense or 'unknown')))
 end
@@ -96,6 +219,37 @@ function FeatherAdmin.CanActOnLicense(src, targetLicense, action)
     return actorLevel > targetLevel, 'rank'
 end
 
+function FeatherAdmin.CanActOnAccount(src, targetAccountId, action)
+    local actorIdentity = FeatherAdmin.Identity.Resolve(src)
+    local actorStaff = FeatherAdmin.Identity.GetStaff(actorIdentity)
+    if not actorIdentity or not actorStaff or type(targetAccountId) ~= 'string' or targetAccountId == '' then
+        return false, 'unresolved_role'
+    end
+
+    local settings = hierarchyConfig()
+    if actorIdentity.accountId == targetAccountId then
+        local allowSelf = type(settings.allowSelf) == 'table' and settings.allowSelf or {}
+        return allowSelf[action] == true, 'self'
+    end
+
+    local exempt = type(settings.exempt) == 'table' and settings.exempt or {}
+    if exempt[action] == true then return true, 'exempt' end
+
+    local targetStaff = FeatherAdmin.Identity.GetStaffByAccountId(targetAccountId)
+    local targetLevel = targetStaff and targetStaff.roleLevel or 0
+    if settings.strict == false then return actorStaff.roleLevel >= targetLevel, 'rank' end
+    return actorStaff.roleLevel > targetLevel, 'rank'
+end
+
+function FeatherAdmin.CheckTargetAccountHierarchy(src, action, targetAccountId, targetId)
+    local allowed, reason = FeatherAdmin.CanActOnAccount(src, targetAccountId, action)
+    if not allowed then
+        targetDenied(src, action, targetId, targetAccountId, reason)
+        return false
+    end
+    return true
+end
+
 function FeatherAdmin.RequireTarget(src, action, playerId)
     if not FeatherAdmin.RequirePermission(src, action) then return nil end
 
@@ -108,7 +262,29 @@ function FeatherAdmin.RequireTarget(src, action, playerId)
 end
 
 function FeatherAdmin.CheckTargetHierarchy(src, action, targetLicense, targetId)
-    local allowed, reason = FeatherAdmin.CanActOnLicense(src, targetLicense, action)
+    local allowed, reason
+    if targetId ~= nil then
+        local actorIdentity = FeatherAdmin.Identity.Resolve(src)
+        local targetIdentity = FeatherAdmin.Identity.Resolve(targetId)
+        local actorStaff = FeatherAdmin.Identity.GetStaff(actorIdentity)
+        local targetStaff = FeatherAdmin.Identity.GetStaff(targetIdentity)
+        if not actorIdentity or not targetIdentity or not actorStaff then
+            allowed, reason = false, 'unresolved_role'
+        elseif actorIdentity.accountId == targetIdentity.accountId then
+            local settings = hierarchyConfig()
+            local allowSelf = type(settings.allowSelf) == 'table' and settings.allowSelf or {}
+            allowed, reason = allowSelf[action] == true, 'self'
+        else
+            local settings = hierarchyConfig()
+            local exempt = type(settings.exempt) == 'table' and settings.exempt or {}
+            local targetLevel = targetStaff and targetStaff.roleLevel or 0
+            allowed = exempt[action] == true or (settings.strict == false
+                and actorStaff.roleLevel >= targetLevel or actorStaff.roleLevel > targetLevel)
+            reason = 'rank'
+        end
+    else
+        allowed, reason = FeatherAdmin.CanActOnLicense(src, targetLicense, action)
+    end
     if not allowed then
         targetDenied(src, action, targetId, targetLicense, reason)
         return false

@@ -11,6 +11,7 @@ local function banDetails(ban)
     local issuedBy = ban.adminCharacterName or ban.adminName or AdminTranslate('not_available')
     return table.concat({
         ('%s: #%s'):format(AdminTranslate('ban_id'), display(ban.id)),
+        ('%s: %s'):format(AdminTranslate('account_id'), display(ban.accountId)),
         ('%s: %s'):format(AdminTranslate('character_name'), display(ban.characterName)),
         ('%s: %s'):format(AdminTranslate('account_name'), display(ban.playerName)),
         ('%s: %s'):format(AdminTranslate('reason'), display(ban.reason)),

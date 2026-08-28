@@ -10,16 +10,15 @@ local function clean(value, maximum)
 end
 
 local function identity(src)
-    local character = FeatherAdmin.Core.Character.GetCharacter({ src = src })
-    local char = character and character.char
+    local resolved = FeatherAdmin.Identity.Resolve(src)
     local license = FeatherAdmin.Core.User.GetLicense(src)
-    if not char or not license then return nil end
-    local characterName = ('%s %s'):format(char.first_name or '', char.last_name or ''):match('^%s*(.-)%s*$')
+    if not resolved or not resolved.accountId or not resolved.characterId or not license then return nil end
     return {
+        accountId = resolved.accountId,
         license = license,
-        name = GetPlayerName(src),
-        characterId = tonumber(char.id),
-        characterName = characterName ~= '' and characterName or nil
+        name = resolved.accountName or resolved.serverName,
+        characterId = resolved.characterId,
+        characterName = resolved.characterName
     }
 end
 
@@ -36,14 +35,16 @@ end
 
 local function caseRow(caseId)
     return MySQL.single.await([[
-        SELECT id, source_report_id AS sourceReportId, target_license,
+        SELECT id, source_report_id AS sourceReportId, target_account_id AS targetAccountId, target_license,
                target_name AS targetName, target_character_id AS targetCharacterId,
                target_character_name AS targetCharacterName, title, summary, priority, status,
-               created_admin_name AS createdAdminName,
+               created_admin_account_id AS createdAdminAccountId, created_admin_name AS createdAdminName,
                created_admin_character_name AS createdAdminCharacterName,
-               assigned_admin_license, assigned_admin_name AS assignedAdminName,
+               assigned_admin_account_id AS assignedAdminAccountId, assigned_admin_license,
+               assigned_admin_name AS assignedAdminName,
                assigned_admin_character_name AS assignedAdminCharacterName,
-               resolution, closed_admin_name AS closedAdminName,
+               resolution, closed_admin_account_id AS closedAdminAccountId,
+               closed_admin_name AS closedAdminName,
                closed_admin_character_name AS closedAdminCharacterName,
                DATE_FORMAT(claimed_at, '%m-%d-%Y %h:%i %p') AS claimedAt,
                DATE_FORMAT(closed_at, '%m-%d-%Y %h:%i %p') AS closedAt,
@@ -54,17 +55,19 @@ end
 
 local function targetForAudit(row)
     return {
+        accountId = row.targetAccountId or row.target_account_id,
         license = row.target_license,
         name = row.targetName,
-        characterId = tonumber(row.targetCharacterId),
+        characterId = row.targetCharacterId,
         characterName = row.targetCharacterName
     }
 end
 
 local function canManageCase(src, row, permission)
     if not row then return false end
-    local actorLicense = FeatherAdmin.Core.User.GetLicense(src)
-    return row.assigned_admin_license == actorLicense or FeatherAdmin.CanUse(src, permission or 'cases.manage')
+    local actor = identity(src)
+    return actor and row.assignedAdminAccountId == actor.accountId
+        or FeatherAdmin.CanUse(src, permission or 'cases.manage')
 end
 
 FeatherAdmin.RegisterRPC('feather-admin:cases:list', function(params, _, src)
@@ -108,28 +111,31 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:create-from-report', function(para
     end
     local report = MySQL.single.await('SELECT * FROM feather_admin_reports WHERE id = ?', { reportId })
     if not report then return actionResult(src, false, 'report_not_found') end
-    if not FeatherAdmin.CheckTargetHierarchy(src, 'cases.create', report.reporter_license, nil) then return end
+    if type(report.reporter_account_id) ~= 'string'
+        or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'cases.create', report.reporter_account_id, nil) then return end
     if MySQL.scalar.await('SELECT id FROM feather_admin_cases WHERE source_report_id = ? LIMIT 1', { reportId }) then
         return actionResult(src, false, 'report_case_exists')
     end
     local caseId = MySQL.insert.await([[
         INSERT INTO feather_admin_cases
-            (source_report_id, target_license, target_name, target_character_id, target_character_name,
-             title, summary, priority, created_admin_license, created_admin_name,
+            (source_report_id, target_account_id, target_license, target_name, target_character_id, target_character_name,
+             title, summary, priority, created_admin_account_id, created_admin_license, created_admin_name,
              created_admin_character_id, created_admin_character_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ]], { reportId, report.reporter_license, report.reporter_name, report.reporter_character_id,
-        report.reporter_character_name, title, summary, priority, admin.license, admin.name,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ]], { reportId, report.reporter_account_id, report.reporter_license, report.reporter_name,
+        report.reporter_character_id, report.reporter_character_name, title, summary, priority,
+        admin.accountId, admin.license, admin.name,
         admin.characterId, admin.characterName })
     if not caseId then return actionResult(src, false, 'case_create_failed') end
     MySQL.insert.await([[INSERT IGNORE INTO feather_admin_case_links
-        (case_id, link_type, link_id, label, details, admin_license, admin_name,
+        (case_id, link_type, link_id, label, details, admin_account_id, admin_license, admin_name,
          admin_character_id, admin_character_name)
-        VALUES (?, 'report', ?, ?, ?, ?, ?, ?, ?)]], {
+        VALUES (?, 'report', ?, ?, ?, ?, ?, ?, ?, ?)]], {
         caseId, reportId, ('Report #%s'):format(reportId), report.message,
-        admin.license, admin.name, admin.characterId, admin.characterName
+        admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName
     })
     AdminAudit.RecordTarget(src, 'cases.create', targetForAudit({
+        target_account_id = report.reporter_account_id,
         target_license = report.reporter_license, targetName = report.reporter_name,
         targetCharacterId = report.reporter_character_id,
         targetCharacterName = report.reporter_character_name
@@ -143,27 +149,29 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:detail', function(params, _, src)
     if not caseId or caseId < 1 or caseId % 1 ~= 0 then return end
     local row = caseRow(caseId)
     if not row then return actionResult(src, false, 'case_not_found') end
-    local targetLicense = row.target_license
+    local targetAccountId = row.targetAccountId
     local limit = math.max(1, math.min(tonumber(settings().activityLimit) or 20, 50))
     local activity = {}
     local sources = {
-        { kind = 'warning', tableName = 'feather_admin_warnings' },
-        { kind = 'kick', tableName = 'feather_admin_kicks' },
-        { kind = 'ban', tableName = 'feather_admin_bans' }
+        { kind = 'warning', tableName = 'feather_admin_warnings', detailColumn = 'reason', accountColumn = 'account_id' },
+        { kind = 'kick', tableName = 'feather_admin_kicks', detailColumn = 'reason', accountColumn = 'account_id' },
+        { kind = 'ban', tableName = 'feather_admin_bans', detailColumn = 'reason', accountColumn = 'account_id' },
+        { kind = 'note', tableName = 'feather_admin_player_notes', detailColumn = 'body',
+          accountColumn = 'target_account_id' }
     }
     for _, source in ipairs(sources) do
-        local records = MySQL.query.await(([=[SELECT id, '%s' AS kind, reason AS details,
+        local records = MySQL.query.await(([=[SELECT id, '%s' AS kind, %s AS details,
             DATE_FORMAT(created_at, '%%m-%%d-%%Y %%h:%%i %%p') AS createdAt
-            FROM %s WHERE license = ? ORDER BY id DESC LIMIT %d]=]):format(
-            source.kind, source.tableName, limit), { targetLicense }) or {}
+            FROM %s WHERE %s = ? ORDER BY id DESC LIMIT %d]=]):format(
+            source.kind, source.detailColumn, source.tableName, source.accountColumn, limit), { targetAccountId }) or {}
         for _, record in ipairs(records) do activity[#activity + 1] = record end
     end
     if FeatherAdmin.CanUse(src, 'audit.view') then
         local audits = MySQL.query.await(([=[SELECT id, 'audit' AS kind, action,
             COALESCE(details, '') AS details,
             DATE_FORMAT(created_at, '%%m-%%d-%%Y %%h:%%i %%p') AS createdAt
-            FROM feather_admin_actions WHERE target_license = ? ORDER BY id DESC LIMIT %d]=]):format(limit),
-            { targetLicense }) or {}
+            FROM feather_admin_actions WHERE target_account_id = ? ORDER BY id DESC LIMIT %d]=]):format(limit),
+            { targetAccountId }) or {}
         for _, record in ipairs(audits) do
             if not FeatherAdmin.CanUse(src, 'audit.sensitive') then
                 if tostring(record.action):sub(1, 8) == 'economy.' then
@@ -188,8 +196,8 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:detail', function(params, _, src)
     local linked = {}
     for _, link in ipairs(links) do linked[('%s:%s'):format(link.kind, link.recordId)] = true end
     for _, record in ipairs(activity) do record.linked = linked[('%s:%s'):format(record.kind, record.id)] == true end
-    row.assignedToSelf = row.assigned_admin_license ~= nil
-        and row.assigned_admin_license == FeatherAdmin.Core.User.GetLicense(src)
+    local actor = identity(src)
+    row.assignedToSelf = actor ~= nil and row.assignedAdminAccountId == actor.accountId
     row.target_license = nil
     row.assigned_admin_license = nil
     TriggerClientEvent('feather-admin:cases:detail:result', src, row, links, activity)
@@ -201,11 +209,11 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:claim', function(params, _, src)
     local admin = identity(src)
     if not caseId or caseId % 1 ~= 0 or not admin then return end
     local row = caseRow(caseId)
-    if not row or not FeatherAdmin.CheckTargetHierarchy(src, 'cases.claim', row.target_license, nil) then return end
+    if not row or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'cases.claim', row.targetAccountId, nil) then return end
     local changed = MySQL.update.await([[UPDATE feather_admin_cases SET status = 'claimed',
-        assigned_admin_license = ?, assigned_admin_name = ?, assigned_admin_character_id = ?,
+        assigned_admin_account_id = ?, assigned_admin_license = ?, assigned_admin_name = ?, assigned_admin_character_id = ?,
         assigned_admin_character_name = ?, claimed_at = NOW() WHERE id = ? AND status = 'open']],
-        { admin.license, admin.name, admin.characterId, admin.characterName, caseId })
+        { admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, caseId })
     if not changed or changed < 1 then return actionResult(src, false, 'case_claim_failed') end
     AdminAudit.RecordTarget(src, 'cases.claim', targetForAudit(row), ('case_id=%s'):format(caseId))
     actionResult(src, true, 'case_claimed', caseId)
@@ -216,10 +224,11 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:release', function(params, _, src)
     local caseId = tonumber(params.caseId)
     local row = caseId and caseRow(caseId)
     if not row or row.status ~= 'claimed' then return actionResult(src, false, 'case_release_failed') end
-    if not FeatherAdmin.CheckTargetHierarchy(src, 'cases.claim', row.target_license, nil) then return end
+    if not FeatherAdmin.CheckTargetAccountHierarchy(src, 'cases.claim', row.targetAccountId, nil) then return end
     if not canManageCase(src, row) then return actionResult(src, false, 'action_not_permitted') end
     local changed = MySQL.update.await([[UPDATE feather_admin_cases SET status = 'open',
-        assigned_admin_license = NULL, assigned_admin_name = NULL, assigned_admin_character_id = NULL,
+        assigned_admin_account_id = NULL, assigned_admin_license = NULL, assigned_admin_name = NULL,
+        assigned_admin_character_id = NULL,
         assigned_admin_character_name = NULL, claimed_at = NULL WHERE id = ? AND status = 'claimed']], { caseId })
     if not changed or changed < 1 then return actionResult(src, false, 'case_release_failed') end
     AdminAudit.RecordTarget(src, 'cases.release', targetForAudit(row), ('case_id=%s'):format(caseId))
@@ -231,7 +240,8 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:link', function(params, _, src)
     local caseId, recordId = tonumber(params.caseId), tonumber(params.recordId)
     local kind = type(params.kind) == 'string' and params.kind or ''
     local tables = { warning = 'feather_admin_warnings', kick = 'feather_admin_kicks',
-        ban = 'feather_admin_bans', audit = 'feather_admin_actions' }
+        ban = 'feather_admin_bans', audit = 'feather_admin_actions',
+        note = 'feather_admin_player_notes' }
     local tableName = tables[kind]
     local row = caseId and caseRow(caseId)
     if not row or row.status == 'closed' or not recordId or recordId % 1 ~= 0 or not tableName then
@@ -240,18 +250,20 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:link', function(params, _, src)
     if kind == 'audit' and not FeatherAdmin.CanUse(src, 'audit.view') then
         return actionResult(src, false, 'action_not_permitted')
     end
-    if not FeatherAdmin.CheckTargetHierarchy(src, 'cases.link', row.target_license, nil) then return end
+    if not FeatherAdmin.CheckTargetAccountHierarchy(src, 'cases.link', row.targetAccountId, nil) then return end
     if not canManageCase(src, row) then return actionResult(src, false, 'action_not_permitted') end
-    local licenseColumn = kind == 'audit' and 'target_license' or 'license'
-    local record = MySQL.single.await(('SELECT id FROM %s WHERE id = ? AND %s = ?'):format(tableName, licenseColumn),
-        { recordId, row.target_license })
+    local accountColumn = (kind == 'audit' or kind == 'note') and 'target_account_id' or 'account_id'
+    local record = MySQL.single.await(('SELECT id FROM %s WHERE id = ? AND %s = ?'):format(tableName, accountColumn),
+        { recordId, row.targetAccountId })
     if not record then return actionResult(src, false, 'case_link_failed') end
     local admin = identity(src)
     if not admin then return actionResult(src, false, 'case_link_failed') end
     MySQL.insert.await([[INSERT IGNORE INTO feather_admin_case_links
-        (case_id, link_type, link_id, label, admin_license, admin_name, admin_character_id, admin_character_name)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)]], { caseId, kind, recordId,
-        ('%s #%s'):format(kind, recordId), admin.license, admin.name, admin.characterId, admin.characterName })
+        (case_id, link_type, link_id, label, admin_account_id, admin_license, admin_name,
+         admin_character_id, admin_character_name)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)]], { caseId, kind, recordId,
+        ('%s #%s'):format(kind, recordId), admin.accountId, admin.license, admin.name,
+        admin.characterId, admin.characterName })
     AdminAudit.RecordTarget(src, 'cases.link', targetForAudit(row),
         ('case_id=%s link=%s:%s'):format(caseId, kind, recordId))
     actionResult(src, true, 'case_record_linked', caseId)
@@ -267,12 +279,12 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:close', function(params, _, src)
     if not row or row.status == 'closed' or not resolution or not admin then
         return actionResult(src, false, 'case_close_failed')
     end
-    if not FeatherAdmin.CheckTargetHierarchy(src, 'cases.close', row.target_license, nil) then return end
+    if not FeatherAdmin.CheckTargetAccountHierarchy(src, 'cases.close', row.targetAccountId, nil) then return end
     if not canManageCase(src, row) then return actionResult(src, false, 'action_not_permitted') end
     local changed = MySQL.update.await([[UPDATE feather_admin_cases SET status = 'closed', resolution = ?,
-        closed_admin_license = ?, closed_admin_name = ?, closed_admin_character_id = ?,
+        closed_admin_account_id = ?, closed_admin_license = ?, closed_admin_name = ?, closed_admin_character_id = ?,
         closed_admin_character_name = ?, closed_at = NOW() WHERE id = ? AND status <> 'closed']],
-        { resolution, admin.license, admin.name, admin.characterId, admin.characterName, caseId })
+        { resolution, admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, caseId })
     if not changed or changed < 1 then return actionResult(src, false, 'case_close_failed') end
     AdminAudit.RecordTarget(src, 'cases.close', targetForAudit(row),
         ('case_id=%s resolution=%s'):format(caseId, resolution))
