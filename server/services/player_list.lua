@@ -25,7 +25,14 @@ local function getPlayerList()
 end
 
 local function getRoles()
-    return MySQL.query.await('SELECT id, name, level FROM roles ORDER BY level ASC, name ASC') or {}
+    if not AdminDatabase or not AdminDatabase.ready then return {} end
+    return MySQL.query.await([[
+        SELECT role_level AS id, role_name AS name, role_level AS level
+        FROM feather_admin_staff_accounts
+        WHERE active = 1
+        GROUP BY role_level, role_name
+        ORDER BY role_level ASC, role_name ASC
+    ]]) or {}
 end
 
 local function syncPlayerList(src, roles)
@@ -44,6 +51,10 @@ local function syncAllAdmins(excludedPlayer)
         if adminId and adminId >= 0 and adminId ~= excludedPlayer then syncPlayerList(adminId, roles) end
     end
 end
+
+AdminDatabase.OnReady(function()
+    syncAllAdmins()
+end)
 
 FeatherAdmin.RegisterRPC('feather-admin:players:request', function(_, _, src)
     if not FeatherAdmin.RequirePermission(src, 'players.view') then return end
