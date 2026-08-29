@@ -147,6 +147,12 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:search', function(params, _, 
         local prefix = query .. '%'
         clause, values = '(a.display_name LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ?)', { prefix, prefix, prefix }
     end
+    local roleLevel = tonumber(params.roleId)
+    if roleLevel ~= nil then
+        if roleLevel < 0 or roleLevel % 1 ~= 0 then return end
+        clause = ('(%s) AND COALESCE(s.role_level, 0) = ?'):format(clause)
+        values[#values + 1] = roleLevel
+    end
     local rows = MySQL.query.await(([[SELECT a.id AS accountId, a.display_name AS playerName,
         p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName,
         s.role_name AS roleName, COALESCE(s.role_level, 0) AS roleLevel

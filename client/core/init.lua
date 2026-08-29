@@ -16,7 +16,10 @@ Feather.Locale = {
 }
 
 local function ShowNotification(request)
-    local result = exports['feather-core']:ShowNotification(request)
+    local called, result = pcall(function()
+        return exports['feather-notify']:ShowNotification(request)
+    end)
+    if not called then result = { ok = false, code = 'provider_unavailable' } end
     if type(result) ~= 'table' or result.ok ~= true then
         print(('[feather-admin] client notification failed code=%s'):format(
             tostring(type(result) == 'table' and result.code or 'invalid_result')))
