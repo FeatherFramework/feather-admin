@@ -1,4 +1,11 @@
-local Weapons = exports['feather-weapons'].initiate()
+local function weaponsApi()
+    if GetResourceState('feather-weapons') ~= 'started' then return nil end
+    local ok, api = pcall(function()
+        return exports['feather-weapons'].initiate()
+    end)
+    if not ok or type(api) ~= 'table' then return nil end
+    return api
+end
 
 local function target(params)
     local serverId = tonumber(params and params.serverId)
@@ -33,6 +40,10 @@ end
 FeatherAdmin.RegisterRPC('feather-admin:weapons:catalog', function(_, _, src)
     if not FeatherAdmin.CanUse(src, 'weapons.issue') and not FeatherAdmin.CanUse(src, 'weapons.ammo.grant') then
         return FeatherAdmin.DenyAction(src)
+    end
+    local Weapons = weaponsApi()
+    if not Weapons then
+        return TriggerClientEvent('feather-admin:weapons:result', src, false, 'weapons_unavailable')
     end
     local capabilities = Weapons.GetCapabilities and Weapons.GetCapabilities() or nil
     if type(capabilities) ~= 'table' or capabilities.ready ~= true then
@@ -89,6 +100,10 @@ FeatherAdmin.RegisterRPC('feather-admin:weapons:grant-ammo', function(params, _,
     if not subject or not definitionId or quantity < 1 or quantity > maximum
         or not FeatherAdmin.CheckTargetAccountHierarchy(
             src, 'weapons.ammo.grant', subject.accountId, subject.serverId) then return end
+    local Weapons = weaponsApi()
+    if not Weapons then
+        return TriggerClientEvent('feather-admin:weapons:result', src, false, 'weapons_unavailable')
+    end
     local definition = Weapons.Definitions.Get('ammunition', definitionId)
     if failed(definition) or type(definition.value.itemName) ~= 'string' then
         return TriggerClientEvent('feather-admin:weapons:result', src, false, 'ammo_definition_invalid')
