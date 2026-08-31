@@ -91,12 +91,12 @@ function AdminUI.OpenPlayers()
         local roleOptions = { { display = AdminTranslate('all_roles'), value = false } }
         local selectedRole = 0
         for _, role in ipairs(AdminPlayerDirectory.roles) do
-            local roleId = tonumber(role.id)
+            local roleKey = role.key
             roleOptions[#roleOptions + 1] = {
                 display = ('%s (%s)'):format(tostring(role.name), tostring(role.level)),
-                value = roleId
+                value = roleKey
             }
-            if tonumber(AdminPlayerDirectory.roleFilterId) == roleId then selectedRole = #roleOptions - 1 end
+            if AdminPlayerDirectory.roleFilterId == roleKey then selectedRole = #roleOptions - 1 end
         end
         AdminUI.AddArrows(page, AdminTranslate('role_filter'), roleOptions, selectedRole, function(data)
             AdminPlayerDirectory.roleFilterId = data.value.value or nil

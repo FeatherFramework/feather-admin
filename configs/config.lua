@@ -1,15 +1,9 @@
 Config = {
 
-    -- Contract 1 staff authority is account-scoped. The ACE is the recovery
-    -- bootstrap for first installation; persistent assignments are stored by
-    -- Core account UUID rather than on a Character record.
+    -- Admin permissions use the active Character's role from feather-roles.
     identity = {
-        bootstrapAce = 'feather.admin.bootstrap',
-        bootstrapLevel = 99,
-        -- These dormant screens have no server mutation handlers in this
-        -- release. They remain hidden until dedicated staff/economy providers
-        -- replace the retired numeric Character/role-table implementation.
-        disabledActionPrefixes = { 'staff.', 'economy.' },
+        -- Economy remains hidden until its dedicated provider is available.
+        disabledActionPrefixes = { 'economy.' },
         disabledActions = { ['character.restore_model'] = true }
     },
 

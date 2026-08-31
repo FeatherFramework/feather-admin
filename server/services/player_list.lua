@@ -25,14 +25,8 @@ local function getPlayerList()
 end
 
 local function getRoles()
-    if not AdminDatabase or not AdminDatabase.ready then return {} end
-    return MySQL.query.await([[
-        SELECT role_level AS id, role_name AS name, role_level AS level
-        FROM feather_admin_staff_accounts
-        WHERE active = 1
-        GROUP BY role_level, role_name
-        ORDER BY role_level ASC, role_name ASC
-    ]]) or {}
+    local result = exports['feather-roles']:GetCatalog(false)
+    return type(result) == 'table' and result.ok == true and result.value or {}
 end
 
 local function syncPlayerList(src, roles)

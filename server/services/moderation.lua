@@ -147,26 +147,26 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:search', function(params, _, 
         local prefix = query .. '%'
         clause, values = '(a.display_name LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ?)', { prefix, prefix, prefix }
     end
-    local roleLevel = tonumber(params.roleId)
-    if roleLevel ~= nil then
-        if roleLevel < 0 or roleLevel % 1 ~= 0 then return end
-        clause = ('(%s) AND COALESCE(s.role_level, 0) = ?'):format(clause)
-        values[#values + 1] = roleLevel
-    end
+    local roleKey = trim(params.roleKey)
+    if roleKey == '' then roleKey = nil end
     local rows = MySQL.query.await(([[SELECT a.id AS accountId, a.display_name AS playerName,
-        p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName,
-        s.role_name AS roleName, COALESCE(s.role_level, 0) AS roleLevel
+        p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName
         FROM core_accounts a LEFT JOIN character_profiles p
           ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci AND p.status = 'active'
-        LEFT JOIN feather_admin_staff_accounts s
-          ON s.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci AND s.active = 1
         WHERE a.status = 'active' AND %s ORDER BY a.display_name, p.created_at LIMIT %d]]):format(clause, limit), values) or {}
+    local filtered = {}
     for _, row in ipairs(rows) do
+        local resolved = row.characterId and exports['feather-roles']:GetCharacterRole(row.characterId) or nil
+        local role = type(resolved) == 'table' and resolved.ok == true and resolved.value.role or nil
+        row.roleKey = role and role.key or nil
+        row.roleName = role and role.name or 'Player'
+        row.roleLevel = role and role.level or 0
         row.license = licenseForAccount(row.accountId)
         row.serverId = onlineSource(row.accountId, row.characterId)
         row.isOnline = row.serverId ~= nil
+        if not roleKey or row.roleKey == roleKey then filtered[#filtered + 1] = row end
     end
-    TriggerClientEvent('feather-admin:moderation:search:result', src, rows)
+    TriggerClientEvent('feather-admin:moderation:search:result', src, filtered)
     AdminAudit.Record(src, 'moderation.search', nil, query)
 end, { windowMs = 3000, maxCalls = 1, maxPayloadBytes = 256 })
 

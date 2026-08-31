@@ -2,6 +2,7 @@
 -- 50 = Moderator, 75 = Senior Admin, 99 = Owner.
 -- Change the numbers to match the levels in your server's roles table.
 Config.permissions = {
+    ['roles.assignment.manage'] = 99,
     ['menu.open'] = 50,
     ['server.overview'] = 50,
     ['server.announce'] = 75,
