@@ -3,11 +3,10 @@
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Its default permissions use numeric staff levels `50`, `75`, and `99`.
 
 > [!WARNING]
-> The Contract 1 identity cutover is active. Online player identity,
-> staff authorization, Inventory grants, moderation, reports, Staff Cases,
-> and action auditing now use Core account sessions and UUID Character
-> profiles. Legacy economy and staff-role mutation handlers have been removed;
-> those screens remain hidden until dedicated providers are implemented.
+> Online identity, Inventory grants, moderation, reports, Staff Cases, and
+> action auditing use Core account sessions and UUID Character profiles.
+> Staff authorization and role changes use character-scoped Feather Roles.
+> Economy screens remain hidden until their dedicated provider is available.
 
 The moderation database foundation now records canonical Core account UUIDs
 for targets, acting staff, and ban revocations. Moderation search, warnings,
@@ -19,7 +18,7 @@ now use that contract.
 - Browse connected players and search online or offline characters through one Players directory
 - Review player capacity, uptime, OneSync mode, and configured Feather resource health
 - Send confirmed server-wide announcements with configurable limits and cooldowns
-- View character details, account staff level, and identifiers
+- View character details, active-character role level, and identifiers
 - Teleport to a player, bring them to you, or send them back
 - Spectate another player, including players outside normal streaming range
 - Kick an online player from the Moderation page with a required reason
@@ -53,28 +52,34 @@ now use that contract.
 ## Dependencies
 
 - `feather-core`
+- `feather-toolkit`
+- `feather-character`
+- `feather-roles`
 - `feather-menu`
 - `feather-inventory`
 - `feather-weapons`
 
 These resources must already be installed. They also need to start before Feather Admin.
 
-Feather Admin creates its tables automatically on a clean installation. For an
-existing database, back it up and run
-`database/character_uuid_cutover.sql` before starting the updated resource.
+Feather Admin and Feather Roles create their tables automatically. For an older
+Feather Admin database, back it up and run `database/character_uuid_cutover.sql`
+once before starting the updated resources.
 
 ## Installation
 
 1. Download Feather Admin.
 2. Place its folder inside your server's `resources` folder.
 3. Make sure the folder is named `feather-admin`.
-4. Make sure `feather-core` and `feather-menu` are also installed.
+4. Make sure all dependencies listed above are installed.
 5. Open your `server.cfg` file with a text editor.
 6. Add these lines in this order:
 
    ```cfg
    ensure feather-core
+   ensure feather-toolkit
    ensure feather-menu
+   ensure feather-character
+   ensure feather-roles
    ensure feather-inventory
    ensure feather-weapons
    ensure feather-admin
@@ -82,25 +87,20 @@ existing database, back it up and run
 
 7. Save `server.cfg` and restart your server.
 
-## Contract 1 staff bootstrap
+## First role assignment
 
-Staff authority is assigned to the stable Core account UUID, not to whichever
-Character is selected. With the player connected and a UUID Character active,
-run this once from the server console:
+Admin authority comes from the role assigned to the active Character. With the
+player connected and that Character selected, run this from the server console:
 
 ```text
-AdminGrantStaff <serverId> <0-100> [role name]
+RoleAssign <serverId> <role key>
 ```
 
 Example:
 
 ```text
-AdminGrantStaff 1 99 Owner
+RoleAssign 1 owner
 ```
-
-Alternatively, grant the configured `feather.admin.bootstrap` ACE. The ACE is
-intended for installation/recovery and supplies `bootstrapLevel` from
-`configs/config.lua`.
 
 Then run:
 
@@ -110,9 +110,13 @@ AdminIdentitySmokeTest <serverId>
 
 All seven checks must pass before testing the menu.
 
+In the client F8 console, run `AdminToolkitContractSmokeTest`. All four checks
+must pass before testing key access, clipboard actions, developer overlays, or
+spawned Admin effects.
+
 ## Permissions
 
-Every enabled menu action has a minimum numeric account-staff level in `configs/permissions.lua`. The default tiers are:
+Every enabled menu action has a minimum numeric Character-role level in `configs/permissions.lua`. The default tiers are:
 
 - Level `50` — Moderator: player support, reports, staff cases, warnings, kicks, spectating, travel, healing, and reviving
 - Level `75` — Senior Admin: report and case oversight, case closure, bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
@@ -124,8 +128,8 @@ Adjust individual values to fit your staff structure. Keep `menu.open` at or bel
 
 Buttons a staff member cannot use are hidden. Self-target buttons also follow `configs/hierarchy.lua`. Every request is checked again by the server, so changing the local menu does not grant permission.
 
-If an administrator cannot open the menu, confirm that their Core account has
-an active `feather_admin_staff_accounts` assignment or the bootstrap ACE.
+If an administrator cannot open the menu, confirm that the currently selected
+Character has the expected assignment in Feather Roles.
 
 ## Configuration
 
@@ -208,7 +212,7 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 
 ### The menu does not open
 
-- Confirm that `feather-core`, `feather-menu`, and `feather-admin` are running.
+- Confirm that `feather-core`, `feather-toolkit`, `feather-menu`, and `feather-admin` are running.
 - Confirm that the administrator's active character meets the `permissions['menu.open']` level.
 - Check that keyboard or command access is enabled in `configs/config.lua`.
 

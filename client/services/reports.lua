@@ -58,8 +58,12 @@ end
 
 CreateThread(function()
     if type(Config.reports) ~= 'table' or Config.reports.enabled == false then return end
-    Feather.Command.Register(Config.reports.command or 'report', AdminTranslate('report_command_suggestion'),
-        function(_, args)
+    local command = Config.reports.command or 'report'
+    local params = {
+        { name = 'category', help = AdminTranslate('report_category_help') },
+        { name = 'message', help = AdminTranslate('report_message_help') }
+    }
+    RegisterCommand(command, function(_, args)
             args = type(args) == 'table' and args or {}
             local category = tostring(args[1] or ''):lower()
             local message = table.concat(args, ' ', 2)
@@ -67,10 +71,9 @@ CreateThread(function()
                 return Feather.Notify.RightNotify(reportUsage(), 5000)
             end
             Feather.RPC.Notify('feather-admin:reports:submit', { category = category, message = message })
-        end, {
-            { name = 'category', help = AdminTranslate('report_category_help') },
-            { name = 'message', help = AdminTranslate('report_message_help') }
-        })
+        end, false)
+    TriggerEvent('chat:addSuggestion', '/' .. command,
+        AdminTranslate('report_command_suggestion'), params)
 end)
 
 RegisterNetEvent('feather-admin:reports:submission:result', function(succeeded, messageKey, reportId)

@@ -9,6 +9,17 @@ local state = {
     noclipPed = nil
 }
 
+local function control(name)
+    local result = exports['feather-toolkit']:ResolveControl(name)
+    return type(result) == 'table' and result.ok == true and result.value or 0
+end
+
+local noclipControls = {
+    SHIFT = control('SHIFT'), W = control('W'), S = control('S'),
+    A = control('A'), D = control('D'), SPACEBAR = control('SPACEBAR'),
+    CTRL = control('CTRL'), BACKSPACE = control('BACKSPACE')
+}
+
 local function setNoclipPed(ped, enabled)
     if not ped or ped == 0 or not DoesEntityExist(ped) then return end
 
@@ -66,7 +77,7 @@ local function runInfiniteStamina()
 end
 
 local function runNoclip(session)
-    local keys = Feather.KeyCodes
+    local keys = noclipControls
     local speeds = { 2.0, 5.0, 10.0, 20.0 }
     local speedIndex = 2
     SetEveryoneIgnorePlayer(PlayerId(), true)
@@ -179,7 +190,7 @@ local actionHandlers = {
         SetEntityHealth(PlayerPedId(), 0)
     end,
     disable_fow = function()
-        Feather.Map.setFOW(true)
+        SetMinimapHideFow(true)
     end
 }
 

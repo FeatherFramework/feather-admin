@@ -41,8 +41,8 @@ local function roleFilterOptions()
     local options = { { display = AdminTranslate('all_roles'), value = false } }
     local selected = 0
     for _, role in ipairs(AdminStaff.roles) do
-        options[#options + 1] = { display = roleLabel(role), value = tonumber(role.id) }
-        if tonumber(AdminStaff.roleFilterId) == tonumber(role.id) then selected = #options - 1 end
+        options[#options + 1] = { display = roleLabel(role), value = role.key }
+        if AdminStaff.roleFilterId == role.key then selected = #options - 1 end
     end
     return options, selected
 end
@@ -155,7 +155,7 @@ function AdminUI.OpenStaffRole()
     local options, selectedIndex = {}, 0
     for _, role in ipairs(AdminStaff.roles) do
         options[#options + 1] = { display = roleLabel(role), value = role }
-        if tonumber(role.id) == tonumber(target.roleId) then selectedIndex = #options - 1 end
+        if role.key == target.roleKey then selectedIndex = #options - 1 end
     end
     if #options == 0 then
         AdminUI.AddText(page, AdminTranslate('no_assignable_roles'))
@@ -212,7 +212,7 @@ function AdminUI.OpenStaffRoleConfirmation()
         ('%s: %s'):format(AdminTranslate('reason'), tostring(AdminStaff.reason))
     }, '\n'))
     AdminUI.AddButton(page, AdminTranslate('confirm_action'), function()
-        AdminStaff.Assign(target.characterId, role.id, AdminStaff.reason)
+        AdminStaff.Assign(target.characterId, role.key, AdminStaff.reason, target.roleRevision)
     end)
 
     AdminUI.AddFooter(page)

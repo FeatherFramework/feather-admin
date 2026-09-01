@@ -22,15 +22,18 @@ function AdminStaff.Search(query, page)
     AdminStaff.searchQuery = query
     AdminStaff.searchPage = math.max(1, math.floor(tonumber(page) or 1))
     Feather.RPC.Notify('feather-admin:staff:search', {
-        query = query, page = AdminStaff.searchPage, roleId = AdminStaff.roleFilterId
+        query = query, page = AdminStaff.searchPage, roleKey = AdminStaff.roleFilterId
     })
     return true
 end
 
-function AdminStaff.Assign(characterId, roleId, reason)
+function AdminStaff.Assign(characterId, roleKey, reason, expectedRevision)
     if not AdminUI.CanUse('staff.role.assign') then return false end
     Feather.RPC.Notify('feather-admin:staff:role:assign', {
-        characterId = characterId, roleId = roleId, reason = reason
+        characterId = characterId, roleKey = roleKey, reason = reason,
+        expectedRevision = expectedRevision,
+        idempotencyKey = ('admin-role:%s:%s'):format(tostring(GetPlayerServerId(PlayerId())),
+            ('%s:%s'):format(tostring(GetGameTimer()), tostring(math.random(100000, 999999))))
     })
     return true
 end

@@ -51,7 +51,7 @@ RegisterCommand('AdminModerationContractSmokeTest', function(source, args)
     local service = LoadResourceFile(GetCurrentResourceName(), 'server/services/moderation.lua') or ''
     local retiredJoinsAbsent = not service:find('FROM users', 1, true)
         and not service:find('FROM characters', 1, true)
-        and not service:find('JOIN roles', 1, true)
+        and not service:find('feather_admin_staff_accounts', 1, true)
         and not service:find('GetCharacter', 1, true)
     passed = passed + report('retired joins removed', retiredJoinsAbsent)
     local accountPathsPresent = service:find('core_accounts', 1, true)

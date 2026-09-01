@@ -19,21 +19,17 @@ RegisterCommand('AdminLegacyCharacterCutoverSmokeTest', function(source)
         {
             name = 'legacy handlers removed',
             passed = LoadResourceFile(GetCurrentResourceName(), 'server/services/economy.lua') == nil
-                and LoadResourceFile(GetCurrentResourceName(), 'server/services/staff_management.lua') == nil
+                and LoadResourceFile(GetCurrentResourceName(), 'server/services/staff_management.lua') ~= nil
         },
         {
             name = 'legacy routes absent',
             passed = routesResult and routesResult.ok == true
                 and routes['feather-admin:economy:summary'] == nil
                 and routes['feather-admin:economy:adjust'] == nil
-                and routes['feather-admin:staff:list'] == nil
-                and routes['feather-admin:staff:search'] == nil
-                and routes['feather-admin:staff:history'] == nil
-                and routes['feather-admin:staff:role:assign'] == nil
         },
         {
-            name = 'dormant UI fails closed',
-            passed = disabledPrefixes['economy.'] == true and disabledPrefixes['staff.'] == true
+            name = 'provider UI gating',
+            passed = disabledPrefixes['economy.'] == true and disabledPrefixes['staff.'] ~= true
         }
     }
 

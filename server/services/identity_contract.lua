@@ -4,35 +4,6 @@ local function IsUuid(value)
     ) ~= nil
 end
 
-RegisterCommand('AdminGrantStaff', function(source, args)
-    if source ~= 0 then return end
-    local target = tonumber(args and args[1])
-    local level = tonumber(args and args[2])
-    level = level and math.floor(level) or nil
-    local roleName = args and #args >= 3 and table.concat(args, ' ', 3) or 'Administrator'
-    local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
-    if not AdminDatabase.ready then
-        print('[AdminGrantStaff] database is not ready')
-        return
-    end
-    if not identity or not IsUuid(identity.accountId) or not level or level < 0 or level > 100 then
-        print('[AdminGrantStaff] usage: AdminGrantStaff <serverId> <0-100> [role name]')
-        return
-    end
-    MySQL.query.await([[
-        INSERT INTO `feather_admin_staff_accounts`
-            (`account_id`, `role_level`, `role_name`, `active`)
-        VALUES (?, ?, ?, 1)
-        ON DUPLICATE KEY UPDATE `role_level` = VALUES(`role_level`),
-            `role_name` = VALUES(`role_name`), `active` = 1
-    ]], { identity.accountId, level, tostring(roleName):sub(1, 100) })
-    FeatherAdmin.Identity.Invalidate(identity.accountId)
-    print(('[AdminGrantStaff] account=%s source=%s level=%s role=%s'):format(
-        identity.accountId, target, level, roleName))
-    TriggerClientEvent('feather-admin:access:permissions', target,
-        FeatherAdmin.IsAuthorized(target), FeatherAdmin.GetPermissions(target))
-end, true)
-
 RegisterCommand('AdminIdentitySmokeTest', function(source, args)
     if source ~= 0 then return end
     local target = tonumber(args and args[1])
@@ -55,10 +26,7 @@ RegisterCommand('AdminIdentitySmokeTest', function(source, args)
           AND `TABLE_NAME` LIKE 'feather_admin_%'
           AND `COLUMN_NAME` LIKE '%character_id'
     ]])) or 0
-    local staffTable = tonumber(MySQL.scalar.await([[
-        SELECT COUNT(*) FROM `information_schema`.`TABLES`
-        WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'feather_admin_staff_accounts'
-    ]])) or 0
+    local roleProvider = exports['feather-core']:GetProvider('character-role', nil, 1)
     local auditAccountColumns = tonumber(MySQL.scalar.await([[
         SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
         WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'feather_admin_actions'
@@ -70,7 +38,7 @@ RegisterCommand('AdminIdentitySmokeTest', function(source, args)
         { name = 'character identity', passed = identity ~= nil and IsUuid(identity.characterId) },
         { name = 'profile snapshot', passed = identity ~= nil and type(identity.characterName) == 'string' },
         { name = 'staff authority', passed = staff ~= nil and type(staff.roleLevel) == 'number' },
-        { name = 'staff account schema', passed = staffTable == 1 },
+        { name = 'character role provider', passed = roleProvider and roleProvider.ok == true },
         { name = 'audit account schema', passed = auditAccountColumns == 2 },
         { name = 'uuid schema columns', passed = allCharacterColumns > 0
             and characterColumnCount == allCharacterColumns,

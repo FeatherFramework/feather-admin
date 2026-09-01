@@ -10,23 +10,49 @@ end)
 
 CreateThread(function()
     if Config.controls.enabled then
-        AdminKeyListener = Feather.Keys:RegisterListener(Config.controls.openMenu, function()
+        local registered = exports['feather-toolkit']:RegisterKeyListener(Config.controls.openMenu, function()
             if not InMenu then
                 Feather.RPC.Notify('feather-admin:access:request', {})
             end
         end)
+        local registeredValue = type(registered) == 'table' and registered.value or nil
+        AdminKeyListener = type(registeredValue) == 'table' and registered.ok == true
+            and registeredValue.id or nil
     end
 
     if Config.commands.enabled then
         local command = Config.commands.openMenu
         local suggestion = AdminTranslate(Config.commands.suggestionKey)
-        Feather.Command.Register(command, suggestion, function()
+        RegisterCommand(command, function()
             if not InMenu then
                 Feather.RPC.Notify('feather-admin:access:request', {})
             end
-        end)
+        end, false)
+        TriggerEvent('chat:addSuggestion', '/' .. command, suggestion)
     end
 end)
+
+RegisterCommand('AdminToolkitContractSmokeTest', function()
+    local capabilities = exports['feather-toolkit']:GetCapabilities()
+    local control = exports['feather-toolkit']:ResolveControl('PGDN')
+    local listener = exports['feather-toolkit']:RegisterKeyListener('PGDN', function() end)
+    local listenerValue = type(listener) == 'table' and listener.value or nil
+    local removed = type(listenerValue) == 'table' and listener.ok == true
+        and exports['feather-toolkit']:RemoveKeyListener(listenerValue.id) or nil
+    local tests = {
+        { 'toolkit available', type(capabilities) == 'table' and capabilities.ok == true },
+        { 'named control', type(control) == 'table' and control.ok == true },
+        { 'cross-resource callback', type(listener) == 'table' and listener.ok == true },
+        { 'owned listener removed', type(removed) == 'table' and removed.ok == true }
+    }
+    local passed = 0
+    for _, test in ipairs(tests) do
+        if test[2] then passed = passed + 1 end
+        print(('[AdminToolkitContractSmokeTest] %-24s %s'):format(
+            test[1], test[2] and 'PASS' or 'FAIL'))
+    end
+    print(('[AdminToolkitContractSmokeTest] done %d/%d passed'):format(passed, #tests))
+end, false)
 
 RegisterNetEvent('feather-admin:access:result', function(authorized, permissions)
     AdminPermissions = type(permissions) == 'table' and permissions or {}
@@ -117,6 +143,6 @@ end)
 
 AddEventHandler('onResourceStop', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
-    if AdminKeyListener then AdminKeyListener:RemoveListener() end
+    if AdminKeyListener then exports['feather-toolkit']:RemoveKeyListener(AdminKeyListener) end
     AdminKeyListener = nil
 end)

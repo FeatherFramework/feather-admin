@@ -24,13 +24,11 @@ local function Evaluate(action, context)
         return Decision(false, 'unknown_action', 'That action has no configured policy.')
     end
 
-    local staff = FeatherAdmin.Identity.GetStaff({
-        source = tonumber(context.source),
-        accountId = context.accountId
-    })
+    local identity = FeatherAdmin.Identity.Resolve(tonumber(context.source))
+    local staff = FeatherAdmin.Identity.GetStaff(identity)
     local level = staff and tonumber(staff.roleLevel) or 0
     if level < required then
-        return Decision(false, 'forbidden', 'The account does not have permission for that action.')
+        return Decision(false, 'forbidden', 'The active character does not have permission for that action.')
     end
     return Decision(true, 'allowed', 'The action is permitted.')
 end
@@ -42,7 +40,7 @@ local function InstallProvider()
     }, {
         contract = 1,
         default = true,
-        capabilities = { accountStaff = 1, configuredActions = 1 }
+        capabilities = { characterRoles = 1, configuredActions = 1 }
     })
     if type(result) ~= 'table' or result.ok ~= true then
         error(('[feather-admin] policy provider registration failed: %s'):format(

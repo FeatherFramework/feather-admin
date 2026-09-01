@@ -84,7 +84,7 @@ function AdminModeration.SearchPlayers(query)
     AdminModeration.searchOrigin = 'players'
     Feather.RPC.Notify('feather-admin:moderation:search', {
         query = AdminPlayerDirectory.query,
-        roleId = AdminPlayerDirectory.roleFilterId
+        roleKey = AdminPlayerDirectory.roleFilterId
     })
     return true
 end

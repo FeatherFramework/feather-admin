@@ -17,20 +17,6 @@ end
 
 MySQL.ready(function()
     MySQL.query.await([[
-        CREATE TABLE IF NOT EXISTS feather_admin_staff_accounts (
-            account_id CHAR(36) NOT NULL,
-            role_level INT NOT NULL,
-            role_name VARCHAR(100) NOT NULL,
-            active TINYINT(1) NOT NULL DEFAULT 1,
-            granted_by_account_id CHAR(36) NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (account_id),
-            INDEX idx_fa_staff_active_level (active, role_level)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ]])
-
-    MySQL.query.await([[
         CREATE TABLE IF NOT EXISTS feather_admin_bans (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             account_id CHAR(36) NOT NULL,
@@ -127,33 +113,6 @@ MySQL.ready(function()
             INDEX idx_fa_actions_target_license (target_license),
             INDEX idx_fa_actions_action (action),
             INDEX idx_fa_actions_created_at (created_at)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ]])
-
-    MySQL.query.await([[
-        CREATE TABLE IF NOT EXISTS feather_admin_role_changes (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            target_license VARCHAR(100) NOT NULL,
-            target_name VARCHAR(100) NULL,
-            target_character_id CHAR(36) NOT NULL,
-            target_character_name VARCHAR(150) NOT NULL,
-            old_role_id BIGINT UNSIGNED NOT NULL,
-            old_role_name VARCHAR(100) NOT NULL,
-            old_role_level INT NOT NULL,
-            new_role_id BIGINT UNSIGNED NOT NULL,
-            new_role_name VARCHAR(100) NOT NULL,
-            new_role_level INT NOT NULL,
-            reason VARCHAR(200) NOT NULL,
-            admin_license VARCHAR(100) NULL,
-            admin_name VARCHAR(100) NOT NULL,
-            admin_character_id CHAR(36) NULL,
-            admin_character_name VARCHAR(150) NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            INDEX idx_fa_role_changes_character (target_character_id),
-            INDEX idx_fa_role_changes_target_license (target_license),
-            INDEX idx_fa_role_changes_admin_license (admin_license),
-            INDEX idx_fa_role_changes_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
