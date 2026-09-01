@@ -22,7 +22,6 @@ shared_scripts {
 
 client_scripts {
     'client/core/init.lua',
-    'client/core/runtime.lua',
     'client/core/teleport.lua',
     'translations/*.lua',
     'client/ui/menu.lua',
@@ -63,6 +62,7 @@ server_scripts {
 dependencies {
     'oxmysql',
     'feather-core',
+    'feather-toolkit',
     'feather-roles',
     'feather-inventory',
     'feather-menu'

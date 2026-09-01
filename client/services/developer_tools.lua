@@ -44,7 +44,8 @@ local function runEntityInspector(session)
                     GetEntityHeading(entity),
                     GetEntityModel(entity)
                 )
-                Feather.Render:DrawText(textPosition, text, inspectorColor, 0.4, true)
+                exports['feather-toolkit']:DrawText2D({ x = textPosition.x, y = textPosition.y,
+                    text = text, color = inspectorColor, scale = 0.4, shadow = true })
             end
         end
         Wait(0)
@@ -59,7 +60,8 @@ local function runBoneViewer(session)
                 local boneIndex = GetPedBoneIndex(ped, boneId)
                 if boneIndex ~= -1 then
                     local coords = GetWorldPositionOfEntityBone(ped, boneIndex)
-                    Feather.Render:Draw3DText(coords, boneName, 0.3, boneColor, 1, 0)
+                    exports['feather-toolkit']:DrawText3D({ x = coords.x, y = coords.y, z = coords.z,
+                        text = boneName, color = boneColor, scale = 0.3 })
                 end
             end
         end
@@ -105,7 +107,8 @@ function AdminDeveloperTools.CopyCoordinates(format)
 
     local text = values[format]
     if not text then return false end
-    return Feather.Clip.CopyToClipboard(text)
+    local copied = exports['feather-toolkit']:CopyToClipboard(text)
+    return type(copied) == 'table' and copied.ok == true
 end
 
 AddEventHandler('onResourceStop', function(resourceName)

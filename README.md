@@ -52,6 +52,7 @@ now use that contract.
 ## Dependencies
 
 - `feather-core`
+- `feather-toolkit`
 - `feather-character`
 - `feather-roles`
 - `feather-menu`
@@ -75,6 +76,7 @@ once before starting the updated resources.
 
    ```cfg
    ensure feather-core
+   ensure feather-toolkit
    ensure feather-menu
    ensure feather-character
    ensure feather-roles
@@ -107,6 +109,10 @@ AdminIdentitySmokeTest <serverId>
 ```
 
 All seven checks must pass before testing the menu.
+
+In the client F8 console, run `AdminToolkitContractSmokeTest`. All four checks
+must pass before testing key access, clipboard actions, developer overlays, or
+spawned Admin effects.
 
 ## Permissions
 
@@ -206,7 +212,7 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 
 ### The menu does not open
 
-- Confirm that `feather-core`, `feather-menu`, and `feather-admin` are running.
+- Confirm that `feather-core`, `feather-toolkit`, `feather-menu`, and `feather-admin` are running.
 - Confirm that the administrator's active character meets the `permissions['menu.open']` level.
 - Check that keyboard or command access is enabled in `configs/config.lua`.
 

@@ -62,8 +62,8 @@ function AdminUI.OpenPlayerInfo(info)
         end)
         identifierDisplay = AdminUI.AddText(page, selectedIdentifier)
         AdminUI.AddButton(page, AdminTranslate('copy_identifier'), function()
-            local copied = Feather.Clip.CopyToClipboard(selectedIdentifier)
-            if copied ~= false then
+            local copied = exports['feather-toolkit']:CopyToClipboard(selectedIdentifier)
+            if type(copied) == 'table' and copied.ok == true then
                 Feather.Notify.RightNotify(AdminTranslate('identifier_copied'), 2000)
             end
         end)

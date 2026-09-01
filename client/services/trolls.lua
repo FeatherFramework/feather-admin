@@ -21,7 +21,7 @@ local function isValidEntity(entity)
 end
 
 local function removeCage()
-    if state.cage then state.cage:Remove() end
+    if state.cage then exports['feather-toolkit']:RemoveEntity(state.cage.id) end
     state.cage = nil
     state.caged = false
 end
@@ -39,12 +39,12 @@ local function removeTrackedPed(ped)
             break
         end
     end
-    ped:Remove()
+    exports['feather-toolkit']:RemoveEntity(ped.id)
 end
 
 local function cleanupSpawnedPeds()
     for index = #state.spawnedPeds, 1, -1 do
-        state.spawnedPeds[index]:Remove()
+        exports['feather-toolkit']:RemoveEntity(state.spawnedPeds[index].id)
     end
     state.spawnedPeds = {}
 end
@@ -86,12 +86,14 @@ local function toggleCage()
     end
 
     local coords = GetEntityCoords(PlayerPedId())
-    local cage = Feather.Object:Create('p_prisoncage02x', coords.x, coords.y, coords.z, 0.0, true, 'standard')
-    if not cage then return end
+    local created = exports['feather-toolkit']:CreateObject({ model = 'p_prisoncage02x',
+        x = coords.x, y = coords.y, z = coords.z, heading = 0.0, networked = true })
+    if type(created) ~= 'table' or created.ok ~= true or type(created.value) ~= 'table' then return end
+    local cage = created.value
 
     state.cage = cage
     state.caged = true
-    Citizen.InvokeNative(0x9587913B9E772D29, cage:GetObj(), true) -- PlaceEntityOnGroundProperly
+    Citizen.InvokeNative(0x9587913B9E772D29, cage.entity, true) -- PlaceEntityOnGroundProperly
 end
 
 local function runCinematic(session)
@@ -115,7 +117,7 @@ end
 
 local function monitorHostilePed(ped)
     while state.running do
-        local entity = ped:GetPed()
+        local entity = ped.entity
         if not isValidEntity(entity) or IsEntityDead(entity) or IsEntityDead(PlayerPedId()) then break end
         Wait(500)
     end
@@ -123,11 +125,15 @@ local function monitorHostilePed(ped)
 end
 
 local function createHostilePed(model, x, y, z, heading)
-    local ped = Feather.Ped:Create(model, x, y, z, heading, 'world', false, nil, nil, true)
-    if not ped then return end
+    local created = exports['feather-toolkit']:CreatePed({ model = model, x = x, y = y, z = z,
+        heading = heading, networked = true })
+    if type(created) ~= 'table' or created.ok ~= true or type(created.value) ~= 'table' then return end
+    local ped = created.value
 
     trackPed(ped)
-    ped:AttackTarget(PlayerPedId(), 'LAW')
+    Citizen.InvokeNative(0x58A850EAEE20FAA3, ped.entity)
+    Citizen.InvokeNative(0xBD75500141E4725C, ped.entity, GetHashKey('LAW'))
+    Citizen.InvokeNative(0xF166E48407BAC484, ped.entity, PlayerPedId(), 0, 16)
     CreateThread(function() monitorHostilePed(ped) end)
 end
 
@@ -153,7 +159,7 @@ local function runLag(session, storedCoords)
     while state.lag and state.lagSession == session do
         local ped = PlayerPedId()
         local currentCoords = GetEntityCoords(ped)
-        if Feather.Math.GetDistanceBetween(storedCoords, currentCoords) >= 5.0 then
+        if #(storedCoords - currentCoords) >= 5.0 then
             storedCoords = currentCoords
             SetEntityCoordsNoOffset(ped, currentCoords.x - 1.0, currentCoords.y - 1.0, currentCoords.z,
                 false, false, false)

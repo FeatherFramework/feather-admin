@@ -23,7 +23,7 @@ end
 
 local function sameWaypoint(first, second)
     if not first or not second then return false end
-    return Feather.Math.GetDistanceBetween(first, second) < 1.0
+    return #(first - second) < 1.0
 end
 
 local function succeeded(result)
