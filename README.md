@@ -184,6 +184,17 @@ Weapon definitions and ammunition mappings come directly from Feather Weapons;
 Inventory applies its normal capacity rules. Each weapon issuance creates a new
 serial-numbered instance and every action is audited.
 
+Server owners can inspect or recover both equipped weapon slots for an online
+character from the server console:
+
+```text
+AdminWeaponInspect <serverId>
+AdminWeaponReconcile <serverId>
+```
+
+Inspection is read-only. Reconciliation clears unaccepted native weapon state
+and restores the authoritative primary/offhand assignments and metadata.
+
 Owners can select an online or offline character through **Players**, open **Staff Role**, choose a configured role, enter a required reason, and confirm the change. The Players search includes a role filter, and role history is paginated. Every promotion, demotion, or other role change is stored against the affected character. A role can never be assigned above the acting character's own level. Self-edits and changes to equal- or higher-ranked accounts are blocked; use the emergency recovery command when no eligible owner character is available.
 
 Player searches use prefix matching for names. License searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for travel, status, and appearance actions that apply to your own character.

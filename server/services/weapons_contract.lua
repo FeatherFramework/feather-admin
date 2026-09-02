@@ -4,6 +4,12 @@ local function report(label, passed, detail)
     return passed and 1 or 0
 end
 
+local function IsCallable(value)
+    return type(value) == 'function'
+        or (type(value) == 'table'
+            and type(rawget(value, '__cfx_functionReference')) == 'string')
+end
+
 RegisterCommand('AdminWeaponsContractSmokeTest', function(source, args)
     if source ~= 0 then return end
     local target = tonumber(args and args[1])
@@ -11,7 +17,7 @@ RegisterCommand('AdminWeaponsContractSmokeTest', function(source, args)
         local players = GetPlayers()
         target = players[1] and tonumber(players[1]) or nil
     end
-    local passed, total = 0, 10
+    local passed, total = 0, 13
     local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
     passed = passed + report('target account identity', identity and type(identity.accountId) == 'string')
     passed = passed + report('target character identity', identity and type(identity.characterId) == 'string')
@@ -22,6 +28,12 @@ RegisterCommand('AdminWeaponsContractSmokeTest', function(source, args)
         and tonumber(capabilities.contractVersion) >= 1 and capabilities.ready == true)
     passed = passed + report('issuance capability', type(capabilities) == 'table'
         and type(capabilities.features) == 'table' and capabilities.features.issuance == true)
+    passed = passed + report('slot inspection capability', type(capabilities) == 'table'
+        and type(capabilities.features) == 'table'
+        and capabilities.features.slotInspection == true)
+    passed = passed + report('slot recovery capability', type(capabilities) == 'table'
+        and type(capabilities.features) == 'table'
+        and capabilities.features.slotRecovery == true)
     local issuanceAvailable, issuanceProbe = pcall(function()
         return exports['feather-weapons']:IssueWeapon({ characterId = 1, definitionId = '' },
             { reason = 'contract_probe', resource = 'feather-admin' })
@@ -56,6 +68,12 @@ RegisterCommand('AdminWeaponsContractSmokeTest', function(source, args)
         return exports['feather-inventory']:GrantCharacterItem(1, '', 0, 'contract_probe')
     end)
     passed = passed + report('character grant export', grantAvailable)
+    local inspection = target and exports['feather-weapons']:InspectEquippedWeapons(target) or nil
+    passed = passed + report('slot inspection export', type(inspection) == 'table'
+        and inspection.ok == true and type(inspection.value.slots) == 'table'
+        and type(weapons.Inspection) == 'table'
+        and IsCallable(weapons.Inspection.Inspect)
+        and IsCallable(weapons.Inspection.Reconcile))
     print(('[AdminWeaponsContractSmokeTest] done %d/%d passed source=%s'):format(
         passed, total, tostring(target or 'none')))
 end, true)

@@ -1,3 +1,9 @@
+local function IsCallable(value)
+    return type(value) == 'function'
+        or (type(value) == 'table'
+            and type(rawget(value, '__cfx_functionReference')) == 'string')
+end
+
 local function weaponsApi()
     if GetResourceState('feather-weapons') ~= 'started' then return nil end
     local ok, api = pcall(function()
@@ -6,6 +12,49 @@ local function weaponsApi()
     if not ok or type(api) ~= 'table' then return nil end
     return api
 end
+
+local function printSlots(command, source, result)
+    if type(result) ~= 'table' or result.ok ~= true then
+        local failure = result and result.error or nil
+        print(('[%s] FAIL source=%s code=%s message=%s'):format(command,
+            tostring(source), tostring(failure and failure.code),
+            tostring(failure and failure.message)))
+        return
+    end
+    for _, slot in ipairs({ 'primary', 'offhand' }) do
+        local item = result.value.slots and result.value.slots[slot] or nil
+        local total = item and (tonumber(item.ammo)
+            or ((tonumber(item.loaded) or 0) + (tonumber(item.reserve) or 0))) or nil
+        local runtimeMatch = item and item.runtimeMatches
+        if runtimeMatch == nil then runtimeMatch = 'n/a' end
+        print(('[%s] PASS source=%s slot=%s equipped=%s item=%s definition=%s generation=%s total=%s loaded=%s reserve=%s condition=%s runtimeMatch=%s'):format(
+            command, tostring(source), slot, tostring(item ~= nil),
+            tostring(item and item.itemInstanceId), tostring(item and item.definitionId),
+            tostring(item and item.generation), tostring(total),
+            tostring(item and item.loaded), tostring(item and item.reserve),
+            tostring(item and item.condition), tostring(runtimeMatch)))
+    end
+end
+
+RegisterCommand('AdminWeaponInspect', function(source, args)
+    if source ~= 0 then return end
+    local targetSource = tonumber(args and args[1])
+    if not targetSource then
+        return print('[AdminWeaponInspect] usage: AdminWeaponInspect <serverId>')
+    end
+    printSlots('AdminWeaponInspect', targetSource,
+        exports['feather-weapons']:InspectEquippedWeapons(targetSource))
+end, true)
+
+RegisterCommand('AdminWeaponReconcile', function(source, args)
+    if source ~= 0 then return end
+    local targetSource = tonumber(args and args[1])
+    if not targetSource then
+        return print('[AdminWeaponReconcile] usage: AdminWeaponReconcile <serverId>')
+    end
+    printSlots('AdminWeaponReconcile', targetSource,
+        exports['feather-weapons']:ReconcileEquippedWeapons(targetSource))
+end, true)
 
 local function target(params)
     local serverId = tonumber(params and params.serverId)
