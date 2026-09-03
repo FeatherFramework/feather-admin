@@ -4,7 +4,10 @@ AdminUI = {
     currentPage = nil,
     toggleStates = {},
     pendingToggles = {},
-    nextToggleRequest = 0
+    nextToggleRequest = 0,
+    menuId = nil,
+    pageGeneration = 0,
+    openSequence = 0
 }
 
 AdminUI.Styles = {
@@ -20,148 +23,240 @@ AdminUI.Styles = {
     button = { ['color'] = '#E0E0E0' }
 }
 
-AdminMenu = FeatherMenu:RegisterMenu('feather-admin:AdminMenu', {
-    top = '3%',
-    left = '3%',
-    ['720width'] = '400px',
-    ['1080width'] = '500px',
-    ['2kwidth'] = '600px',
-    ['4kwidth'] = '800px',
-    style = {},
-    contentslot = {
-        style = {
-            ['height'] = '500px',
-            ['min-height'] = '325px'
-        }
-    },
-    draggable = true,
-    canclose = true
-}, {
-    opened = function()
-        InMenu = true
-        DisplayRadar(false)
-    end,
-    closed = function()
-        InMenu = false
-        DisplayRadar(true)
-        AdminUI.targetPlayer = nil
-        AdminUI.currentPage = nil
+local Menu = exports['feather-menu-v2']
+
+local function RequireMenuResult(result, operation)
+    if type(result) ~= 'table' or result.ok ~= true then
+        local code = type(result) == 'table' and result.code or 'invalid_result'
+        local message = type(result) == 'table' and result.message or 'Menu provider returned an invalid result.'
+        error(('[feather-admin] %s failed (%s): %s'):format(operation, tostring(code), tostring(message)), 0)
     end
-})
+    return result.value
+end
+
+local function ResetMenuState()
+    AdminUI.menuId = nil
+    AdminUI.Pages = {}
+    AdminUI.currentPage = nil
+    AdminUI.openSequence = AdminUI.openSequence + 1
+end
+
+local function EnsureMenu()
+    if AdminUI.menuId then return AdminUI.menuId end
+
+    local created = RequireMenuResult(Menu:CreateMenu({
+        key = 'admin',
+        draggable = true,
+        resizable = true,
+        closable = true,
+        controller = true,
+        position = { x = '22%', y = '50%' },
+        size = {
+            width = '32rem',
+            minWidth = '24rem',
+            maxWidth = '92vw',
+            maxHeight = '88vh',
+            breakpoints = {
+                ['720'] = '25rem',
+                ['1080'] = '32rem',
+                ['1440'] = '36rem',
+                ['2160'] = '42rem'
+            }
+        },
+        theme = {
+            preset = 'redemption',
+            accent = '#CC9900',
+            radius = '6px'
+        },
+        focus = { keyboard = true, cursor = true }
+    }), 'create menu')
+
+    AdminUI.menuId = created.menuId
+    RequireMenuResult(Menu:RegisterMenuLifecycle(AdminUI.menuId, function(event)
+        if event.event == 'opened' or event.event == 'resumed' then
+            InMenu = true
+            DisplayRadar(false)
+        elseif event.event == 'closed' then
+            InMenu = false
+            DisplayRadar(true)
+            AdminUI.targetPlayer = nil
+            AdminUI.currentPage = nil
+        end
+    end), 'register menu lifecycle')
+
+    return AdminUI.menuId
+end
+
+local function NextElementKey(page, elementType)
+    page.nextElement = page.nextElement + 1
+    return ('%s-%s-%d'):format(page.key, elementType, page.nextElement)
+end
+
+local function AddElement(page, elementType, settings, callback)
+    local menuId = EnsureMenu()
+    settings.key = settings.key or NextElementKey(page, elementType)
+
+    local handle
+    local wrappedCallback
+    if callback then
+        wrappedCallback = function(event)
+            return callback(event, handle)
+        end
+    end
+
+    local created = RequireMenuResult(
+        Menu:AddElement(menuId, page.id, elementType, settings, wrappedCallback),
+        ('add %s element'):format(elementType)
+    )
+    handle = { id = created.elementId, pageId = page.id }
+    function handle:update(changes)
+        RequireMenuResult(
+            Menu:UpdateElement(EnsureMenu(), self.pageId, self.id, changes),
+            ('update %s element'):format(elementType)
+        )
+    end
+    return handle
+end
+
+local function NormalizeOptions(options)
+    local normalized, originals = {}, {}
+    for index, option in ipairs(options or {}) do
+        local original = type(option) == 'table' and option or { display = tostring(option), value = option }
+        local value = original.value
+        if value == nil then value = index end
+        normalized[#normalized + 1] = {
+            value = value,
+            label = tostring(original.label or original.display or value),
+            disabled = original.disabled == true
+        }
+        originals[#originals + 1] = original
+    end
+    return normalized, originals
+end
+
+local function LegacyChoiceCallback(callback, originals)
+    if not callback then return nil end
+    return function(event, element)
+        for _, option in ipairs(originals) do
+            if option.value == event.value then
+                return callback({ value = option, action = event.action }, element)
+            end
+        end
+    end
+end
+
+local function HtmlToText(html)
+    return tostring(html or '')
+        :gsub('<br%s*/?>', '\n')
+        :gsub('</div%s*>', '\n')
+        :gsub('<[^>]+>', '')
+        :gsub('&quot;', '"')
+        :gsub('&#39;', "'")
+        :gsub('&lt;', '<')
+        :gsub('&gt;', '>')
+        :gsub('&amp;', '&')
+        :gsub('^%s+', '')
+        :gsub('%s+$', '')
+        :gsub('[ \t]+\n', '\n')
+        :gsub('\n[ \t]+', '\n')
+        :gsub('\n\n+', '\n')
+end
 
 function AdminUI.RegisterPage(key)
-    if AdminUI.Pages[key] then
-        AdminUI.Pages[key]:UnRegister()
-    end
-
-    local page = AdminMenu:RegisterPage(('feather-admin:%s'):format(key))
+    local menuId = EnsureMenu()
+    local previous = AdminUI.Pages[key]
+    AdminUI.pageGeneration = AdminUI.pageGeneration + 1
+    local pageKey = ('%s-%d'):format(key, AdminUI.pageGeneration)
+    local created = RequireMenuResult(Menu:CreatePage(menuId, { key = pageKey }), 'create page')
+    local page = { id = created.pageId, key = pageKey, nextElement = 0 }
     AdminUI.Pages[key] = page
+
+    if previous then
+        RequireMenuResult(Menu:DestroyPage(menuId, previous.id, page.id), 'replace page')
+    end
     return page
 end
 
 function AdminUI.AddHeader(page, title, subtitle)
-    page:RegisterElement('header', {
+    AddElement(page, 'header', {
         value = title,
-        slot = 'header',
-        style = AdminUI.Styles.header
+        slot = 'header'
     })
 
     if subtitle then
-        page:RegisterElement('subheader', {
+        AddElement(page, 'subheader', {
             value = subtitle,
-            slot = 'header',
-            style = AdminUI.Styles.subheader
+            slot = 'header'
         })
     end
 
-    page:RegisterElement('line', { slot = 'header' })
+    AddElement(page, 'line', { slot = 'header' })
 end
 
 function AdminUI.AddButton(page, label, callback, style)
-    return page:RegisterElement('button', {
+    return AddElement(page, 'button', {
         label = label,
-        slot = 'content',
-        style = style or AdminUI.Styles.button
+        slot = 'content'
     }, callback)
 end
 
 function AdminUI.AddHtmlButton(page, html, callback, style)
-    return page:RegisterElement('button', {
-        html = html,
-        slot = 'content',
-        style = style or AdminUI.Styles.button
+    return AddElement(page, 'button', {
+        label = HtmlToText(html),
+        slot = 'content'
     }, callback)
 end
 
 function AdminUI.AddInput(page, label, placeholder, callback, value)
-    return page:RegisterElement('input', {
+    return AddElement(page, 'input', {
         label = label,
         placeholder = placeholder,
         value = value or '',
-        slot = 'content',
-        style = {}
+        slot = 'content'
     }, callback)
 end
 
 function AdminUI.AddDropdown(page, options, placeholder, callback)
-    return page:RegisterElement('dropdown', {
-        options = options,
+    local normalized, originals = NormalizeOptions(options)
+    return AddElement(page, 'dropdown', {
+        options = normalized,
+        value = normalized[1] and normalized[1].value,
         placeholder = placeholder,
-        slot = 'content',
-        style = {}
-    }, callback)
+        slot = 'content'
+    }, LegacyChoiceCallback(callback, originals))
 end
 
 function AdminUI.AddText(page, value, style)
-    return page:RegisterElement('textdisplay', {
+    return AddElement(page, 'textdisplay', {
         value = value,
-        slot = 'content',
-        style = style or AdminUI.Styles.text
+        slot = 'content'
     })
 end
 
 function AdminUI.AddLine(page)
-    return page:RegisterElement('line', {
-        slot = 'content',
-        style = {}
-    })
+    return AddElement(page, 'line', { slot = 'content' })
 end
 
 function AdminUI.AddArrows(page, label, options, selectedIndex, callback)
-    return page:RegisterElement('arrows', {
+    local normalized, originals = NormalizeOptions(options)
+    local selected = originals[(tonumber(selectedIndex) or 0) + 1] or originals[1]
+    return AddElement(page, 'arrows', {
         label = label,
-        options = options,
-        value = selectedIndex or 0,
-        slot = 'content',
-        style = {}
-    }, callback)
+        options = normalized,
+        value = selected and selected.value,
+        slot = 'content'
+    }, LegacyChoiceCallback(callback, originals))
 end
 
 function AdminUI.AddFooter(page)
-    page:RegisterElement('bottomline', {
-        slot = 'footer',
-        style = {}
-    })
+    AddElement(page, 'bottomline', { slot = 'footer' })
 end
 
 function AdminUI.AddFooterButton(page, label, callback, style)
-    page:RegisterElement('line', {
-        slot = 'footer',
-        style = {}
-    })
-
-    local button = page:RegisterElement('button', {
+    return AddElement(page, 'button', {
         label = label,
-        slot = 'footer',
-        style = style or AdminUI.Styles.button
+        slot = 'footer'
     }, callback)
-
-    page:RegisterElement('line', {
-        slot = 'footer',
-        style = {}
-    })
-
-    return button
 end
 
 function AdminUI.OpenPage(key)
@@ -171,14 +266,30 @@ function AdminUI.OpenPage(key)
         return false
     end
 
+    local menuId = EnsureMenu()
     AdminUI.currentPage = key
-    AdminMenu:Open({
-        startupPage = page,
-        menuFocus = true,
-        cursorFocus = true,
-        overrideMenu = true,
-        allowKeys = true
-    })
+    AdminUI.openSequence = AdminUI.openSequence + 1
+    local sequence = AdminUI.openSequence
+    CreateThread(function()
+        local ready = Menu:AwaitReady(5000)
+        if type(ready) ~= 'table' or ready.ok ~= true then
+            local message = type(ready) == 'table' and ready.message or 'invalid readiness result'
+            print(('[feather-admin] menu is not ready: %s'):format(tostring(message)))
+            return
+        end
+        if sequence ~= AdminUI.openSequence or menuId ~= AdminUI.menuId
+            or AdminUI.Pages[key] ~= page then return end
+        local opened = Menu:OpenMenu(menuId, {
+            pageId = page.id,
+            keyboard = true,
+            cursor = true,
+            replace = true
+        })
+        if type(opened) ~= 'table' or opened.ok ~= true then
+            print(('[feather-admin] open menu failed (%s): %s'):format(
+                tostring(opened and opened.code), tostring(opened and opened.message)))
+        end
+    end)
 
     return true
 end
@@ -323,8 +434,21 @@ function AdminUI.ResolveServerToggle(requestId, succeeded)
 end
 
 function AdminUI.Close()
-    AdminMenu:Close({})
+    AdminUI.openSequence = AdminUI.openSequence + 1
+    if not AdminUI.menuId then return end
+    local closed = Menu:CloseMenu(AdminUI.menuId)
+    if type(closed) ~= 'table' or closed.ok ~= true then
+        print(('[feather-admin] close menu failed (%s): %s'):format(
+            tostring(closed and closed.code), tostring(closed and closed.message)))
+    end
 end
+
+AddEventHandler('onClientResourceStop', function(resource)
+    if resource ~= 'feather-menu-v2' then return end
+    ResetMenuState()
+    InMenu = false
+    DisplayRadar(true)
+end)
 
 function AdminUI.OpenPedParent()
     AdminUI.OpenAppearance()
