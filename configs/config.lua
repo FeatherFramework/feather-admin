@@ -34,7 +34,7 @@ Config = {
     serverOverview = {
         resources = {
             'feather-core',
-            'feather-menu',
+            'feather-menu-v2',
             'feather-inventory',
             'feather-character',
             'feather-admin'

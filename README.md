@@ -55,7 +55,7 @@ now use that contract.
 - `feather-toolkit`
 - `feather-character`
 - `feather-roles`
-- `feather-menu`
+- `feather-menu-v2`
 - `feather-inventory`
 - `feather-weapons`
 
@@ -77,7 +77,7 @@ once before starting the updated resources.
    ```cfg
    ensure feather-core
    ensure feather-toolkit
-   ensure feather-menu
+   ensure feather-menu-v2
    ensure feather-character
    ensure feather-roles
    ensure feather-inventory
@@ -223,7 +223,7 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 
 ### The menu does not open
 
-- Confirm that `feather-core`, `feather-toolkit`, `feather-menu`, and `feather-admin` are running.
+- Confirm that `feather-core`, `feather-toolkit`, `feather-menu-v2`, and `feather-admin` are running.
 - Confirm that the administrator's active character meets the `permissions['menu.open']` level.
 - Check that keyboard or command access is enabled in `configs/config.lua`.
 

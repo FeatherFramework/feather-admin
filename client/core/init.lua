@@ -35,8 +35,6 @@ Feather.Notify = {
         return ShowNotification({ style = 'top_banner', title = title, message = message, duration = duration })
     end
 }
-FeatherMenu = exports['feather-menu'].initiate()
-
 InMenu = false
 ClientAllPlayers = {}
 AdminPermissions = {}
