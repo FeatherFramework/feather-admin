@@ -1,5 +1,13 @@
 local AdminKeyListener = nil
 
+local function MenuInputCaptured()
+    if GetResourceState('feather-menu-v2') ~= 'started' then return false end
+    local ok, captured = pcall(function()
+        return exports['feather-menu-v2']:IsInputCaptured()
+    end)
+    return ok and captured == true
+end
+
 RegisterNetEvent('feather-admin:players:sync', function(players, roles)
     ClientAllPlayers = players or {}
     AdminPlayerDirectory.roles = type(roles) == 'table' and roles or AdminPlayerDirectory.roles
@@ -11,7 +19,7 @@ end)
 CreateThread(function()
     if Config.controls.enabled then
         local registered = exports['feather-toolkit']:RegisterKeyListener(Config.controls.openMenu, function()
-            if not InMenu then
+            if not InMenu and not MenuInputCaptured() then
                 Feather.RPC.Notify('feather-admin:access:request', {})
             end
         end)
