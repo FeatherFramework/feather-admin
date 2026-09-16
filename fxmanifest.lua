@@ -6,7 +6,7 @@ lua54 'yes'
 name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
-version '0.8.1'
+version '0.8.2'
 
 ui_page 'web/noclip.html'
 
