@@ -1,4 +1,8 @@
-local Inventory = exports['feather-inventory'].initiate()
+local Inventory
+local function IsCallable(value)
+    return type(value) == 'function' or (type(value) == 'table'
+        and type(rawget(value, '__cfx_functionReference')) == 'string')
+end
 
 -- Minimum feather-inventory API contract this file is written against.
 local REQUIRED_INVENTORY_CONTRACT = 2
@@ -20,12 +24,30 @@ local InspectionContractSatisfied = false
 -- own required value: comparing a requirement against itself is a check that
 -- can never fail.
 CreateThread(function()
-    if GetResourceState('feather-inventory') ~= 'started' then
-        print('[feather-admin] feather-inventory is not started; inventory admin tools are disabled.')
+    -- Resource dependency order is not a database-readiness guarantee.
+    -- Bound both export discovery and the provider's initialization wait.
+    local deadline = GetGameTimer() + 30000
+    local ready
+    repeat
+        if GetResourceState('feather-inventory') == 'started' then
+            local called, result = pcall(function()
+                return exports['feather-inventory']:AwaitReady(math.max(0, deadline - GetGameTimer()))
+            end)
+            if called then ready = result; break end
+        end
+        Wait(100)
+    until GetGameTimer() >= deadline
+    if type(ready) ~= 'table' or ready.ok ~= true then
+        print('[feather-admin] feather-inventory readiness failed; inventory admin tools are disabled.')
         return
     end
-
-    local reported = Inventory.GetCapabilities and Inventory.GetCapabilities() or nil
+    local acquired, api = pcall(function() return exports['feather-inventory']:initiate() end)
+    if not acquired or type(api) ~= 'table' or not IsCallable(api.GetCapabilities) then
+        print('[feather-admin] feather-inventory API is unavailable; inventory admin tools are disabled.')
+        return
+    end
+    Inventory = api
+    local reported = Inventory.GetCapabilities()
     if type(reported) ~= 'table' or reported.ok ~= true or type(reported.value) ~= 'table' then
         print('[feather-admin] feather-inventory capabilities are unavailable; inventory admin tools are disabled.')
         return
@@ -45,6 +67,11 @@ CreateThread(function()
     if not InspectionContractSatisfied then
         print('[feather-admin] feather-inventory inspection capabilities are unavailable; inspection tools are disabled.')
     end
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= 'feather-inventory' then return end
+    ContractSatisfied, InspectionContractSatisfied, Inventory = false, false, nil
 end)
 
 -- feather-inventory contract 2 answers in result envelopes:
