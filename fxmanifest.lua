@@ -54,6 +54,7 @@ client_scripts {
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
+    'configs/service_policy.lua',
     'server/core/init.lua',
     'server/database.lua',
     'server/services/*.lua'
