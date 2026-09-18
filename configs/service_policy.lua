@@ -2,6 +2,10 @@
 -- The broker caller authenticates the delegated subject.resource principal.
 Config.servicePolicy = {
     ['feather-organizations'] = {
+        ['feather-shops'] = {
+            ['organizations.organization.create']=true,
+            ['organizations.organization.update']=true
+        },
         ['feather-organizations'] = {
             ['organizations.organization.create']=true,
             ['organizations.organization.update']=true,
