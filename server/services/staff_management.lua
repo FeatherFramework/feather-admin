@@ -24,6 +24,43 @@ local function RoleState(characterId)
     return type(result) == 'table' and result.ok == true and result.value or nil
 end
 
+local function CatalogRole(roleKey)
+    local result = exports['feather-roles']:GetCatalog(false)
+    if type(result) ~= 'table' or result.ok ~= true then return nil end
+    for _, role in ipairs(result.value or {}) do
+        if role.key == roleKey then return role end
+    end
+end
+
+local function AuthorityRoleForLegacy(role)
+    if type(role) ~= 'table' or type(role.level) ~= 'number' then return nil, 'invalid_role' end
+    local roles = type(Config.authorityMigration) == 'table' and Config.authorityMigration.roles or {}
+    for _, tier in ipairs(roles or {}) do
+        if tier.legacyLevel == role.level then
+            local result = exports['feather-authority']:FindRoleByKey({ roleKey = tier.roleKey })
+            if type(result) ~= 'table' or result.ok ~= true then return nil, 'authority_role_unavailable' end
+            return result.value
+        end
+    end
+    local minimum = roles and roles[1] and tonumber(roles[1].legacyLevel) or 50
+    if role.level < minimum then return false end
+    return nil, 'unmapped_staff_role'
+end
+
+local function AssignLegacyRole(request)
+    local result
+    for attempt = 1, 2 do
+        result = exports['feather-roles']:AssignCharacterRole(request)
+        if type(result) == 'table' and result.ok == true then return result end
+        local code = type(result) == 'table' and result.code or 'invalid_result'
+        if code ~= 'conflict' and code ~= 'transaction_failed' then break end
+        print(('[feather-admin] event=staff.assignment.retry attempt=%d code=%s request=%s'):format(
+            attempt, tostring(code), tostring(request.idempotencyKey)))
+        Wait(100)
+    end
+    return result
+end
+
 local function OnlineSource(characterId)
     for _, raw in ipairs(GetPlayers()) do
         local src = tonumber(raw)
@@ -153,19 +190,51 @@ end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 128 })
 
 FeatherAdmin.RegisterRPC('feather-admin:staff:role:assign', function(params, _, src)
     if not FeatherAdmin.RequirePermission(src, 'staff.role.assign') then return end
+    local characterId, roleKey = Trim(params.characterId), Trim(params.roleKey)
+    local targetState, desiredRole = RoleState(characterId), CatalogRole(roleKey)
+    local actorIdentity = FeatherAdmin.Identity.Resolve(src)
+    local actorStaff = FeatherAdmin.Identity.GetStaff(actorIdentity)
+    if not targetState or not desiredRole or not actorStaff
+        or desiredRole.level > actorStaff.roleLevel
+        or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'staff.role.assign',
+            targetState.accountId, OnlineSource(characterId)) then
+        return TriggerClientEvent('feather-admin:staff:role:result', src, false, 'staff_role_too_high')
+    end
+    local authorityRole, authorityError = AuthorityRoleForLegacy(desiredRole)
+    if authorityError then
+        return TriggerClientEvent('feather-admin:staff:role:result', src, false, authorityError)
+    end
+    local idempotencyKey, reason = Trim(params.idempotencyKey), Trim(params.reason)
+    local replacementRequest = { requestId = idempotencyKey, subjectType = 'account',
+        subjectId = targetState.accountId, scopeType = 'server', reason = reason,
+        reasonCode = 'feather_admin.staff_assignment' }
+    if authorityRole then
+        replacementRequest.roleId = authorityRole.roleId
+        replacementRequest.expectedRoleRevision = authorityRole.revision
+    end
+    local authorityResult = exports['feather-authority']:ReplaceOwnedStaffAssignment(replacementRequest)
+    if type(authorityResult) ~= 'table' or authorityResult.ok ~= true then
+        return TriggerClientEvent('feather-admin:staff:role:result', src, false,
+            authorityResult and authorityResult.code or 'authority_assignment_failed')
+    end
     local session = exports['feather-core']:GetSessionContext(src)
-    local correlationId = ('admin-role:%s'):format(Trim(params.idempotencyKey))
-    local result = exports['feather-roles']:AssignCharacterRole({
-        characterId = Trim(params.characterId), roleKey = Trim(params.roleKey),
-        reasonCode = 'feather-admin.staff_assignment', reason = Trim(params.reason),
-        idempotencyKey = Trim(params.idempotencyKey), correlationId = correlationId,
+    local correlationId = ('admin-role:%s'):format(idempotencyKey)
+    local result = AssignLegacyRole({
+        characterId = characterId, roleKey = roleKey,
+        reasonCode = 'feather-admin.staff_assignment', reason = reason,
+        idempotencyKey = idempotencyKey, correlationId = correlationId,
         actorSource = src,
         expectedSessionId = type(session) == 'table' and session.ok == true and session.value.sessionId or nil,
         expectedRevision = tonumber(params.expectedRevision)
     })
     if type(result) ~= 'table' or result.ok ~= true then
+        print(('[feather-admin] event=staff.assignment.reconciliation_required code=%s request=%s character=%s authorityAssignment=%s'):format(
+            tostring(type(result) == 'table' and result.code or 'invalid_result'), idempotencyKey,
+            characterId, tostring(authorityResult.value.assignmentId or 'cleared')))
         local key = result and result.code == 'unchanged' and 'staff_role_unchanged'
             or result and result.code == 'hierarchy_denied' and 'staff_role_too_high'
+            or result and (result.code == 'conflict' or result.code == 'transaction_failed')
+                and 'staff_role_retry_required'
             or 'staff_role_update_failed'
         return TriggerClientEvent('feather-admin:staff:role:result', src, false, key)
     end
@@ -176,8 +245,83 @@ FeatherAdmin.RegisterRPC('feather-admin:staff:role:assign', function(params, _, 
         TriggerClientEvent('feather-admin:staff:role:updated', target, 'your_staff_role_' .. direction)
     end
     AdminAudit.Record(src, 'staff.role.assign', target,
-        ('character=%s old=%s(%s) new=%s(%s) reason=%s'):format(result.value.characterId,
+        ('character=%s old=%s(%s) new=%s(%s) authorityAssignment=%s authorityReplayed=%s reason=%s'):format(result.value.characterId,
             result.value.oldRole.name, result.value.oldRole.level, result.value.role.name,
-            result.value.role.level, Trim(params.reason)))
+            result.value.role.level, tostring(authorityResult.value.assignmentId or 'cleared'),
+            tostring(authorityResult.value.replayed), reason))
     TriggerClientEvent('feather-admin:staff:role:result', src, true, 'staff_role_' .. direction)
 end, { windowMs = 3000, maxCalls = 1, maxPayloadBytes = 384 })
+
+RegisterCommand('AdminAuthorityStaffAssignmentContractSmokeTest', function(source)
+    if source ~= 0 then return end
+    local authority = exports['feather-authority']:GetCapabilities()
+    local catalog = exports['feather-roles']:GetCatalog(false)
+    local tiers, exact, owned = 0, true, true
+    for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+        local legacy
+        for _, role in ipairs(type(catalog) == 'table' and catalog.ok and catalog.value or {}) do
+            if role.level == tier.legacyLevel then legacy = role break end
+        end
+        local mapped, mappingError = legacy and AuthorityRoleForLegacy(legacy) or nil, nil
+        if legacy then mapped, mappingError = AuthorityRoleForLegacy(legacy) end
+        tiers = tiers + 1
+        exact = exact and legacy ~= nil and mapped ~= nil and mappingError == nil
+            and mapped.roleKey == tier.roleKey
+        owned = owned and mapped ~= nil and mapped.ownerResource == GetCurrentResourceName()
+    end
+    local playerRole
+    for _, role in ipairs(type(catalog) == 'table' and catalog.ok and catalog.value or {}) do
+        if role.level < Config.authorityMigration.roles[1].legacyLevel then playerRole = role break end
+    end
+    local cleared, clearError = playerRole and AuthorityRoleForLegacy(playerRole) or nil, 'missing_player_role'
+    if playerRole then cleared, clearError = AuthorityRoleForLegacy(playerRole) end
+    local tests = {
+        { 'replacement available', authority.ok
+            and authority.value.features.assignmentReplacement == 1 },
+        { 'three legacy tiers mapped', tiers == 3 and exact },
+        { 'Authority roles owner-bound', owned },
+        { 'nonstaff role clears access', playerRole ~= nil and cleared == false and clearError == nil },
+        { 'enforcement enabled', Config.authorityMigration.enforcement == true },
+        { 'hierarchy enabled', Config.authorityMigration.hierarchy == true }
+    }
+    local passed = 0
+    for _, test in ipairs(tests) do
+        if test[2] then passed = passed + 1 end
+        print(('[AdminAuthorityStaffAssignmentContractSmokeTest] %-29s %s'):format(
+            test[1], test[2] and 'PASS' or 'FAIL'))
+    end
+    print(('[AdminAuthorityStaffAssignmentContractSmokeTest] done %d/%d passed (no assignments changed)'):format(
+        passed, #tests))
+end, true)
+
+RegisterCommand('AdminAuthorityStaffAssignmentState', function(source, args)
+    if source ~= 0 then return end
+    local target = tonumber(args and args[1])
+    local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
+    if not identity or type(identity.accountId) ~= 'string' or type(identity.characterId) ~= 'string' then
+        return print('[AdminAuthorityStaffAssignmentState] FAIL use <connected target source>')
+    end
+    local state = RoleState(identity.characterId)
+    local effective = exports['feather-authority']:ListEffectiveCapabilities({
+        subjectType = 'account', subjectId = identity.accountId, scopeType = 'server'
+    })
+    if not state or type(effective) ~= 'table' or effective.ok ~= true then
+        return print('[AdminAuthorityStaffAssignmentState] FAIL role or Authority state unavailable')
+    end
+    local mapped, count = {}, 0
+    for _, capability in pairs(Config.authorityActions or {}) do mapped[capability] = true end
+    for _, capability in ipairs(effective.value.capabilities or {}) do
+        if mapped[capability] then count = count + 1 end
+    end
+    local expected = 0
+    for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+        if tier.legacyLevel == state.role.level then
+            for _, required in pairs(Config.permissions or {}) do
+                if tonumber(required) <= tier.legacyLevel then expected = expected + 1 end
+            end
+        end
+    end
+    print(('[AdminAuthorityStaffAssignmentState] %s account=%s character=%s legacyRole=%s legacyLevel=%d effectiveAdmin=%d expected=%d aligned=%s'):format(
+        count == expected and 'PASS' or 'FAIL', identity.accountId, identity.characterId,
+        state.role.key, state.role.level, count, expected, tostring(count == expected)))
+end, true)
