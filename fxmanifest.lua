@@ -17,7 +17,8 @@ files {
 shared_scripts {
     'configs/config.lua',
     'configs/hierarchy.lua',
-    'configs/permissions.lua'
+    'configs/permissions.lua',
+    'configs/authority_actions.lua'
 }
 
 client_scripts {
