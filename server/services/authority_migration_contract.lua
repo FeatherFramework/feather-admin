@@ -165,7 +165,7 @@ RegisterCommand('AdminAuthorityShadowPolicyLiveTest', function(source, args)
         local role = exports['feather-authority']:FindRoleByKey({ roleKey = tier.roleKey })
         assert(role.ok, tostring(role.code) .. ': ' .. tostring(role.message))
         local assignment = exports['feather-authority']:IssueAssignment({ requestId = args[2],
-            subjectType = 'account', subjectId = identity.accountId, roleId = role.value.roleId,
+            subjectType = 'character', subjectId = identity.characterId, roleId = role.value.roleId,
             expectedRoleRevision = role.value.revision, scopeType = 'server',
             reason = 'Verify the Admin Authority policy.',
             reasonCode = 'feather_admin.shadow_migration' })

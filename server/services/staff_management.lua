@@ -291,3 +291,41 @@ RegisterCommand('AdminAuthorityStaffAssignmentState', function(source, args)
         count == expected and 'PASS' or 'FAIL', identity.accountId, staff and staff.roleKey or 'player',
         count, expected, tostring(count == expected)))
 end, true)
+
+RegisterCommand('AdminCharacterIsolationHierarchyLiveTest', function(source, args)
+    if source ~= 0 then return end
+    local actorSource, targetSource = tonumber(args and args[1]), tonumber(args and args[2])
+    local otherCharacterId = Trim(args and args[3])
+    local called, reason = xpcall(function()
+        local actor = actorSource and FeatherAdmin.Identity.Resolve(actorSource) or nil
+        local target = targetSource and FeatherAdmin.Identity.Resolve(targetSource) or nil
+        local other = Profile(otherCharacterId)
+        assert(actor and target and other and actor.accountId ~= target.accountId
+            and target.accountId == other.accountId and target.characterId ~= other.characterId,
+            'Use <connected actor source> <connected different-account target source> <other target character UUID>')
+        local activeRole = StaffRole(target.characterId)
+        local otherRole = StaffRole(other.characterId)
+        local highest = FeatherAdmin.Identity.GetStaffByAccountId(target.accountId)
+        local expectedPrecedence = highest and highest.rolePrecedence or 0
+        assert(expectedPrecedence >= activeRole.precedence and expectedPrecedence >= otherRole.precedence,
+            'Target account highest character role did not dominate both character roles')
+        local actorRole = StaffRole(actor.characterId)
+        local allowed, hierarchyReason = FeatherAdmin.CanActOnAccount(
+            actorSource, target.accountId, 'moderation.kick')
+        assert(allowed == (actorRole.precedence > expectedPrecedence)
+            and hierarchyReason == 'authority_hierarchy',
+            'Hierarchy did not use the target account highest character role')
+        local activeEffective = exports['feather-authority']:ListEffectiveCapabilities({
+            subjectType = 'character', subjectId = target.characterId, scopeType = 'server'
+        })
+        local otherEffective = exports['feather-authority']:ListEffectiveCapabilities({
+            subjectType = 'character', subjectId = other.characterId, scopeType = 'server'
+        })
+        assert(activeEffective.ok and otherEffective.ok,
+            'Character-specific effective capability reads failed')
+        print(('[AdminCharacterIsolationHierarchyLiveTest] PASS actorCharacter=%s targetAccount=%s activeCharacter=%s activeRole=%s otherCharacter=%s otherRole=%s highestRole=%s hierarchyAllowed=%s isolatedReads=true'):format(
+            actor.characterId, target.accountId, target.characterId, activeRole.key,
+            other.characterId, otherRole.key, highest and highest.roleKey or 'player', tostring(allowed)))
+    end, debug.traceback)
+    if not called then print('[AdminCharacterIsolationHierarchyLiveTest] FAIL ' .. tostring(reason)) end
+end, true)
