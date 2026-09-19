@@ -90,6 +90,7 @@ Feather.Locale.register('en_us', {
     your_staff_role_demoted = 'Your staff role was demoted.',
     your_staff_role_changed = 'Your staff role was changed.',
     staff_role_update_failed = 'The staff role could not be updated.',
+    staff_role_retry_required = 'The Authority change was saved, but the display role needs a retry.',
     staff_role_unchanged = 'That character already has the selected role.',
     staff_role_stale = 'That role changed. Search again before retrying.',
     staff_role_too_high = 'You cannot assign a role above your own level.',

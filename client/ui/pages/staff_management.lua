@@ -15,6 +15,12 @@ local function roleLabel(role)
     return ('%s (%s)'):format(tostring(name), tostring(level))
 end
 
+local function roleByKey(roleKey)
+    for _, role in ipairs(AdminStaff.roles) do
+        if role.key == roleKey then return role end
+    end
+end
+
 local function targetStatus(target)
     return AdminTranslate(target.isOnline and 'online' or 'offline')
 end
@@ -154,15 +160,15 @@ function AdminUI.OpenStaffRole()
 
     local options, selectedIndex = {}, 0
     for _, role in ipairs(AdminStaff.roles) do
-        options[#options + 1] = { display = roleLabel(role), value = role }
+        options[#options + 1] = { display = roleLabel(role), value = role.key }
         if role.key == target.roleKey then selectedIndex = #options - 1 end
     end
     if #options == 0 then
         AdminUI.AddText(page, AdminTranslate('no_assignable_roles'))
     else
-        AdminStaff.selectedRole = options[selectedIndex + 1].value
+        AdminStaff.selectedRole = roleByKey(options[selectedIndex + 1].value)
         AdminUI.AddArrows(page, AdminTranslate('new_role'), options, selectedIndex, function(data)
-            AdminStaff.selectedRole = data.value.value
+            AdminStaff.selectedRole = roleByKey(data.value.value)
         end)
         AdminUI.AddInput(page, AdminTranslate('role_change_reason'), AdminTranslate('required'), function(data)
             AdminStaff.reason = data.value

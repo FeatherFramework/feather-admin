@@ -36,15 +36,10 @@ local function Evaluate(action, context)
     end
     if context.source==0 then return EvaluateService(action,context) end
 
-    local required = tonumber(Config.permissions[action])
-    if required == nil then
+    if tonumber(Config.permissions[action]) == nil then
         return Decision(false, 'unknown_action', 'That action has no configured policy.')
     end
-
-    local identity = FeatherAdmin.Identity.Resolve(tonumber(context.source))
-    local staff = FeatherAdmin.Identity.GetStaff(identity)
-    local level = staff and tonumber(staff.roleLevel) or 0
-    if level < required then
+    if not FeatherAdmin.CanUse(tonumber(context.source), action) then
         return Decision(false, 'forbidden', 'The active character does not have permission for that action.')
     end
     return Decision(true, 'allowed', 'The action is permitted.')
@@ -68,6 +63,67 @@ local function InstallProvider()
 end
 
 AdminDatabase.OnReady(InstallProvider)
+
+RegisterCommand('AdminReleaseContractSmokeTest',function(source)
+    if source~=0 then return end
+    local called,reason=xpcall(function()
+        local registered={}
+        for _,command in ipairs(GetRegisteredCommands() or {}) do registered[command.name]=true end
+        local actions={
+            'organizations.organization.create',
+            'organizations.organization.update',
+            'organizations.organization.suspend',
+            'organizations.organization.dissolve',
+            'organizations.relationship.manage',
+            'organizations.interest.manage'
+        }
+        local policy=type(Config.servicePolicy)=='table' and Config.servicePolicy['feather-organizations'] or nil
+        local shops=type(policy)=='table' and policy['feather-shops'] or nil
+        local organizations=type(policy)=='table' and policy['feather-organizations'] or nil
+        local admin=type(policy)=='table' and policy['feather-admin'] or nil
+        local function HasEvery(grants)
+            if type(grants)~='table' then return false end
+            for _,action in ipairs(actions) do if grants[action]~=true then return false end end
+            return true
+        end
+        local provider=exports['feather-core']:GetProvider('policy',nil,1)
+        local authorityProvider=exports['feather-core']:GetProvider('policy','feather-authority',1)
+        local providerValue=type(provider)=='table' and provider.ok==true and type(provider.value)=='table'
+            and type(provider.value.provider)=='table' and provider.value.provider or nil
+        local tests={
+            {'provider installed',providerInstalled and providerValue~=nil
+                and providerValue.owner=='feather-admin'},
+            {'service principals enabled',providerValue~=nil and type(providerValue.capabilities)=='table'
+                and providerValue.capabilities.servicePrincipals==1},
+            {'Authority enforcement enabled',type(Config.authorityMigration)=='table'
+                and Config.authorityMigration.enforcement==true},
+            {'Authority hierarchy enabled',type(Config.authorityMigration)=='table'
+                and Config.authorityMigration.hierarchy==true},
+            {'Authority provider available',authorityProvider.ok==true
+                and authorityProvider.value.provider.owner=='feather-authority'},
+            {'shop test controls absent',not registered.ShopBusinessLifecycleControl
+                and not registered.ShopOrganizationLifecycleLiveTest},
+            {'shops create and update',type(shops)=='table'
+                and shops['organizations.organization.create']==true
+                and shops['organizations.organization.update']==true},
+            {'shops elevated grants absent',type(shops)=='table'
+                and shops['organizations.organization.suspend']~=true
+                and shops['organizations.organization.dissolve']~=true
+                and shops['organizations.relationship.manage']~=true
+                and shops['organizations.interest.manage']~=true},
+            {'organizations grants complete',HasEvery(organizations)},
+            {'admin grants complete',HasEvery(admin)},
+            {'foreign grants absent',type(policy)=='table' and policy.foreign==nil}
+        }
+        local passed=0
+        for _,test in ipairs(tests) do
+            if test[2] then passed=passed+1 end
+            print(('[AdminReleaseContractSmokeTest] %-28s %s'):format(test[1],test[2] and 'PASS' or 'FAIL'))
+        end
+        print(('[AdminReleaseContractSmokeTest] done %d/%d passed (read-only)'):format(passed,#tests))
+    end,debug.traceback)
+    if not called then print('[AdminReleaseContractSmokeTest] FAIL '..tostring(reason)) end
+end,true)
 
 RegisterCommand('AdminServicePolicySmokeTest',function(source)
     if source~=0 then return end
