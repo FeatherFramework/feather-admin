@@ -26,7 +26,7 @@ RegisterCommand('AdminIdentitySmokeTest', function(source, args)
           AND `TABLE_NAME` LIKE 'feather_admin_%'
           AND `COLUMN_NAME` LIKE '%character_id'
     ]])) or 0
-    local roleProvider = exports['feather-core']:GetProvider('character-role', nil, 1)
+    local authorityProvider = exports['feather-core']:GetProvider('policy', 'feather-authority', 1)
     local auditAccountColumns = tonumber(MySQL.scalar.await([[
         SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
         WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'feather_admin_actions'
@@ -37,8 +37,9 @@ RegisterCommand('AdminIdentitySmokeTest', function(source, args)
         { name = 'account identity', passed = identity ~= nil and IsUuid(identity.accountId) },
         { name = 'character identity', passed = identity ~= nil and IsUuid(identity.characterId) },
         { name = 'profile snapshot', passed = identity ~= nil and type(identity.characterName) == 'string' },
-        { name = 'staff authority', passed = staff ~= nil and type(staff.roleLevel) == 'number' },
-        { name = 'character role provider', passed = roleProvider and roleProvider.ok == true },
+        { name = 'staff authority', passed = staff ~= nil
+            and type(staff.rolePrecedence) == 'number' },
+        { name = 'Authority provider', passed = authorityProvider and authorityProvider.ok == true },
         { name = 'audit account schema', passed = auditAccountColumns == 2 },
         { name = 'uuid schema columns', passed = allCharacterColumns > 0
             and characterColumnCount == allCharacterColumns,
@@ -65,8 +66,8 @@ RegisterCommand('AdminAuthorityInspect', function(source, args)
     local identifiers = tonumber(MySQL.scalar.await([[
         SELECT COUNT(*) FROM core_account_identifiers WHERE account_id = ?
     ]], { identity.accountId })) or 0
-    print(('[AdminAuthorityInspect] source=%s account=%s character=%s level=%s role=%s authority=%s identifiers=%s'):format(
+    print(('[AdminAuthorityInspect] source=%s account=%s character=%s role=%s authority=%s identifiers=%s'):format(
         tostring(target), tostring(identity.accountId), tostring(identity.characterId),
-        tostring(staff and staff.roleLevel or 0), tostring(staff and staff.roleName or 'Player'),
+        tostring(staff and staff.roleName or 'Player'),
         tostring(staff and staff.authoritySource or 'none'), tostring(identifiers)))
 end, true)

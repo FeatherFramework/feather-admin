@@ -1,8 +1,8 @@
 -- Controls which staff members may target other staff accounts.
 Config.hierarchy = {
-    strict = true, -- true requires the actor to have a higher level than the target.
+    strict = true, -- true requires the actor to dominate the target's capability set.
 
-    -- These helpful actions may be used on players of any role level.
+    -- These helpful actions may be used on players with any staff role.
     exempt = {
         ['booster.heal'] = true,
         ['booster.revive'] = true,

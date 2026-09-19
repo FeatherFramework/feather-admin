@@ -156,11 +156,10 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:search', function(params, _, 
         WHERE a.status = 'active' AND %s ORDER BY a.display_name, p.created_at LIMIT %d]]):format(clause, limit), values) or {}
     local filtered = {}
     for _, row in ipairs(rows) do
-        local resolved = row.characterId and exports['feather-roles']:GetCharacterRole(row.characterId) or nil
-        local role = type(resolved) == 'table' and resolved.ok == true and resolved.value.role or nil
-        row.roleKey = role and role.key or nil
-        row.roleName = role and role.name or 'Player'
-        row.roleLevel = role and role.level or 0
+        local staff = FeatherAdmin.Identity.GetStaffByAccountId(row.accountId)
+        row.roleKey = staff and staff.roleKey or 'player'
+        row.roleName = staff and staff.roleName or 'Player'
+        row.rolePrecedence = staff and staff.rolePrecedence or 0
         row.license = licenseForAccount(row.accountId)
         row.serverId = onlineSource(row.accountId, row.characterId)
         row.isOnline = row.serverId ~= nil

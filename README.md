@@ -1,11 +1,12 @@
 # Feather Admin
 
-Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Its default permissions use numeric staff levels `50`, `75`, and `99`.
+Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Staff access uses character-scoped Feather Authority roles and explicit capability grants.
 
 > [!WARNING]
 > Online identity, Inventory grants, moderation, reports, Staff Cases, and
 > action auditing use Core account sessions and UUID Character profiles.
-> Staff authorization and role changes use character-scoped Feather Roles.
+> Staff authorization and role changes use character-scoped Feather Authority assignments.
+> Target hierarchy uses the highest staff assignment held by any active character on the target account.
 > Economy screens remain hidden until their dedicated provider is available.
 
 The moderation database foundation now records canonical Core account UUIDs
@@ -18,7 +19,7 @@ now use that contract.
 - Browse connected players and search online or offline characters through one Players directory
 - Review player capacity, uptime, OneSync mode, and configured Feather resource health
 - Send confirmed server-wide announcements with configurable limits and cooldowns
-- View character details, active-character role level, and identifiers
+- View character details, account staff role, and identifiers
 - Teleport to a player, bring them to you, or send them back
 - Spectate another player, including players outside normal streaming range
 - Kick an online player from the Moderation page with a required reason
@@ -52,16 +53,17 @@ now use that contract.
 ## Dependencies
 
 - `feather-core`
+- `feather-organizations`
+- `feather-authority`
 - `feather-toolkit`
 - `feather-character`
-- `feather-roles`
 - `feather-menu-v2`
 - `feather-inventory`
 - `feather-weapons`
 
 These resources must already be installed. They also need to start before Feather Admin.
 
-Feather Admin and Feather Roles create their tables automatically. For an older
+Feather Admin and Feather Authority create their tables automatically. For an older
 Feather Admin database, back it up and run `database/character_uuid_cutover.sql`
 once before starting the updated resources.
 
@@ -76,10 +78,11 @@ once before starting the updated resources.
 
    ```cfg
    ensure feather-core
+   ensure feather-organizations
+   ensure feather-authority
    ensure feather-toolkit
    ensure feather-menu-v2
    ensure feather-character
-   ensure feather-roles
    ensure feather-inventory
    ensure feather-weapons
    ensure feather-admin
@@ -89,17 +92,17 @@ once before starting the updated resources.
 
 ## First role assignment
 
-Admin authority comes from the role assigned to the active Character. With the
-player connected and that Character selected, run this from the server console:
+After the catalog provisions on a clean database, connect the initial owner and
+run this once from the server console with a unique, stable request ID:
 
 ```text
-RoleAssign <serverId> <role key>
+AdminBootstrapOwner <serverId> <requestId>
 ```
 
 Example:
 
 ```text
-RoleAssign 1 owner
+AdminBootstrapOwner 1 initial-owner-001
 ```
 
 Then run:
@@ -116,20 +119,18 @@ spawned Admin effects.
 
 ## Permissions
 
-Every enabled menu action has a minimum numeric Character-role level in `configs/permissions.lua`. The default tiers are:
+Every enabled menu action maps to the minimum named role whose Authority catalog receives that capability. The defaults are:
 
-- Level `50` — Moderator: player support, reports, staff cases, warnings, kicks, spectating, travel, healing, and reviving
-- Level `75` — Senior Admin: report and case oversight, case closure, bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
-- Level `99` — Owner: sensitive log details and the most disruptive special effects
+- Moderator: player support, reports, staff cases, warnings, kicks, spectating, travel, healing, and reviving
+- Administrator: report and case oversight, case closure, bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
+- Owner: staff assignments, sensitive log details, and the most disruptive special effects
 
-These are numeric checks; the role names are only friendly labels. You can rename the roles without changing permission behavior.
-
-Adjust individual values to fit your staff structure. Keep `menu.open` at or below the lowest staff level that should be able to open the menu.
+Capabilities, rather than labels or precedence values, authorize actions. Adjust the named minimum role for individual actions in `configs/permissions.lua`; keep `menu.open` assigned to every role that should open the menu.
 
 Buttons a staff member cannot use are hidden. Self-target buttons also follow `configs/hierarchy.lua`. Every request is checked again by the server, so changing the local menu does not grant permission.
 
 If an administrator cannot open the menu, confirm that the currently selected
-Character has the expected assignment in Feather Roles.
+active character has the expected assignment in Feather Authority.
 
 ## Configuration
 
@@ -139,7 +140,7 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `controls.openMenu`: choose the key used to open the menu; the default is `PGDN` (Page Down)
 - `commands.enabled`: turn chat-command access on or off
 - `commands.openMenu`: change the menu command; the default is `adminMenu`
-- `configs/permissions.lua`: choose the minimum numeric role level for every admin action
+- `configs/permissions.lua`: choose the minimum named role for every admin action
 - `configs/hierarchy.lua`: control staff hierarchy, helpful exemptions, and allowed self-actions
 - `logging.webhook`: optionally send admin action logs to a Discord webhook
 - `serverOverview.resources`: choose which resources appear on Server Overview
@@ -168,7 +169,7 @@ server failures. Core is not required to provide Discord helpers.
 
 ## Usage
 
-With the default settings, a staff character at level `50` or higher can open the menu by pressing **Page Down** or entering this command in chat:
+With the default settings, an account assigned Moderator, Administrator, or Owner can open the menu by pressing **Page Down** or entering this command in chat:
 
 ```text
 /adminMenu
@@ -195,7 +196,7 @@ AdminWeaponReconcile <serverId>
 Inspection is read-only. Reconciliation clears unaccepted native weapon state
 and restores the authoritative primary/offhand assignments and metadata.
 
-Owners can select an online or offline character through **Players**, open **Staff Role**, choose a configured role, enter a required reason, and confirm the change. The Players search includes a role filter, and role history is paginated. Every promotion, demotion, or other role change is stored against the affected character. A role can never be assigned above the acting character's own level. Self-edits and changes to equal- or higher-ranked accounts are blocked; use the emergency recovery command when no eligible owner character is available.
+Owners can select an online or offline character through **Players**, open **Staff Role**, choose a configured role, enter a required reason, and confirm the change. The assignment applies only to that character, allowing another character on the same account to remain a normal player. The Players search includes a role filter, and assignment history is paginated. An assignment can never exceed the acting character's precedence. When targeting another account, hierarchy compares the acting character with the highest staff assignment held by any active character on the target account. Self-edits and changes to equal- or higher-ranked accounts are blocked; use the console-only bootstrap command for initial installation or emergency recovery.
 
 Player searches use prefix matching for names. License searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for travel, status, and appearance actions that apply to your own character.
 
@@ -224,7 +225,7 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 ### The menu does not open
 
 - Confirm that `feather-core`, `feather-toolkit`, `feather-menu-v2`, and `feather-admin` are running.
-- Confirm that the administrator's active character meets the `permissions['menu.open']` level.
+- Confirm that the administrator's active character has an Authority assignment whose role grants `staff.admin.menu.open`.
 - Check that keyboard or command access is enabled in `configs/config.lua`.
 
 ### Feather Admin does not start

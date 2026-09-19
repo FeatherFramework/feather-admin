@@ -36,7 +36,7 @@ local function Evaluate(action, context)
     end
     if context.source==0 then return EvaluateService(action,context) end
 
-    if tonumber(Config.permissions[action]) == nil then
+    if type(Config.permissions[action]) ~= 'string' then
         return Decision(false, 'unknown_action', 'That action has no configured policy.')
     end
     if not FeatherAdmin.CanUse(tonumber(context.source), action) then
@@ -88,6 +88,7 @@ RegisterCommand('AdminReleaseContractSmokeTest',function(source)
         end
         local provider=exports['feather-core']:GetProvider('policy',nil,1)
         local authorityProvider=exports['feather-core']:GetProvider('policy','feather-authority',1)
+        local catalog=FeatherAdmin.AuthorityCatalog and FeatherAdmin.AuthorityCatalog.State() or nil
         local providerValue=type(provider)=='table' and provider.ok==true and type(provider.value)=='table'
             and type(provider.value.provider)=='table' and provider.value.provider or nil
         local tests={
@@ -101,6 +102,12 @@ RegisterCommand('AdminReleaseContractSmokeTest',function(source)
                 and Config.authorityMigration.hierarchy==true},
             {'Authority provider available',authorityProvider.ok==true
                 and authorityProvider.value.provider.owner=='feather-authority'},
+            {'Authority catalog ready',type(catalog)=='table' and catalog.ready==true
+                and type(catalog.result)=='table' and catalog.result.capabilities==82
+                and catalog.result.roles==3 and catalog.result.moderator==29
+                and catalog.result.administrator==60 and catalog.result.owner==82
+                and catalog.result.totalGrants==171},
+            {'owner bootstrap available',registered.AdminBootstrapOwner==true},
             {'shop test controls absent',not registered.ShopBusinessLifecycleControl
                 and not registered.ShopOrganizationLifecycleLiveTest},
             {'shops create and update',type(shops)=='table'

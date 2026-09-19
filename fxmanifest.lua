@@ -66,7 +66,6 @@ dependencies {
     'feather-core',
     'feather-authority',
     'feather-toolkit',
-    'feather-roles',
     'feather-inventory',
     'feather-menu-v2'
 }

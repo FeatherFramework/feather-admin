@@ -1,18 +1,18 @@
 RegisterCommand('AdminAuthorityMigrationContractSmokeTest', function(source)
     if source ~= 0 then return end
-    local actions, capabilities, levels = 0, {}, {}
+    local actions, capabilities, requiredRoles = 0, {}, {}
     local valid = type(Config.authorityActions) == 'table'
         and type(Config.authorityMigration) == 'table'
         and type(Config.authorityMigration.roles) == 'table'
     for action, required in pairs(Config.permissions or {}) do
         actions = actions + 1
         local capability = Config.authorityActions and Config.authorityActions[action]
-        valid = valid and type(required) == 'number' and required % 1 == 0
+        valid = valid and (required == 'moderator' or required == 'administrator' or required == 'owner')
             and type(capability) == 'string' and #capability <= 100
             and capability:match('^staff%.admin%.[a-z][a-z0-9_.]*$') ~= nil
             and capabilities[capability] == nil
         capabilities[capability or ''] = true
-        levels[required] = true
+        requiredRoles[required] = true
     end
     local mapped = 0
     for action in pairs(Config.authorityActions or {}) do
@@ -25,17 +25,17 @@ RegisterCommand('AdminAuthorityMigrationContractSmokeTest', function(source)
         rolesValid = rolesValid and type(role.roleKey) == 'string'
             and role.roleKey:match('^staff%.admin%.[a-z][a-z0-9_]*$') ~= nil
             and type(role.label) == 'string' and #role.label > 0
-            and type(role.legacyLevel) == 'number' and role.legacyLevel > previous
-            and levels[role.legacyLevel] == true
-        previous = role.legacyLevel or previous
+            and type(role.key) == 'string' and requiredRoles[role.key] == true
+            and type(role.precedence) == 'number' and role.precedence > previous
+        previous = role.precedence or previous
     end
     local tests = {
         { 'all actions mapped', valid and actions > 0 and mapped == actions },
         { 'capabilities unique', valid and actions == mapped },
         { 'bounded staff namespace', valid },
         { 'three ordered tiers', rolesValid },
-        { 'legacy levels covered', levels[50] and levels[75] and levels[99]
-            and (function() local count = 0 for _ in pairs(levels) do count = count + 1 end return count == 3 end)() },
+        { 'default roles covered', requiredRoles.moderator and requiredRoles.administrator
+            and requiredRoles.owner },
         { 'migration grants absent', Config.authorityMigration.assignments == nil }
     }
     local passed = 0
@@ -48,18 +48,6 @@ RegisterCommand('AdminAuthorityMigrationContractSmokeTest', function(source)
         passed, #tests, actions))
 end, true)
 
-local function AuthorityCatalog()
-    local catalog = {}
-    for action, capability in pairs(Config.authorityActions or {}) do
-        local level = tonumber(Config.permissions[action]) or 999
-        catalog[#catalog + 1] = { key = capability,
-            description = 'Admin permission: ' .. action .. '.',
-            riskClass = level <= 50 and 'moderate' or level <= 75 and 'high' or 'critical' }
-    end
-    table.sort(catalog, function(left, right) return left.key < right.key end)
-    return catalog
-end
-
 RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
     if source ~= 0 then return end
     local called, reason = xpcall(function()
@@ -67,7 +55,7 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
             and #args[1] >= 1 and #args[1] <= 128
             and args[1]:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$'),
             'Use <stable requestId>')
-        local request = { requestId = args[1], capabilities = AuthorityCatalog() }
+        local request = { requestId = args[1], capabilities = FeatherAdmin.AuthorityCatalog.Definitions() }
         assert(#request.capabilities == 82, 'Expected the reviewed 82-action Admin catalog')
         local first = exports['feather-authority']:RegisterCapabilities(request)
         assert(first.ok, tostring(first.code) .. ': ' .. tostring(first.message))
@@ -81,7 +69,7 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
                 and identity.capabilityId == replay.value.capabilities[index].capabilityId,
                 'Capability identity changed on replay')
         end
-        local mismatch = { requestId = args[1], capabilities = AuthorityCatalog() }
+        local mismatch = { requestId = args[1], capabilities = FeatherAdmin.AuthorityCatalog.Definitions() }
         mismatch.capabilities[1].description = 'Tampered Admin permission.'
         local mismatchResult = exports['feather-authority']:RegisterCapabilities(mismatch)
         assert(not mismatchResult.ok and mismatchResult.code == 'idempotency_conflict',
@@ -119,7 +107,13 @@ RegisterCommand('AdminAuthorityRoleCatalogLiveTest', function(source, args)
             firstReplayed = firstReplayed and created.value.replayed == true
             local actions = {}
             for action, required in pairs(Config.permissions) do
-                if tonumber(required) <= tier.legacyLevel then actions[#actions + 1] = action end
+                local requiredPrecedence
+                for _, candidate in ipairs(Config.authorityMigration.roles) do
+                    if candidate.key == required then requiredPrecedence = candidate.precedence break end
+                end
+                if requiredPrecedence and requiredPrecedence <= tier.precedence then
+                    actions[#actions + 1] = action
+                end
             end
             table.sort(actions)
             for index, action in ipairs(actions) do
@@ -145,7 +139,7 @@ RegisterCommand('AdminAuthorityRoleCatalogLiveTest', function(source, args)
         assert(roleResults[1].grants < roleResults[2].grants
             and roleResults[2].grants < roleResults[3].grants
             and roleResults[3].grants == 82, 'Authority tier grants are not cumulative')
-        print(('[AdminAuthorityRoleCatalogLiveTest] PASS roles=3 moderator=%d seniorAdmin=%d owner=%d totalGrants=%d cumulative=true stableIdentity=true allReplayed=%s'):format(
+        print(('[AdminAuthorityRoleCatalogLiveTest] PASS roles=3 moderator=%d administrator=%d owner=%d totalGrants=%d cumulative=true stableIdentity=true allReplayed=%s'):format(
             roleResults[1].grants, roleResults[2].grants, roleResults[3].grants,
             totalGrants, tostring(firstReplayed)))
     end, debug.traceback)
@@ -162,45 +156,52 @@ RegisterCommand('AdminAuthorityShadowPolicyLiveTest', function(source, args)
         local identity = FeatherAdmin.Identity.Resolve(staffSource)
         local staff = identity and FeatherAdmin.Identity.GetStaff(identity)
         assert(identity and staff and type(identity.accountId) == 'string',
-            'Connected staff identity and legacy role required')
+            'Connected Authority staff identity required')
         local tier
         for _, candidate in ipairs(Config.authorityMigration.roles) do
-            if staff.roleLevel >= candidate.legacyLevel then tier = candidate end
+            if staff.rolePrecedence >= candidate.precedence then tier = candidate end
         end
-        assert(tier, 'Legacy role does not map to an Authority tier')
+        assert(tier, 'Staff assignment does not map to an Authority tier')
         local role = exports['feather-authority']:FindRoleByKey({ roleKey = tier.roleKey })
         assert(role.ok, tostring(role.code) .. ': ' .. tostring(role.message))
         local assignment = exports['feather-authority']:IssueAssignment({ requestId = args[2],
             subjectType = 'account', subjectId = identity.accountId, roleId = role.value.roleId,
             expectedRoleRevision = role.value.revision, scopeType = 'server',
-            reason = 'Migrate legacy Admin role to Authority shadow policy.',
+            reason = 'Verify the Admin Authority policy.',
             reasonCode = 'feather_admin.shadow_migration' })
         assert(assignment.ok, tostring(assignment.code) .. ': ' .. tostring(assignment.message))
         local provider = exports['feather-core']:GetProvider('policy', 'feather-authority', 1)
         assert(provider.ok, 'Named Authority provider is unavailable')
         local matched, entitled, unentitled, featureDisabled = 0, 0, 0, 0
         for action, capability in pairs(Config.authorityActions) do
-            local legacyEntitled = staff.roleLevel >= tonumber(Config.permissions[action])
-            local legacyAllowed = FeatherAdmin.CanUse(staffSource, action) == true
+            local requiredPrecedence
+            for _, candidate in ipairs(Config.authorityMigration.roles) do
+                if candidate.key == Config.permissions[action] then
+                    requiredPrecedence = candidate.precedence
+                    break
+                end
+            end
+            local expectedEntitled = requiredPrecedence and staff.rolePrecedence >= requiredPrecedence
+            local adminAllowed = FeatherAdmin.CanUse(staffSource, action) == true
             local decision = provider.value.implementation.Evaluate(capability, {
                 source = staffSource, accountId = identity.accountId,
                 characterId = identity.characterId, caller = GetCurrentResourceName(), subject = {}
             })
-            assert(decision.ok and decision.value.allowed == legacyEntitled,
-                ('Shadow mismatch action=%s capability=%s legacyEntitled=%s authority=%s'):format(
-                    action, capability, tostring(legacyEntitled),
+            assert(decision.ok and decision.value.allowed == expectedEntitled,
+                ('Policy mismatch action=%s capability=%s expected=%s authority=%s'):format(
+                    action, capability, tostring(expectedEntitled),
                     tostring(decision.ok and decision.value.allowed)))
-            assert(not legacyAllowed or legacyEntitled,
-                'Admin feature gate allowed an action without legacy entitlement')
+            assert(not adminAllowed or expectedEntitled,
+                'Admin feature gate allowed an action without role entitlement')
             matched = matched + 1
-            if legacyEntitled then entitled = entitled + 1 else unentitled = unentitled + 1 end
-            if legacyEntitled and not legacyAllowed then featureDisabled = featureDisabled + 1 end
+            if expectedEntitled then entitled = entitled + 1 else unentitled = unentitled + 1 end
+            if expectedEntitled and not adminAllowed then featureDisabled = featureDisabled + 1 end
         end
         local default = exports['feather-core']:GetProvider('policy', nil, 1)
         assert(matched == 82 and default.ok and default.value.provider.owner == 'feather-admin',
             'Shadow comparison changed the default provider')
-        print(('[AdminAuthorityShadowPolicyLiveTest] PASS account=%s legacyRole=%s legacyLevel=%d authorityRole=%s matched=%d entitled=%d unentitled=%d featureDisabled=%d assignment=%s firstReplayed=%s AdminDefaultUnchanged=true featureGatesIndependent=true hierarchyDeferred=true'):format(
-            identity.accountId, tostring(staff.roleKey), staff.roleLevel, tier.roleKey,
+        print(('[AdminAuthorityShadowPolicyLiveTest] PASS account=%s role=%s authorityRole=%s matched=%d entitled=%d unentitled=%d featureDisabled=%d assignment=%s firstReplayed=%s AdminDefaultUnchanged=true featureGatesIndependent=true hierarchyDeferred=true'):format(
+            identity.accountId, tostring(staff.roleKey), tier.roleKey,
             matched, entitled, unentitled, featureDisabled, assignment.value.assignmentId,
             tostring(assignment.value.replayed)))
     end, debug.traceback)
@@ -216,7 +217,11 @@ RegisterCommand('AdminAuthorityRoleParitySmokeTest', function(source)
         local grants = role.ok and exports['feather-authority']:ListRoleGrants({ roleId = role.value.roleId }) or nil
         local expected, expectedCount = {}, 0
         for action, required in pairs(Config.permissions) do
-            if tonumber(required) <= tier.legacyLevel then
+            local requiredPrecedence
+            for _, candidate in ipairs(Config.authorityMigration.roles) do
+                if candidate.key == required then requiredPrecedence = candidate.precedence break end
+            end
+            if requiredPrecedence and requiredPrecedence <= tier.precedence then
                 expected[Config.authorityActions[action]] = true
                 expectedCount = expectedCount + 1
             end
@@ -240,8 +245,8 @@ RegisterCommand('AdminAuthorityRoleParitySmokeTest', function(source)
     local moderator = Config.authorityMigration.roles[1]
     local senior = Config.authorityMigration.roles[2]
     local owner = Config.authorityMigration.roles[3]
-    Check('tiers ordered', moderator.legacyLevel < senior.legacyLevel
-        and senior.legacyLevel < owner.legacyLevel)
+    Check('tiers ordered', moderator.precedence < senior.precedence
+        and senior.precedence < owner.precedence)
     Check('actions fully mapped', (function()
         local permissions, mappings = 0, 0
         for _ in pairs(Config.permissions) do permissions = permissions + 1 end
@@ -309,8 +314,8 @@ RegisterCommand('AdminAuthorityHierarchyContractSmokeTest', function(source, arg
             'Use <connected actor source> <connected different-account target source>')
         local actorStaff = FeatherAdmin.Identity.GetStaff(actor)
         local targetStaff = FeatherAdmin.Identity.GetStaffByAccountId(target.accountId)
-        assert(actorStaff, 'Actor must have a legacy staff role for parity comparison')
-        local expected = actorStaff.roleLevel > (targetStaff and targetStaff.roleLevel or 0)
+        assert(actorStaff, 'Actor must have an Authority staff role')
+        local expected = actorStaff.rolePrecedence > (targetStaff and targetStaff.rolePrecedence or 0)
         local hierarchyAllowed, hierarchyReason = FeatherAdmin.CanActOnAccount(
             actorSource, target.accountId, 'moderation.kick')
         local selfAllowed, selfReason = FeatherAdmin.CanActOnAccount(
@@ -318,10 +323,10 @@ RegisterCommand('AdminAuthorityHierarchyContractSmokeTest', function(source, arg
         local exemptAllowed, exemptReason = FeatherAdmin.CanActOnAccount(
             actorSource, target.accountId, 'booster.heal')
         assert(hierarchyAllowed == expected and hierarchyReason == 'authority_hierarchy',
-            'Authority hierarchy does not match the migrated legacy tiers')
+            'Authority hierarchy does not match configured role precedence')
         assert(not selfAllowed and selfReason == 'self', 'Self-target denial changed')
         assert(exemptAllowed and exemptReason == 'exempt', 'Hierarchy exemption changed')
-        print(('[AdminAuthorityHierarchyContractSmokeTest] PASS actor=%s target=%s allowed=%s strict=true legacyParity=true capabilityDominance=true selfDenied=true exemptAllowed=true offlineAccountCapable=true'):format(
+        print(('[AdminAuthorityHierarchyContractSmokeTest] PASS actor=%s target=%s allowed=%s strict=true precedenceParity=true capabilityDominance=true selfDenied=true exemptAllowed=true offlineAccountCapable=true'):format(
             actor.accountId, target.accountId, tostring(hierarchyAllowed)))
     end, debug.traceback)
     if not called then print('[AdminAuthorityHierarchyContractSmokeTest] FAIL ' .. tostring(reason)) end

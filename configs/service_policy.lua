@@ -1,4 +1,4 @@
--- Server-only policy grants. No wildcards, role-level fallback or client actors.
+-- Server-only policy grants. No wildcards, staff-role fallback, or client actors.
 -- The broker caller authenticates the delegated subject.resource principal.
 Config.servicePolicy = {
     ['feather-organizations'] = {

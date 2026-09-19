@@ -1,13 +1,12 @@
--- Exact one-to-one migration names for Admin's legacy numeric permissions.
--- These are capability identities only; this file grants no authority.
+-- Stable Authority identities and private hierarchy precedence for Admin roles.
 Config.authorityMigration = {
     capabilityPrefix = 'staff.admin.',
     enforcement = true,
     hierarchy = true,
     roles = {
-        { roleKey = 'staff.admin.moderator', label = 'Moderator', legacyLevel = 50 },
-        { roleKey = 'staff.admin.senior_admin', label = 'Senior Admin', legacyLevel = 75 },
-        { roleKey = 'staff.admin.owner', label = 'Owner', legacyLevel = 99 }
+        { key = 'moderator', roleKey = 'staff.admin.moderator', label = 'Moderator', precedence = 1 },
+        { key = 'administrator', roleKey = 'staff.admin.administrator', label = 'Administrator', precedence = 2 },
+        { key = 'owner', roleKey = 'staff.admin.owner', label = 'Owner', precedence = 3 }
     }
 }
 

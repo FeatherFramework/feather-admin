@@ -15,10 +15,7 @@ function AdminUI.OpenPlayerInfo(info)
         ('%s: %s'):format(AdminTranslate('character_id'), displayValue(info.characterId)),
         ('%s: %s %s'):format(AdminTranslate('character_name'), displayValue(info.firstName), displayValue(info.lastName))
     }, '\n')
-    local roleText = table.concat({
-        ('%s: %s'):format(AdminTranslate('role_name'), displayValue(info.roleName)),
-        ('%s: %s'):format(AdminTranslate('role_level'), displayValue(info.roleLevel))
-    }, '\n')
+    local roleText = ('%s: %s'):format(AdminTranslate('role_name'), displayValue(info.roleName))
     local economyText = table.concat({
         ('%s: %s'):format(AdminTranslate('dollars'), displayValue(info.dollars)),
         ('%s: %s'):format(AdminTranslate('gold'), displayValue(info.gold)),

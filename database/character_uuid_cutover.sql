@@ -1,6 +1,6 @@
 -- Feather Admin canonical Character UUID cutover for pre-Contract-1 databases.
 -- Back up the database, then run once before starting the updated resource.
--- Role data is intentionally not migrated here; feather-roles owns it.
+-- Staff authority is character-scoped and owned by feather-authority; no role data is migrated here.
 
 ALTER TABLE `feather_admin_bans`
     ADD COLUMN IF NOT EXISTS `account_id` CHAR(36) NULL AFTER `id`,

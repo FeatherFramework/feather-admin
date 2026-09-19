@@ -24,8 +24,8 @@ local function targetDetails(target)
         details[#details + 1] = ('%s: %s'):format(AdminTranslate('character_id'), tostring(target.characterId))
     end
     if target.roleName then
-        details[#details + 1] = ('%s: %s (%s)'):format(AdminTranslate('role_name'),
-            tostring(target.roleName), tostring(target.roleLevel or 0))
+        details[#details + 1] = ('%s: %s'):format(AdminTranslate('role_name'),
+            tostring(target.roleName))
     end
     return table.concat(details, '\n')
 end

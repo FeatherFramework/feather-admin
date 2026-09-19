@@ -8,6 +8,9 @@ local webhookUrl = tostring(Config.logging.webhook or '')
 
 local function playerIdentity(playerId)
     if playerId == nil then return { label = 'none' } end
+    if tonumber(playerId) == 0 then
+        return { label = 'server console', name = 'Server Console' }
+    end
     local name = tostring(GetPlayerName(playerId) or 'unknown'):gsub('[%c]', ' ')
     local license = FeatherAdmin.Core.User.GetLicense(playerId)
     local identity = FeatherAdmin.Identity.Resolve(playerId) or {}
