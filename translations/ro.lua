@@ -90,6 +90,7 @@ Feather.Locale.register('ro', {
     your_staff_role_demoted = 'Rolul tău din echipă a fost retrogradat.',
     your_staff_role_changed = 'Rolul tău din echipă a fost schimbat.',
     staff_role_update_failed = 'Rolul din echipă nu a putut fi actualizat.',
+    staff_role_retry_required = 'Schimbarea de autoritate a fost salvată, dar rolul afișat trebuie reîncercat.',
     staff_role_unchanged = 'Personajul are deja rolul selectat.',
     staff_role_stale = 'Rolul s-a schimbat. Caută din nou înainte de a reîncerca.',
     staff_role_too_high = 'Nu poți atribui un rol superior propriului tău nivel.',

@@ -6,7 +6,7 @@ lua54 'yes'
 name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
-version '0.8.3'
+version '0.9.0'
 
 ui_page 'web/noclip.html'
 
@@ -17,7 +17,8 @@ files {
 shared_scripts {
     'configs/config.lua',
     'configs/hierarchy.lua',
-    'configs/permissions.lua'
+    'configs/permissions.lua',
+    'configs/authority_actions.lua'
 }
 
 client_scripts {
@@ -63,6 +64,7 @@ server_scripts {
 dependencies {
     'oxmysql',
     'feather-core',
+    'feather-authority',
     'feather-toolkit',
     'feather-roles',
     'feather-inventory',

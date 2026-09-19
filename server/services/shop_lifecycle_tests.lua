@@ -1,6 +1,8 @@
+if GetResourceMetadata('feather-shops','shops_dev_tests',0)~='true' then return end
+
 local running=false
 RegisterCommand('ShopBusinessLifecycleControl',function(source,args)
-    if source~=0 or GetResourceMetadata('feather-shops','shops_dev_tests',0)~='true' then return end
+    if source~=0 then return end
     local called,reason=xpcall(function()
         local revision=tonumber(args[3])
         assert(#args==3 and (args[1]=='suspend' or args[1]=='resume') and revision and revision>=1 and revision%1==0,
@@ -18,7 +20,7 @@ RegisterCommand('ShopBusinessLifecycleControl',function(source,args)
 end,true)
 
 RegisterCommand('ShopOrganizationLifecycleLiveTest',function(source,args)
-    if source~=0 or GetResourceMetadata('feather-shops','shops_dev_tests',0)~='true' then return end
+    if source~=0 then return end
     if running then print('[ShopOrganizationLifecycleLiveTest] FAIL already running');return end
     running=true
     local resumeRequest
