@@ -64,6 +64,7 @@ server_scripts {
 dependencies {
     'oxmysql',
     'feather-core',
+    'feather-authority',
     'feather-toolkit',
     'feather-roles',
     'feather-inventory',

@@ -2,6 +2,7 @@
 -- These are capability identities only; this file grants no authority.
 Config.authorityMigration = {
     capabilityPrefix = 'staff.admin.',
+    enforcement = true,
     roles = {
         { roleKey = 'staff.admin.moderator', label = 'Moderator', legacyLevel = 50 },
         { roleKey = 'staff.admin.senior_admin', label = 'Senior Admin', legacyLevel = 75 },

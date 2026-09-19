@@ -36,15 +36,10 @@ local function Evaluate(action, context)
     end
     if context.source==0 then return EvaluateService(action,context) end
 
-    local required = tonumber(Config.permissions[action])
-    if required == nil then
+    if tonumber(Config.permissions[action]) == nil then
         return Decision(false, 'unknown_action', 'That action has no configured policy.')
     end
-
-    local identity = FeatherAdmin.Identity.Resolve(tonumber(context.source))
-    local staff = FeatherAdmin.Identity.GetStaff(identity)
-    local level = staff and tonumber(staff.roleLevel) or 0
-    if level < required then
+    if not FeatherAdmin.CanUse(tonumber(context.source), action) then
         return Decision(false, 'forbidden', 'The active character does not have permission for that action.')
     end
     return Decision(true, 'allowed', 'The action is permitted.')
@@ -92,6 +87,7 @@ RegisterCommand('AdminReleaseContractSmokeTest',function(source)
             return true
         end
         local provider=exports['feather-core']:GetProvider('policy',nil,1)
+        local authorityProvider=exports['feather-core']:GetProvider('policy','feather-authority',1)
         local providerValue=type(provider)=='table' and provider.ok==true and type(provider.value)=='table'
             and type(provider.value.provider)=='table' and provider.value.provider or nil
         local tests={
@@ -99,6 +95,10 @@ RegisterCommand('AdminReleaseContractSmokeTest',function(source)
                 and providerValue.owner=='feather-admin'},
             {'service principals enabled',providerValue~=nil and type(providerValue.capabilities)=='table'
                 and providerValue.capabilities.servicePrincipals==1},
+            {'Authority enforcement enabled',type(Config.authorityMigration)=='table'
+                and Config.authorityMigration.enforcement==true},
+            {'Authority provider available',authorityProvider.ok==true
+                and authorityProvider.value.provider.owner=='feather-authority'},
             {'shop test controls absent',not registered.ShopBusinessLifecycleControl
                 and not registered.ShopOrganizationLifecycleLiveTest},
             {'shops create and update',type(shops)=='table'

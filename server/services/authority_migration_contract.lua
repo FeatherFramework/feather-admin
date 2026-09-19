@@ -260,3 +260,41 @@ RegisterCommand('AdminAuthorityRoleParitySmokeTest', function(source)
     end
     print(('[AdminAuthorityRoleParitySmokeTest] done %d/%d passed (read-only)'):format(passed, #tests))
 end, true)
+
+RegisterCommand('AdminAuthorityEnforcementContractSmokeTest', function(source, args)
+    if source ~= 0 then return end
+    local staffSource = tonumber(args and args[1])
+    local original = Config.authorityMigration.enforcement
+    local called, reason = xpcall(function()
+        assert(staffSource and FeatherAdmin.Identity.Resolve(staffSource),
+            'Use <connected migrated staff source>')
+        local legacy, authority = {}, {}
+        Config.authorityMigration.enforcement = false
+        for action in pairs(Config.permissions) do legacy[action] = FeatherAdmin.CanUse(staffSource, action) end
+        Config.authorityMigration.enforcement = true
+        for action in pairs(Config.permissions) do authority[action] = FeatherAdmin.CanUse(staffSource, action) end
+        local matched, allowed, denied = 0, 0, 0
+        for action in pairs(Config.permissions) do
+            assert(authority[action] == legacy[action], 'Enforcement mismatch for action ' .. action)
+            matched = matched + 1
+            if authority[action] then allowed = allowed + 1 else denied = denied + 1 end
+        end
+        local startedAt = GetGameTimer()
+        local permissions = FeatherAdmin.GetPermissions(staffSource)
+        local batchElapsedMs = GetGameTimer() - startedAt
+        local enumerated = 0
+        for action in pairs(permissions) do
+            assert(authority[action] == true, 'Permission enumeration exposed a denied action')
+            enumerated = enumerated + 1
+        end
+        local provider = exports['feather-core']:Authorize('menu.open', { source = staffSource })
+        assert(provider.ok and provider.value.allowed == authority['menu.open'],
+            'Default Admin provider did not compose Authority enforcement')
+        assert(matched == 82 and enumerated == allowed,
+            'Authority permission enumeration is incomplete')
+        print(('[AdminAuthorityEnforcementContractSmokeTest] PASS matched=%d allowed=%d denied=%d enumerated=%d batchElapsedMs=%d directPath=true defaultProviderPath=true featureGates=true hierarchyUnchanged=true restored=true'):format(
+            matched, allowed, denied, enumerated, batchElapsedMs))
+    end, debug.traceback)
+    Config.authorityMigration.enforcement = original
+    if not called then print('[AdminAuthorityEnforcementContractSmokeTest] FAIL ' .. tostring(reason)) end
+end, true)

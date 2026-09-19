@@ -109,23 +109,63 @@ function FeatherAdmin.IsActionEnabled(action)
     return true
 end
 
-function FeatherAdmin.CanUse(src, action)
-    if not FeatherAdmin.IsActionEnabled(action) then return false end
+local function LegacyEntitled(src, action)
     local requiredLevel = tonumber(Config.permissions[action])
     local roleLevel = FeatherAdmin.GetRoleLevel(src)
     return requiredLevel ~= nil and roleLevel ~= nil and roleLevel >= requiredLevel
 end
 
+local function Callable(value)
+    return type(value) == 'function' or (type(value) == 'table'
+        and type(rawget(value, '__cfx_functionReference')) == 'string')
+end
+
+local function AuthorityEntitled(src, action)
+    local capability = type(Config.authorityActions) == 'table' and Config.authorityActions[action] or nil
+    local identity = FeatherAdmin.Identity.Resolve(src)
+    if type(capability) ~= 'string' or not identity or type(identity.accountId) ~= 'string' then return false end
+    local provider = exports['feather-core']:GetProvider('policy', 'feather-authority', 1)
+    if type(provider) ~= 'table' or not provider.ok or type(provider.value) ~= 'table'
+        or type(provider.value.implementation) ~= 'table'
+        or not Callable(provider.value.implementation.Evaluate) then return false end
+    local called, decision = pcall(provider.value.implementation.Evaluate, capability, {
+        source = tonumber(src), accountId = identity.accountId, characterId = identity.characterId,
+        caller = GetCurrentResourceName(), subject = { resource = GetCurrentResourceName(),
+            legacyAction = action }
+    })
+    return called and type(decision) == 'table' and decision.ok == true
+        and type(decision.value) == 'table' and decision.value.allowed == true
+end
+
+function FeatherAdmin.CanUse(src, action)
+    if not FeatherAdmin.IsActionEnabled(action) then return false end
+    if type(Config.authorityMigration) == 'table' and Config.authorityMigration.enforcement == true then
+        return AuthorityEntitled(src, action)
+    end
+    return LegacyEntitled(src, action)
+end
+
 function FeatherAdmin.GetPermissions(src)
     local permissions = {}
-    local roleLevel = FeatherAdmin.GetRoleLevel(src)
-    if roleLevel == nil then return permissions end
-
-    for action, configuredLevel in pairs(Config.permissions) do
-        local requiredLevel = tonumber(configuredLevel)
-        if requiredLevel ~= nil and roleLevel >= requiredLevel and FeatherAdmin.IsActionEnabled(action) then
-            permissions[action] = true
+    if type(Config.authorityMigration) == 'table' and Config.authorityMigration.enforcement == true then
+        local identity = FeatherAdmin.Identity.Resolve(src)
+        if not identity or type(identity.accountId) ~= 'string' then return permissions end
+        local result = exports['feather-authority']:ListEffectiveCapabilities({
+            subjectType = 'account', subjectId = identity.accountId, scopeType = 'server'
+        })
+        if type(result) ~= 'table' or not result.ok or type(result.value) ~= 'table'
+            or type(result.value.capabilities) ~= 'table' then return permissions end
+        local effective = {}
+        for _, capability in ipairs(result.value.capabilities) do effective[capability] = true end
+        for action, capability in pairs(Config.authorityActions or {}) do
+            if effective[capability] == true and FeatherAdmin.IsActionEnabled(action) then
+                permissions[action] = true
+            end
         end
+        return permissions
+    end
+    for action in pairs(Config.permissions) do
+        if FeatherAdmin.CanUse(src, action) then permissions[action] = true end
     end
     return permissions
 end
