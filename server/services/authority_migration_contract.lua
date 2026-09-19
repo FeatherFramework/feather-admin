@@ -292,9 +292,37 @@ RegisterCommand('AdminAuthorityEnforcementContractSmokeTest', function(source, a
             'Default Admin provider did not compose Authority enforcement')
         assert(matched == 82 and enumerated == allowed,
             'Authority permission enumeration is incomplete')
-        print(('[AdminAuthorityEnforcementContractSmokeTest] PASS matched=%d allowed=%d denied=%d enumerated=%d batchElapsedMs=%d directPath=true defaultProviderPath=true featureGates=true hierarchyUnchanged=true restored=true'):format(
+        print(('[AdminAuthorityEnforcementContractSmokeTest] PASS matched=%d allowed=%d denied=%d enumerated=%d batchElapsedMs=%d directPath=true defaultProviderPath=true featureGates=true hierarchyAuthority=true restored=true'):format(
             matched, allowed, denied, enumerated, batchElapsedMs))
     end, debug.traceback)
     Config.authorityMigration.enforcement = original
     if not called then print('[AdminAuthorityEnforcementContractSmokeTest] FAIL ' .. tostring(reason)) end
+end, true)
+
+RegisterCommand('AdminAuthorityHierarchyContractSmokeTest', function(source, args)
+    if source ~= 0 then return end
+    local actorSource, targetSource = tonumber(args and args[1]), tonumber(args and args[2])
+    local called, reason = xpcall(function()
+        local actor = actorSource and FeatherAdmin.Identity.Resolve(actorSource) or nil
+        local target = targetSource and FeatherAdmin.Identity.Resolve(targetSource) or nil
+        assert(actor and target and actor.accountId ~= target.accountId,
+            'Use <connected actor source> <connected different-account target source>')
+        local actorStaff = FeatherAdmin.Identity.GetStaff(actor)
+        local targetStaff = FeatherAdmin.Identity.GetStaffByAccountId(target.accountId)
+        assert(actorStaff, 'Actor must have a legacy staff role for parity comparison')
+        local expected = actorStaff.roleLevel > (targetStaff and targetStaff.roleLevel or 0)
+        local hierarchyAllowed, hierarchyReason = FeatherAdmin.CanActOnAccount(
+            actorSource, target.accountId, 'moderation.kick')
+        local selfAllowed, selfReason = FeatherAdmin.CanActOnAccount(
+            actorSource, actor.accountId, 'moderation.kick')
+        local exemptAllowed, exemptReason = FeatherAdmin.CanActOnAccount(
+            actorSource, target.accountId, 'booster.heal')
+        assert(hierarchyAllowed == expected and hierarchyReason == 'authority_hierarchy',
+            'Authority hierarchy does not match the migrated legacy tiers')
+        assert(not selfAllowed and selfReason == 'self', 'Self-target denial changed')
+        assert(exemptAllowed and exemptReason == 'exempt', 'Hierarchy exemption changed')
+        print(('[AdminAuthorityHierarchyContractSmokeTest] PASS actor=%s target=%s allowed=%s strict=true legacyParity=true capabilityDominance=true selfDenied=true exemptAllowed=true offlineAccountCapable=true'):format(
+            actor.accountId, target.accountId, tostring(hierarchyAllowed)))
+    end, debug.traceback)
+    if not called then print('[AdminAuthorityHierarchyContractSmokeTest] FAIL ' .. tostring(reason)) end
 end, true)

@@ -97,6 +97,8 @@ RegisterCommand('AdminReleaseContractSmokeTest',function(source)
                 and providerValue.capabilities.servicePrincipals==1},
             {'Authority enforcement enabled',type(Config.authorityMigration)=='table'
                 and Config.authorityMigration.enforcement==true},
+            {'Authority hierarchy enabled',type(Config.authorityMigration)=='table'
+                and Config.authorityMigration.hierarchy==true},
             {'Authority provider available',authorityProvider.ok==true
                 and authorityProvider.value.provider.owner=='feather-authority'},
             {'shop test controls absent',not registered.ShopBusinessLifecycleControl

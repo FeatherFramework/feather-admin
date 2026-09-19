@@ -207,14 +207,40 @@ local function targetDenied(src, action, targetId, targetLicense, reason)
         ('reason=%s license=%s'):format(reason, tostring(targetLicense or 'unknown')))
 end
 
+local function EffectiveAdminCapabilities(accountId)
+    if type(accountId) ~= 'string' then return nil end
+    local result = exports['feather-authority']:ListEffectiveCapabilities({
+        subjectType = 'account', subjectId = accountId, scopeType = 'server'
+    })
+    if type(result) ~= 'table' or result.ok ~= true or type(result.value) ~= 'table'
+        or type(result.value.capabilities) ~= 'table' then return nil end
+    local mapped, effective, count = {}, {}, 0
+    for _, capability in pairs(Config.authorityActions or {}) do mapped[capability] = true end
+    for _, capability in ipairs(result.value.capabilities) do
+        if mapped[capability] and not effective[capability] then
+            effective[capability], count = true, count + 1
+        end
+    end
+    return effective, count
+end
+
+local function AuthorityDominates(actorAccountId, targetAccountId, strict)
+    local actor, actorCount = EffectiveAdminCapabilities(actorAccountId)
+    local target, targetCount = EffectiveAdminCapabilities(targetAccountId)
+    if not actor or not target then return false, 'authority_unavailable' end
+    for capability in pairs(target) do
+        if not actor[capability] then return false, 'authority_incomparable' end
+    end
+    return strict == false or actorCount > targetCount, 'authority_hierarchy'
+end
+
 function FeatherAdmin.CanActOnLicense(src, targetLicense, action)
     return false, 'account_required'
 end
 
 function FeatherAdmin.CanActOnAccount(src, targetAccountId, action)
     local actorIdentity = FeatherAdmin.Identity.Resolve(src)
-    local actorStaff = FeatherAdmin.Identity.GetStaff(actorIdentity)
-    if not actorIdentity or not actorStaff or type(targetAccountId) ~= 'string' or targetAccountId == '' then
+    if not actorIdentity or type(targetAccountId) ~= 'string' or targetAccountId == '' then
         return false, 'unresolved_role'
     end
 
@@ -227,6 +253,14 @@ function FeatherAdmin.CanActOnAccount(src, targetAccountId, action)
     local exempt = type(settings.exempt) == 'table' and settings.exempt or {}
     if exempt[action] == true then return true, 'exempt' end
 
+    if type(Config.authorityMigration) == 'table'
+        and Config.authorityMigration.enforcement == true
+        and Config.authorityMigration.hierarchy == true then
+        return AuthorityDominates(actorIdentity.accountId, targetAccountId, settings.strict)
+    end
+
+    local actorStaff = FeatherAdmin.Identity.GetStaff(actorIdentity)
+    if not actorStaff then return false, 'unresolved_role' end
     local targetStaff = FeatherAdmin.Identity.GetStaffByAccountId(targetAccountId)
     local targetLevel = targetStaff and targetStaff.roleLevel or 0
     if settings.strict == false then return actorStaff.roleLevel >= targetLevel, 'rank' end
@@ -256,23 +290,11 @@ end
 function FeatherAdmin.CheckTargetHierarchy(src, action, targetLicense, targetId)
     local allowed, reason
     if targetId ~= nil then
-        local actorIdentity = FeatherAdmin.Identity.Resolve(src)
         local targetIdentity = FeatherAdmin.Identity.Resolve(targetId)
-        local actorStaff = FeatherAdmin.Identity.GetStaff(actorIdentity)
-        if not actorIdentity or not targetIdentity or not actorStaff then
+        if not targetIdentity then
             allowed, reason = false, 'unresolved_role'
-        elseif actorIdentity.accountId == targetIdentity.accountId then
-            local settings = hierarchyConfig()
-            local allowSelf = type(settings.allowSelf) == 'table' and settings.allowSelf or {}
-            allowed, reason = allowSelf[action] == true, 'self'
         else
-            local settings = hierarchyConfig()
-            local exempt = type(settings.exempt) == 'table' and settings.exempt or {}
-            local targetStaff = FeatherAdmin.Identity.GetStaffByAccountId(targetIdentity.accountId)
-            local targetLevel = targetStaff and targetStaff.roleLevel or 0
-            allowed = exempt[action] == true or (settings.strict == false
-                and actorStaff.roleLevel >= targetLevel or actorStaff.roleLevel > targetLevel)
-            reason = 'rank'
+            allowed, reason = FeatherAdmin.CanActOnAccount(src, targetIdentity.accountId, action)
         end
     else
         allowed, reason = FeatherAdmin.CanActOnLicense(src, targetLicense, action)
