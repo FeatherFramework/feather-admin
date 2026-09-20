@@ -62,7 +62,7 @@ local function InstallProvider()
     print('[feather-admin] Contract 1 policy provider installed')
 end
 
-AdminDatabase.OnReady(InstallProvider)
+InstallProvider()
 
 RegisterCommand('AdminReleaseContractSmokeTest',function(source)
     if source~=0 then return end
