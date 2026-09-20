@@ -101,7 +101,7 @@ RegisterCommand('AdminAuthorityRoleCatalogLiveTest', function(source, args)
             local created = exports['feather-authority']:CreateRole({
                 requestId = args[1] .. ':role:' .. tier.roleKey,
                 roleKey = tier.roleKey, label = tier.label, roleClass = 'staff',
-                reasonCode = 'feather_admin.authority_migration'
+                reasonCode = 'feather_admin.authority_catalog'
             })
             assert(created.ok, tostring(created.code) .. ': ' .. tostring(created.message))
             firstReplayed = firstReplayed and created.value.replayed == true
@@ -121,7 +121,7 @@ RegisterCommand('AdminAuthorityRoleCatalogLiveTest', function(source, args)
                     requestId = args[1] .. ':grant:' .. tier.roleKey .. ':' .. action,
                     roleId = created.value.roleId, capabilityKey = Config.authorityActions[action],
                     expectedRevision = index, scopeType = 'server',
-                    reasonCode = 'feather_admin.authority_migration'
+                    reasonCode = 'feather_admin.authority_catalog'
                 })
                 assert(grant.ok, tostring(grant.code) .. ': ' .. tostring(grant.message))
                 firstReplayed = firstReplayed and grant.value.replayed == true

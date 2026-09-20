@@ -4,9 +4,8 @@ FeatherAdmin.AuthorityCatalog = {
 }
 
 local CAPABILITY_REQUEST_ID = 'admin-authority-capabilities-001'
-local ROLE_REQUEST_ID = 'admin-authority-roles-001'
--- This value is part of the durable idempotency fingerprint for the catalog request IDs.
-local REASON_CODE = 'feather_admin.authority_migration'
+local ROLE_REQUEST_ID = 'admin-authority-roles-002'
+local REASON_CODE = 'feather_admin.authority_catalog'
 
 function FeatherAdmin.AuthorityCatalog.Definitions()
     local catalog = {}
