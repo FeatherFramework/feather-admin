@@ -11,8 +11,7 @@ end
 
 local function roleLabel(role)
     local name = role.name or role.roleName or AdminTranslate('not_available')
-    local level = role.level or role.roleLevel or 0
-    return ('%s (%s)'):format(tostring(name), tostring(level))
+    return tostring(name)
 end
 
 local function roleByKey(roleKey)
@@ -239,9 +238,7 @@ function AdminUI.OpenStaffRoleHistory()
         for _, row in ipairs(AdminStaff.history) do
             local administrator = row.adminCharacterName or row.adminName or AdminTranslate('not_available')
             AdminUI.AddText(page, table.concat({
-                ('%s (%s) -> %s (%s)'):format(row.oldRoleName, row.oldRoleLevel,
-                    row.newRoleName, row.newRoleLevel),
-                ('%s: %s'):format(AdminTranslate('reason'), row.reason),
+                tostring(row.details or AdminTranslate('not_available')),
                 ('%s: %s'):format(AdminTranslate('changed_by'), administrator),
                 ('%s: %s'):format(AdminTranslate('changed_at'), row.createdAt)
             }, '\n'))

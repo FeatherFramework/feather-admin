@@ -15,8 +15,8 @@ local function getPlayerList()
                 firstName = firstName,
                 lastName = lastName,
                 characterName = identity.characterName,
-                roleName = staff.roleName,
-                roleLevel = staff.roleLevel or 0
+                roleName = staff.roleName or 'Player',
+                rolePrecedence = staff.rolePrecedence or 0
             }
         end
     end
@@ -25,8 +25,13 @@ local function getPlayerList()
 end
 
 local function getRoles()
-    local result = exports['feather-roles']:GetCatalog(false)
-    return type(result) == 'table' and result.ok == true and result.value or {}
+    local roles = { { key = 'player', name = 'Player', precedence = 0 } }
+    for _, tier in ipairs(Config.authority.roles or {}) do
+        roles[#roles + 1] = {
+            key = tier.roleKey, name = tier.label, precedence = tier.precedence
+        }
+    end
+    return roles
 end
 
 local function syncPlayerList(src, roles)

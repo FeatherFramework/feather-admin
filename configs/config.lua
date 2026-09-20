@@ -1,6 +1,6 @@
 Config = {
 
-    -- Admin permissions use the active Character's role from feather-roles.
+    -- Admin permissions use the active Character's assignment from feather-authority.
     identity = {
         -- Economy remains hidden until its dedicated provider is available.
         disabledActionPrefixes = { 'economy.' },

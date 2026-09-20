@@ -176,7 +176,6 @@ Feather.Locale.register('en_us', {
     character_id = 'Character ID',
     character_name = 'Character Name',
     role_name = 'Role',
-    role_level = 'Role Level',
     dollars = 'Dollars',
     gold = 'Gold',
     tokens = 'Tokens',

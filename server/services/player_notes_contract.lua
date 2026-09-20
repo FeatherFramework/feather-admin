@@ -49,9 +49,9 @@ RegisterCommand('AdminPlayerNotesAccessInspect', function(source, args)
     if source ~= 0 then return end
     local target = tonumber(args and args[1])
     local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
-    print(('[AdminPlayerNotesAccessInspect] source=%s account=%s level=%s required=%s enabled=%s granted=%s'):format(
+    print(('[AdminPlayerNotesAccessInspect] source=%s account=%s role=%s required=%s enabled=%s granted=%s'):format(
         tostring(target or 'none'), tostring(identity and identity.accountId or 'unavailable'),
-        tostring(target and FeatherAdmin.GetRoleLevel(target) or 'unavailable'),
+        tostring(target and FeatherAdmin.GetRolePrecedence(target) or 'unavailable'),
         tostring(Config.permissions['notes.view']), tostring(FeatherAdmin.IsActionEnabled('notes.view')),
         tostring(target and FeatherAdmin.CanUse(target, 'notes.view') == true)))
 end, true)

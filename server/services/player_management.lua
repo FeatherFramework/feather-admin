@@ -40,8 +40,8 @@ FeatherAdmin.RegisterRPC('feather-admin:player:info:request', function(params, _
         characterId = identity.characterId,
         firstName = identity.firstName,
         lastName = identity.lastName,
-        roleName = staff.roleName,
-        roleLevel = staff.roleLevel,
+        roleName = staff.roleName or 'Player',
+        rolePrecedence = staff.rolePrecedence,
         identifiers = identifiers
     }
 

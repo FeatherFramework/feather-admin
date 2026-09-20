@@ -93,7 +93,7 @@ function AdminUI.OpenPlayers()
         for _, role in ipairs(AdminPlayerDirectory.roles) do
             local roleKey = role.key
             roleOptions[#roleOptions + 1] = {
-                display = ('%s (%s)'):format(tostring(role.name), tostring(role.level)),
+                display = tostring(role.name),
                 value = roleKey
             }
             if AdminPlayerDirectory.roleFilterId == roleKey then selectedRole = #roleOptions - 1 end
@@ -190,8 +190,8 @@ function AdminUI.OpenOfflinePlayer(target)
         ('%s: %s'):format(AdminTranslate('account_name'), tostring(target.playerName or AdminTranslate('not_available'))),
         ('%s: %s'):format(AdminTranslate('character_name'), tostring(target.characterName or AdminTranslate('not_available'))),
         ('%s: %s'):format(AdminTranslate('character_id'), tostring(target.characterId or AdminTranslate('not_available'))),
-        ('%s: %s (%s)'):format(AdminTranslate('role_name'),
-            tostring(target.roleName or AdminTranslate('not_available')), tostring(target.roleLevel or 0))
+        ('%s: %s'):format(AdminTranslate('role_name'),
+            tostring(target.roleName or AdminTranslate('not_available')))
     }, '\n'))
     if AdminUI.CanUse('moderation.view') then
         AdminUI.AddButton(page, AdminTranslate('moderation'), function()

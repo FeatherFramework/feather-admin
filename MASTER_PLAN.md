@@ -4,27 +4,24 @@ This plan keeps Feather Admin organized around the kind of work a staff member i
 
 Progress is tracked with explicit symbols: `✅` is implemented and `⬜` is still planned. Update this file whenever a roadmap feature is completed or its scope changes.
 
-## Contract 1 identity cutover status
+## Contract 1 identity status
 
 - ✅ Online identity resolves through Core account/session context and the Character profile provider.
-- ✅ Persistent staff authority is keyed by Core account UUID.
-- ✅ Admin character-reference columns use `CHAR(36)` on clean installs and have an existing-database migration.
+- ✅ Persistent staff authority is keyed by Character UUID in Feather Authority.
+- ✅ Admin character-reference columns use `CHAR(36)`.
 - ✅ Online player directory and action auditing preserve UUID Character IDs.
 - ✅ Moderation persistence has canonical target/admin account UUID columns and account-based hierarchy helpers.
 - ✅ Moderation search, warning, kick, ban, history, unban, and connection-gate handlers use Core accounts and UUID Character snapshots.
 - ✅ Moderation contract smoke coverage verifies identity, schema, connection identifiers, fail-closed targeting, and removal of retired joins.
-- ✅ Legacy-dependent domains fail closed during migration.
-- ✅ Retired numeric Character-table economy and staff-role handlers are removed;
-  their dormant UI remains fail-closed pending dedicated providers.
+- ✅ Numeric Character-table economy and staff-role handlers are absent.
 - ✅ Moderation permissions are enabled after the account-contract handler cutover.
 - ✅ Reports persistence and handler ownership use reporter/assigned/closing account UUIDs.
 - ✅ Report contract and transactional workflow smoke tests pass; `/report` and Player Reports are enabled.
 - ✅ Staff Cases use canonical account and Character UUIDs for targets, creators,
   assignments, closures, linked-record actors, hierarchy checks, and activity history.
   Contract, rollback persistence, and live menu workflow tests pass.
-- ⬜ Economy and staff-directory workflows return through dedicated providers;
-  no legacy Character/User join fallback is permitted.
-- ⬜ A dedicated role/policy provider replaces the temporary Admin-owned staff assignment store.
+- ⬜ Economy workflows return through dedicated providers.
+- ✅ Feather Authority is the only Admin role and capability provider.
 
 ## Navigation Structure
 
@@ -171,7 +168,7 @@ Every new action must:
    - Summarize durable action counts and duty sessions without turning raw counts into performance scores.
 
 - ⬜ **Permission Viewer**
-   - Show the current character's role level and available action groups for troubleshooting.
+   - Show the current character's named role and available action groups for troubleshooting.
 
 ## Phase 5 - Developer and Diagnostics
 
@@ -190,8 +187,6 @@ Every new action must:
 - ⬜ Add repeatable permission, hierarchy, RPC, database, and navigation tests.
 - ⬜ Verify every page's Back route and every main-page Close route.
 - ⬜ Complete translation-key and configuration audits after each phase.
-- ⬜ Add database migrations for existing installations alongside clean-install schemas.
-- ⬜ Document upgrade steps and breaking changes for server owners.
 - ⬜ Profile large player directories, audit tables, and moderation searches with realistic data volumes.
 
 ## Recommended Build Order

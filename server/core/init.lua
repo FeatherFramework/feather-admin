@@ -20,6 +20,11 @@ Feather.Connection = {
 FeatherAdmin.Core = Feather
 FeatherAdmin.Identity = {}
 
+local function Callable(value)
+    return type(value) == 'function' or (type(value) == 'table'
+        and type(rawget(value, '__cfx_functionReference')) == 'string')
+end
+
 function FeatherAdmin.Notify(src, message, duration)
     local result = exports['feather-core']:SendNotification({
         source = src,
@@ -67,22 +72,50 @@ function FeatherAdmin.Identity.Resolve(src)
 end
 
 function FeatherAdmin.Identity.Invalidate(accountId)
-    -- Role reads are authoritative and uncached in feather-roles.
+    -- Authority assignment reads are authoritative and uncached.
+end
+
+local function AuthorityStaff(characterId)
+    if type(characterId) ~= 'string' then return nil end
+    local result = exports['feather-authority']:ListSubjectAssignments({
+        subjectType = 'character', subjectId = characterId, scopeType = 'server',
+        ownerResource = GetCurrentResourceName(), status = 'active'
+    })
+    if type(result) ~= 'table' or result.ok ~= true then return nil end
+    local selected, selectedPrecedence
+    for _, assignment in ipairs(result.value or {}) do
+        for _, tier in ipairs(Config.authority.roles or {}) do
+            if assignment.roleKey == tier.roleKey
+                and (selectedPrecedence == nil or tier.precedence > selectedPrecedence) then
+                selected, selectedPrecedence = assignment, tier.precedence
+            end
+        end
+    end
+    return selected and { roleKey = selected.roleKey, rolePrecedence = selectedPrecedence,
+        roleName = selected.roleLabel, assignmentId = selected.assignmentId,
+        assignmentRevision = selected.revision, characterId = characterId,
+        authoritySource = 'authority_character_assignment' } or nil
 end
 
 function FeatherAdmin.Identity.GetStaff(identity)
-    if type(identity) ~= 'table' or not identity.characterId then return nil end
-    local result = exports['feather-roles']:GetCharacterRole(identity.characterId)
-    local role = type(result) == 'table' and result.ok == true and result.value.role or nil
-    return role and { roleKey = role.key, roleLevel = role.level,
-        roleName = role.name, authoritySource = 'character_role' } or nil
+    return type(identity) == 'table' and AuthorityStaff(identity.characterId) or nil
 end
 
 function FeatherAdmin.Identity.GetStaffByAccountId(accountId)
-    local result = exports['feather-roles']:GetHighestAccountRole(accountId)
-    local role = type(result) == 'table' and result.ok == true and result.value.role or nil
-    return role and { roleKey = role.key, roleLevel = role.level,
-        roleName = role.name, authoritySource = 'account_character_max' } or nil
+    if type(accountId) ~= 'string' then return nil end
+    local provider = exports['feather-core']:GetProvider('character-profile', nil, 1)
+    local implementation = type(provider) == 'table' and provider.ok and provider.value.implementation or nil
+    if type(implementation) ~= 'table' or not Callable(implementation.ListProfiles) then return nil end
+    local profiles = implementation.ListProfiles(accountId)
+    if type(profiles) ~= 'table' or not profiles.ok then return nil end
+    local selected
+    for _, profile in ipairs(profiles.value or {}) do
+        local staff = AuthorityStaff(profile.characterId)
+        if staff and (not selected or staff.rolePrecedence > selected.rolePrecedence) then
+            selected = staff
+        end
+    end
+    return selected
 end
 
 function FeatherAdmin.RegisterRPC(name, callback, options)
@@ -92,10 +125,10 @@ function FeatherAdmin.RegisterRPC(name, callback, options)
     end, options)
 end
 
-function FeatherAdmin.GetRoleLevel(src)
+function FeatherAdmin.GetRolePrecedence(src)
     local identity = FeatherAdmin.Identity.Resolve(src)
     local staff = FeatherAdmin.Identity.GetStaff(identity)
-    return staff and staff.roleLevel or nil
+    return staff and staff.rolePrecedence or nil
 end
 
 function FeatherAdmin.IsActionEnabled(action)
@@ -109,17 +142,6 @@ function FeatherAdmin.IsActionEnabled(action)
     return true
 end
 
-local function LegacyEntitled(src, action)
-    local requiredLevel = tonumber(Config.permissions[action])
-    local roleLevel = FeatherAdmin.GetRoleLevel(src)
-    return requiredLevel ~= nil and roleLevel ~= nil and roleLevel >= requiredLevel
-end
-
-local function Callable(value)
-    return type(value) == 'function' or (type(value) == 'table'
-        and type(rawget(value, '__cfx_functionReference')) == 'string')
-end
-
 local function AuthorityEntitled(src, action)
     local capability = type(Config.authorityActions) == 'table' and Config.authorityActions[action] or nil
     local identity = FeatherAdmin.Identity.Resolve(src)
@@ -130,8 +152,7 @@ local function AuthorityEntitled(src, action)
         or not Callable(provider.value.implementation.Evaluate) then return false end
     local called, decision = pcall(provider.value.implementation.Evaluate, capability, {
         source = tonumber(src), accountId = identity.accountId, characterId = identity.characterId,
-        caller = GetCurrentResourceName(), subject = { resource = GetCurrentResourceName(),
-            legacyAction = action }
+        caller = GetCurrentResourceName(), subject = { resource = GetCurrentResourceName(), action = action }
     })
     return called and type(decision) == 'table' and decision.ok == true
         and type(decision.value) == 'table' and decision.value.allowed == true
@@ -139,33 +160,24 @@ end
 
 function FeatherAdmin.CanUse(src, action)
     if not FeatherAdmin.IsActionEnabled(action) then return false end
-    if type(Config.authorityMigration) == 'table' and Config.authorityMigration.enforcement == true then
-        return AuthorityEntitled(src, action)
-    end
-    return LegacyEntitled(src, action)
+    return AuthorityEntitled(src, action)
 end
 
 function FeatherAdmin.GetPermissions(src)
     local permissions = {}
-    if type(Config.authorityMigration) == 'table' and Config.authorityMigration.enforcement == true then
-        local identity = FeatherAdmin.Identity.Resolve(src)
-        if not identity or type(identity.accountId) ~= 'string' then return permissions end
-        local result = exports['feather-authority']:ListEffectiveCapabilities({
-            subjectType = 'account', subjectId = identity.accountId, scopeType = 'server'
-        })
-        if type(result) ~= 'table' or not result.ok or type(result.value) ~= 'table'
-            or type(result.value.capabilities) ~= 'table' then return permissions end
-        local effective = {}
-        for _, capability in ipairs(result.value.capabilities) do effective[capability] = true end
-        for action, capability in pairs(Config.authorityActions or {}) do
-            if effective[capability] == true and FeatherAdmin.IsActionEnabled(action) then
-                permissions[action] = true
-            end
+    local identity = FeatherAdmin.Identity.Resolve(src)
+    if not identity or type(identity.characterId) ~= 'string' then return permissions end
+    local result = exports['feather-authority']:ListEffectiveCapabilities({
+        subjectType = 'character', subjectId = identity.characterId, scopeType = 'server'
+    })
+    if type(result) ~= 'table' or not result.ok or type(result.value) ~= 'table'
+        or type(result.value.capabilities) ~= 'table' then return permissions end
+    local effective = {}
+    for _, capability in ipairs(result.value.capabilities) do effective[capability] = true end
+    for action, capability in pairs(Config.authorityActions or {}) do
+        if effective[capability] == true and FeatherAdmin.IsActionEnabled(action) then
+            permissions[action] = true
         end
-        return permissions
-    end
-    for action in pairs(Config.permissions) do
-        if FeatherAdmin.CanUse(src, action) then permissions[action] = true end
     end
     return permissions
 end
@@ -207,10 +219,10 @@ local function targetDenied(src, action, targetId, targetLicense, reason)
         ('reason=%s license=%s'):format(reason, tostring(targetLicense or 'unknown')))
 end
 
-local function EffectiveAdminCapabilities(accountId)
-    if type(accountId) ~= 'string' then return nil end
+local function EffectiveCharacterCapabilities(characterId)
+    if type(characterId) ~= 'string' then return nil end
     local result = exports['feather-authority']:ListEffectiveCapabilities({
-        subjectType = 'account', subjectId = accountId, scopeType = 'server'
+        subjectType = 'character', subjectId = characterId, scopeType = 'server'
     })
     if type(result) ~= 'table' or result.ok ~= true or type(result.value) ~= 'table'
         or type(result.value.capabilities) ~= 'table' then return nil end
@@ -224,10 +236,14 @@ local function EffectiveAdminCapabilities(accountId)
     return effective, count
 end
 
-local function AuthorityDominates(actorAccountId, targetAccountId, strict)
-    local actor, actorCount = EffectiveAdminCapabilities(actorAccountId)
-    local target, targetCount = EffectiveAdminCapabilities(targetAccountId)
-    if not actor or not target then return false, 'authority_unavailable' end
+local function AuthorityDominates(actorCharacterId, targetAccountId, strict)
+    local actor, actorCount = EffectiveCharacterCapabilities(actorCharacterId)
+    local targetStaff = FeatherAdmin.Identity.GetStaffByAccountId(targetAccountId)
+    local target, targetCount = {}, 0
+    if targetStaff then
+        target, targetCount = EffectiveCharacterCapabilities(targetStaff.characterId)
+    end
+    if not actor or (targetStaff and not target) then return false, 'authority_unavailable' end
     for capability in pairs(target) do
         if not actor[capability] then return false, 'authority_incomparable' end
     end
@@ -253,18 +269,7 @@ function FeatherAdmin.CanActOnAccount(src, targetAccountId, action)
     local exempt = type(settings.exempt) == 'table' and settings.exempt or {}
     if exempt[action] == true then return true, 'exempt' end
 
-    if type(Config.authorityMigration) == 'table'
-        and Config.authorityMigration.enforcement == true
-        and Config.authorityMigration.hierarchy == true then
-        return AuthorityDominates(actorIdentity.accountId, targetAccountId, settings.strict)
-    end
-
-    local actorStaff = FeatherAdmin.Identity.GetStaff(actorIdentity)
-    if not actorStaff then return false, 'unresolved_role' end
-    local targetStaff = FeatherAdmin.Identity.GetStaffByAccountId(targetAccountId)
-    local targetLevel = targetStaff and targetStaff.roleLevel or 0
-    if settings.strict == false then return actorStaff.roleLevel >= targetLevel, 'rank' end
-    return actorStaff.roleLevel > targetLevel, 'rank'
+    return AuthorityDominates(actorIdentity.characterId, targetAccountId, settings.strict)
 end
 
 function FeatherAdmin.CheckTargetAccountHierarchy(src, action, targetAccountId, targetId)

@@ -222,7 +222,7 @@ FeatherAdmin.RegisterRPC('feather-admin:inventory:give', function(params, _, src
 
     local result = Inventory.Items.GrantItem(itemName, quantity, target)
     if failed(result) then
-        -- Codes stay domain-specific across the envelope migration, so every
+        -- Codes stay domain-specific across the result envelope, so every
         -- inventory_* key here resolves exactly as it did before. That now
         -- includes inventory_unique_requires_issuer, which is what comes back
         -- if a unique definition reaches this path despite the catalog filter

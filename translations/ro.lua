@@ -176,7 +176,6 @@ Feather.Locale.register('ro', {
     character_id = 'ID personaj',
     character_name = 'Numele personajului',
     role_name = 'Rol',
-    role_level = 'Nivelul rolului',
     dollars = 'Dolari',
     gold = 'Aur',
     tokens = 'Jetoane',
