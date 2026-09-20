@@ -92,9 +92,22 @@ RegisterNetEvent('feather-admin:staff:history:result', function(rows, page, hasN
     AdminUI.OpenStaffRoleHistory()
 end)
 
-RegisterNetEvent('feather-admin:staff:role:result', function(succeeded, messageKey)
+local function ApplyRoleUpdate(updatedTarget)
+    if type(updatedTarget) ~= 'table' or type(updatedTarget.characterId) ~= 'string' then return end
+    local function Merge(target)
+        if type(target) == 'table' and target.characterId == updatedTarget.characterId then
+            for key, value in pairs(updatedTarget) do target[key] = value end
+        end
+    end
+    Merge(AdminStaff.selectedTarget)
+    for _, target in ipairs(AdminStaff.players) do Merge(target) end
+    for _, target in ipairs(AdminStaff.results) do Merge(target) end
+end
+
+RegisterNetEvent('feather-admin:staff:role:result', function(succeeded, messageKey, updatedTarget)
     Feather.Notify.RightNotify(AdminTranslate(messageKey or 'staff_role_update_failed'), 3500)
     if not succeeded then return end
+    ApplyRoleUpdate(updatedTarget)
     AdminStaff.reason = ''
     if AdminStaff.origin == 'directory' then
         AdminUI.OpenOfflinePlayer(AdminStaff.selectedTarget)

@@ -185,7 +185,8 @@ FeatherAdmin.RegisterRPC('feather-admin:staff:role:assign', function(params, _, 
     }, ('old=%s new=%s authorityAssignment=%s replayed=%s reason=%s'):format(
         oldRole.name, desiredRole.name,
         tostring(result.value.assignmentId or 'cleared'), tostring(result.value.replayed), reason))
-    TriggerClientEvent('feather-admin:staff:role:result', src, true, 'staff_role_' .. direction)
+    TriggerClientEvent('feather-admin:staff:role:result', src, true,
+        'staff_role_' .. direction, Entry(profile, target))
 end, { windowMs = 3000, maxCalls = 1, maxPayloadBytes = 384 })
 
 RegisterCommand('AdminBootstrapOwner', function(source, args)
@@ -299,10 +300,26 @@ RegisterCommand('AdminCharacterIsolationHierarchyLiveTest', function(source, arg
     local called, reason = xpcall(function()
         local actor = actorSource and FeatherAdmin.Identity.Resolve(actorSource) or nil
         local target = targetSource and FeatherAdmin.Identity.Resolve(targetSource) or nil
+        if target and otherCharacterId == '' then
+            local provider = exports['feather-core']:GetProvider('character-profile', nil, 1)
+            local implementation = type(provider) == 'table' and provider.ok == true
+                and provider.value.implementation or nil
+            assert(type(implementation) == 'table' and IsCallable(implementation.ListProfiles),
+                'Character profile listing is unavailable')
+            local profiles = implementation.ListProfiles(target.accountId)
+            assert(type(profiles) == 'table' and profiles.ok == true,
+                'Target account character profiles are unavailable')
+            for _, candidate in ipairs(profiles.value or {}) do
+                if candidate.characterId ~= target.characterId then
+                    otherCharacterId = candidate.characterId
+                    break
+                end
+            end
+        end
         local other = Profile(otherCharacterId)
         assert(actor and target and other and actor.accountId ~= target.accountId
             and target.accountId == other.accountId and target.characterId ~= other.characterId,
-            'Use <connected actor source> <connected different-account target source> <other target character UUID>')
+            'Use <connected actor source> <connected different-account target source> [other target character UUID]; target account must have two active characters')
         local activeRole = StaffRole(target.characterId)
         local otherRole = StaffRole(other.characterId)
         local highest = FeatherAdmin.Identity.GetStaffByAccountId(target.accountId)
