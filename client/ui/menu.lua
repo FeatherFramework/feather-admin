@@ -134,7 +134,7 @@ local function NormalizeOptions(options)
     return normalized, originals
 end
 
-local function LegacyChoiceCallback(callback, originals)
+local function ChoiceCallback(callback, originals)
     if not callback then return nil end
     return function(event, element)
         for _, option in ipairs(originals) do
@@ -223,7 +223,7 @@ function AdminUI.AddDropdown(page, options, placeholder, callback)
         value = normalized[1] and normalized[1].value,
         placeholder = placeholder,
         slot = 'content'
-    }, LegacyChoiceCallback(callback, originals))
+    }, ChoiceCallback(callback, originals))
 end
 
 function AdminUI.AddText(page, value, style)
@@ -245,7 +245,7 @@ function AdminUI.AddArrows(page, label, options, selectedIndex, callback)
         options = normalized,
         value = selected and selected.value,
         slot = 'content'
-    }, LegacyChoiceCallback(callback, originals))
+    }, ChoiceCallback(callback, originals))
 end
 
 function AdminUI.AddFooter(page)

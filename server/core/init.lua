@@ -84,7 +84,7 @@ local function AuthorityStaff(characterId)
     if type(result) ~= 'table' or result.ok ~= true then return nil end
     local selected, selectedPrecedence
     for _, assignment in ipairs(result.value or {}) do
-        for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+        for _, tier in ipairs(Config.authority.roles or {}) do
             if assignment.roleKey == tier.roleKey
                 and (selectedPrecedence == nil or tier.precedence > selectedPrecedence) then
                 selected, selectedPrecedence = assignment, tier.precedence
@@ -152,8 +152,7 @@ local function AuthorityEntitled(src, action)
         or not Callable(provider.value.implementation.Evaluate) then return false end
     local called, decision = pcall(provider.value.implementation.Evaluate, capability, {
         source = tonumber(src), accountId = identity.accountId, characterId = identity.characterId,
-        caller = GetCurrentResourceName(), subject = { resource = GetCurrentResourceName(),
-            legacyAction = action }
+        caller = GetCurrentResourceName(), subject = { resource = GetCurrentResourceName(), action = action }
     })
     return called and type(decision) == 'table' and decision.ok == true
         and type(decision.value) == 'table' and decision.value.allowed == true
@@ -269,12 +268,6 @@ function FeatherAdmin.CanActOnAccount(src, targetAccountId, action)
 
     local exempt = type(settings.exempt) == 'table' and settings.exempt or {}
     if exempt[action] == true then return true, 'exempt' end
-
-    if type(Config.authorityMigration) == 'table'
-        and Config.authorityMigration.enforcement == true
-        and Config.authorityMigration.hierarchy == true then
-        return AuthorityDominates(actorIdentity.characterId, targetAccountId, settings.strict)
-    end
 
     return AuthorityDominates(actorIdentity.characterId, targetAccountId, settings.strict)
 end

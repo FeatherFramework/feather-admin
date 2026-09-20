@@ -63,9 +63,7 @@ now use that contract.
 
 These resources must already be installed. They also need to start before Feather Admin.
 
-Feather Admin and Feather Authority create their tables automatically. For an older
-Feather Admin database, back it up and run `database/character_uuid_cutover.sql`
-once before starting the updated resources.
+Feather Admin and Feather Authority create their tables automatically.
 
 ## Installation
 

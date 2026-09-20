@@ -10,7 +10,7 @@ end
 
 local function CatalogRole(roleKey)
     if roleKey == 'player' then return { key = 'player', name = 'Player', precedence = 0 } end
-    for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+    for _, tier in ipairs(Config.authority.roles or {}) do
         if tier.roleKey == roleKey then
             local result = exports['feather-authority']:FindRoleByKey({ roleKey = tier.roleKey })
             if type(result) ~= 'table' or result.ok ~= true then return nil end
@@ -24,7 +24,7 @@ local function Roles(source)
     local actorPrecedence = FeatherAdmin.GetRolePrecedence(source)
     if not actorPrecedence then return {} end
     local output = { { key = 'player', name = 'Player', precedence = 0 } }
-    for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+    for _, tier in ipairs(Config.authority.roles or {}) do
         if tier.precedence <= actorPrecedence then
             local role = CatalogRole(tier.roleKey)
             if role then output[#output + 1] = role end
@@ -224,7 +224,7 @@ RegisterCommand('AdminAuthorityStaffAssignmentContractSmokeTest', function(sourc
     if source ~= 0 then return end
     local authority = exports['feather-authority']:GetCapabilities()
     local tiers, exact, owned = 0, true, true
-    for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+    for _, tier in ipairs(Config.authority.roles or {}) do
         local role = CatalogRole(tier.roleKey)
         tiers = tiers + 1
         exact = exact and role ~= nil and role.key == tier.roleKey
@@ -240,8 +240,8 @@ RegisterCommand('AdminAuthorityStaffAssignmentContractSmokeTest', function(sourc
         { 'Authority roles owner-bound', owned },
         { 'player clears assignment', player and player.precedence == 0 and player.roleId == nil },
         { 'Authority-native reads', authority.ok and authority.value.features.assignmentReads == 1 },
-        { 'enforcement enabled', Config.authorityMigration.enforcement == true },
-        { 'hierarchy enabled', Config.authorityMigration.hierarchy == true }
+        { 'character assignments', authority.ok and authority.value.features.characterAssignments == 1 },
+        { 'account hierarchy reads', authority.ok and authority.value.features.assignmentReads == 1 }
     }
     local passed = 0
     for _, test in ipairs(tests) do
@@ -274,13 +274,13 @@ RegisterCommand('AdminAuthorityStaffAssignmentState', function(source, args)
     end
     local expected, selectedTier = 0, nil
     if staff then
-        for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+        for _, tier in ipairs(Config.authority.roles or {}) do
             if tier.roleKey == staff.roleKey then selectedTier = tier break end
         end
     end
     if selectedTier then
         for _, required in pairs(Config.permissions or {}) do
-            for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+            for _, tier in ipairs(Config.authority.roles or {}) do
                 if tier.key == required and tier.precedence <= selectedTier.precedence then
                     expected = expected + 1
                     break

@@ -26,7 +26,7 @@ end
 
 local function getRoles()
     local roles = { { key = 'player', name = 'Player', precedence = 0 } }
-    for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+    for _, tier in ipairs(Config.authority.roles or {}) do
         roles[#roles + 1] = {
             key = tier.roleKey, name = tier.label, precedence = tier.precedence
         }

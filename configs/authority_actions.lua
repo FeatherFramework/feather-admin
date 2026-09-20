@@ -1,8 +1,6 @@
 -- Stable Authority identities and private hierarchy precedence for Admin roles.
-Config.authorityMigration = {
+Config.authority = {
     capabilityPrefix = 'staff.admin.',
-    enforcement = true,
-    hierarchy = true,
     roles = {
         { key = 'moderator', roleKey = 'staff.admin.moderator', label = 'Moderator', precedence = 1 },
         { key = 'administrator', roleKey = 'staff.admin.administrator', label = 'Administrator', precedence = 2 },
@@ -12,5 +10,5 @@ Config.authorityMigration = {
 
 Config.authorityActions = {}
 for action in pairs(Config.permissions) do
-    Config.authorityActions[action] = Config.authorityMigration.capabilityPrefix .. action
+    Config.authorityActions[action] = Config.authority.capabilityPrefix .. action
 end

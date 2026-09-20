@@ -5,6 +5,7 @@ FeatherAdmin.AuthorityCatalog = {
 
 local CAPABILITY_REQUEST_ID = 'admin-authority-capabilities-001'
 local ROLE_REQUEST_ID = 'admin-authority-roles-001'
+-- This value is part of the durable idempotency fingerprint for the catalog request IDs.
 local REASON_CODE = 'feather_admin.authority_migration'
 
 function FeatherAdmin.AuthorityCatalog.Definitions()
@@ -37,7 +38,7 @@ local function Provision()
             .. ': ' .. tostring(type(capabilities) == 'table' and capabilities.message or 'invalid result'))
 
     local roleResults, totalGrants, allReplayed = {}, 0, capabilities.value.replayed == true
-    for _, tier in ipairs(Config.authorityMigration.roles or {}) do
+    for _, tier in ipairs(Config.authority.roles or {}) do
         local created = exports['feather-authority']:CreateRole({
             requestId = ROLE_REQUEST_ID .. ':role:' .. tier.roleKey,
             roleKey = tier.roleKey,
@@ -53,7 +54,7 @@ local function Provision()
         local actions = {}
         for action, required in pairs(Config.permissions or {}) do
             local requiredPrecedence
-            for _, candidate in ipairs(Config.authorityMigration.roles or {}) do
+            for _, candidate in ipairs(Config.authority.roles or {}) do
                 if candidate.key == required then requiredPrecedence = candidate.precedence break end
             end
             if requiredPrecedence and requiredPrecedence <= tier.precedence then
