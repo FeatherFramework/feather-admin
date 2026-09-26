@@ -28,21 +28,19 @@ local function playerIdentity(playerId)
 end
 
 local function persist(record)
-    MySQL.insert.await([[
+    DB.insert([[
         INSERT INTO feather_admin_actions
             (admin_account_id, admin_license, admin_name, admin_character_id, admin_character_name,
              action, target_account_id, target_license, target_name, target_character_id, target_character_name, details)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ]], {
-        record.admin.accountId, record.admin.license, record.admin.name, record.admin.characterId,
+    ]], record.admin.accountId, record.admin.license, record.admin.name, record.admin.characterId,
         record.admin.characterName, record.action, record.target.accountId, record.target.license,
         record.target.name, record.target.characterId,
-        record.target.characterName, record.details
-    })
+        record.target.characterName, record.details)
 end
 
 AdminDatabase.OnReady(function()
-    for _, row in ipairs(MySQL.query.await('SELECT DISTINCT action FROM feather_admin_actions ORDER BY action ASC') or {}) do
+    for _, row in ipairs(DB.query('SELECT DISTINCT action FROM feather_admin_actions ORDER BY action ASC') or {}) do
         if type(row.action) == 'string' then knownActions[row.action] = true end
     end
     schemaReady = true
@@ -169,7 +167,7 @@ FeatherAdmin.RegisterRPC('feather-admin:audit:list', function(params, _, src)
         ORDER BY id DESC
         LIMIT %d OFFSET %d
     ]=]):format(where, pageSize + 1, offset)
-    local rows = MySQL.query.await(query, values) or {}
+    local rows = DB.query(query, table.unpack(values, 1, #values)) or {}
     local hasNext = #rows > pageSize
     if hasNext then rows[#rows] = nil end
 

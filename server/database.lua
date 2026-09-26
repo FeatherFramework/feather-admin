@@ -15,8 +15,9 @@ function AdminDatabase.OnReady(callback)
     AdminDatabase.callbacks[#AdminDatabase.callbacks + 1] = callback
 end
 
-MySQL.ready(function()
-    MySQL.query.await([[
+local function InitializeDatabase()
+    DB.awaitReady()
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_bans (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             account_id CHAR(36) NOT NULL,
@@ -46,7 +47,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_warnings (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             account_id CHAR(36) NOT NULL,
@@ -68,7 +69,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_kicks (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             account_id CHAR(36) NOT NULL,
@@ -90,7 +91,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_actions (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             admin_account_id CHAR(36) NULL,
@@ -116,7 +117,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_reports (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             reporter_account_id CHAR(36) NOT NULL,
@@ -150,7 +151,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_cases (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             source_report_id BIGINT UNSIGNED NULL,
@@ -192,7 +193,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_case_links (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             case_id BIGINT UNSIGNED NOT NULL,
@@ -213,7 +214,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_player_notes (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             target_account_id CHAR(36) NOT NULL,
@@ -239,7 +240,7 @@ MySQL.ready(function()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
-    MySQL.query.await([[
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_player_note_revisions (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             note_id BIGINT UNSIGNED NOT NULL,
@@ -266,5 +267,12 @@ MySQL.ready(function()
         if not succeeded then
             print(('[feather-admin] Database-ready callback failed: %s'):format(tostring(problem)))
         end
+    end
+end
+
+CreateThread(function()
+    local succeeded, problem = pcall(InitializeDatabase)
+    if not succeeded then
+        print(('[feather-admin] Database initialization failed: %s'):format(tostring(problem)))
     end
 end)

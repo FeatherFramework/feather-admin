@@ -61,8 +61,8 @@ RegisterCommand('ShopOrganizationLifecycleLiveTest',function(source,args)
         Blocked(exports['feather-shops']:CreateQuote(quoteRequest,buyer))
         Blocked(exports['feather-shops']:ValidateQuote(quote.id,buyer))
         Blocked(exports['feather-shops']:PrepareOrder({quoteId=quote.id,requestId=base..':purchase'},buyer))
-        local orderCount=tonumber(MySQL.scalar.await('SELECT COUNT(*) FROM shop_orders WHERE source_resource=? AND request_id=?',
-            {GetCurrentResourceName(),base..':purchase'}))
+        local orderCount=tonumber(DB.value('SELECT COUNT(*) FROM shop_orders WHERE source_resource=? AND request_id=?',
+            GetCurrentResourceName(),base..':purchase'))
         assert(orderCount==0,'Rejected order persisted')
         local after=Require(exports['feather-economy']:FindAccountsByOwner({ownerType='character',ownerId=session.characterId}))
         local balances={}

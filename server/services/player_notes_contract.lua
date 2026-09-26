@@ -16,11 +16,11 @@ RegisterCommand('AdminPlayerNotesContractSmokeTest', function(source, args)
     passed = passed + report('staff account identity', identity and type(identity.accountId) == 'string')
     passed = passed + report('staff character snapshot', identity and type(identity.characterId) == 'string')
 
-    local tables = tonumber(MySQL.scalar.await([[SELECT COUNT(DISTINCT TABLE_NAME)
+    local tables = tonumber(DB.value([[SELECT COUNT(DISTINCT TABLE_NAME)
         FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME IN ('feather_admin_player_notes', 'feather_admin_player_note_revisions')]])) or 0
     passed = passed + report('note tables installed', tables == 2, ('%d/2'):format(tables))
-    local columns = tonumber(MySQL.scalar.await([[SELECT COUNT(*) FROM information_schema.COLUMNS
+    local columns = tonumber(DB.value([[SELECT COUNT(*) FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND ((TABLE_NAME = 'feather_admin_player_notes' AND COLUMN_NAME IN
             ('target_account_id', 'created_admin_account_id', 'updated_admin_account_id'))
@@ -71,55 +71,55 @@ RegisterCommand('AdminPlayerNotesPersistenceSmokeTest', function(source, args)
 
     local marker = ('note-contract-smoke-%s-%s'):format(target, GetGameTimer())
     local verified = {}
-    local executed, committed = pcall(MySQL.startTransaction, function(query)
-        query([[INSERT INTO feather_admin_player_notes
+    local executed, committed = pcall(DB.transaction, function(tx)
+        tx.exec([[INSERT INTO feather_admin_player_notes
             (target_account_id, target_name, target_character_id, target_character_name, body,
              created_admin_account_id, created_admin_name, created_admin_character_id, created_admin_character_name,
              updated_admin_account_id, updated_admin_name, updated_admin_character_id, updated_admin_character_name)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]],
-            { identity.accountId, identity.accountName or identity.serverName, identity.characterId,
+            identity.accountId, identity.accountName or identity.serverName, identity.characterId,
               identity.characterName, marker, identity.accountId, identity.accountName or identity.serverName,
               identity.characterId, identity.characterName, identity.accountId,
-              identity.accountName or identity.serverName, identity.characterId, identity.characterName })
-        local row = (query([[SELECT id, target_account_id, created_admin_account_id, revision
-            FROM feather_admin_player_notes WHERE body = ? FOR UPDATE]], { marker }) or {})[1]
+              identity.accountName or identity.serverName, identity.characterId, identity.characterName)
+        local row = (tx.query([[SELECT id, target_account_id, created_admin_account_id, revision
+            FROM feather_admin_player_notes WHERE body = ? FOR UPDATE]], marker) or {})[1]
         verified.created = row and row.target_account_id == identity.accountId
             and row.created_admin_account_id == identity.accountId and tonumber(row.revision) == 1
         if not row then return false end
 
-        query([[INSERT INTO feather_admin_player_note_revisions
+        tx.exec([[INSERT INTO feather_admin_player_note_revisions
             (note_id, revision, body, change_type, admin_account_id, admin_name,
              admin_character_id, admin_character_name) VALUES (?, 1, ?, 'created', ?, ?, ?, ?)]],
-            { row.id, marker, identity.accountId, identity.accountName or identity.serverName,
-              identity.characterId, identity.characterName })
-        local initial = (query([[SELECT admin_account_id FROM feather_admin_player_note_revisions
-            WHERE note_id = ? AND revision = 1]], { row.id }) or {})[1]
+            row.id, marker, identity.accountId, identity.accountName or identity.serverName,
+              identity.characterId, identity.characterName)
+        local initial = (tx.query([[SELECT admin_account_id FROM feather_admin_player_note_revisions
+            WHERE note_id = ? AND revision = 1]], row.id) or {})[1]
         verified.initialRevision = initial and initial.admin_account_id == identity.accountId
 
         local editedBody = marker .. '-edited'
-        query([[UPDATE feather_admin_player_notes SET body = ?, revision = 2,
+        tx.exec([[UPDATE feather_admin_player_notes SET body = ?, revision = 2,
             updated_admin_account_id = ? WHERE id = ? AND revision = 1]],
-            { editedBody, identity.accountId, row.id })
-        query([[INSERT INTO feather_admin_player_note_revisions
+            editedBody, identity.accountId, row.id)
+        tx.exec([[INSERT INTO feather_admin_player_note_revisions
             (note_id, revision, body, change_type, admin_account_id, admin_name,
              admin_character_id, admin_character_name) VALUES (?, 2, ?, 'edited', ?, ?, ?, ?)]],
-            { row.id, editedBody, identity.accountId, identity.accountName or identity.serverName,
-              identity.characterId, identity.characterName })
-        local edited = (query([[SELECT n.revision, r.body FROM feather_admin_player_notes n
+            row.id, editedBody, identity.accountId, identity.accountName or identity.serverName,
+              identity.characterId, identity.characterName)
+        local edited = (tx.query([[SELECT n.revision, r.body FROM feather_admin_player_notes n
             INNER JOIN feather_admin_player_note_revisions r ON r.note_id = n.id AND r.revision = n.revision
-            WHERE n.id = ?]], { row.id }) or {})[1]
+            WHERE n.id = ?]], row.id) or {})[1]
         verified.edited = edited and tonumber(edited.revision) == 2 and edited.body == editedBody
 
-        query('UPDATE feather_admin_player_notes SET archived = 1 WHERE id = ?', { row.id })
-        local archived = (query('SELECT archived FROM feather_admin_player_notes WHERE id = ?', { row.id }) or {})[1]
+        tx.exec('UPDATE feather_admin_player_notes SET archived = 1 WHERE id = ?', row.id)
+        local archived = (tx.query('SELECT archived FROM feather_admin_player_notes WHERE id = ?', row.id) or {})[1]
         verified.archived = archived and (archived.archived == true or tonumber(archived.archived) == 1)
         return false
     end)
 
-    local remainingNotes = tonumber(MySQL.scalar.await(
-        'SELECT COUNT(*) FROM feather_admin_player_notes WHERE body LIKE ?', { marker .. '%' })) or -1
-    local remainingRevisions = tonumber(MySQL.scalar.await([[SELECT COUNT(*)
-        FROM feather_admin_player_note_revisions WHERE body LIKE ?]], { marker .. '%' })) or -1
+    local remainingNotes = tonumber(DB.value(
+        'SELECT COUNT(*) FROM feather_admin_player_notes WHERE body LIKE ?', marker .. '%')) or -1
+    local remainingRevisions = tonumber(DB.value([[SELECT COUNT(*)
+        FROM feather_admin_player_note_revisions WHERE body LIKE ?]], marker .. '%')) or -1
     local function output(label, passed, detail)
         print(('[AdminPlayerNotesPersistenceSmokeTest] %-28s %s%s'):format(
             label, passed and 'PASS' or 'FAIL', detail and ('  -- ' .. detail) or ''))

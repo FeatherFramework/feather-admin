@@ -18,7 +18,7 @@ RegisterCommand('AdminModerationContractSmokeTest', function(source, args)
         target and ('source=' .. target) or 'no connected player')
     passed = passed + report('target character snapshot', identity and type(identity.characterId) == 'string')
 
-    local requiredColumns = tonumber(MySQL.scalar.await([[
+    local requiredColumns = tonumber(DB.value([[
         SELECT COUNT(*) FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND ((TABLE_NAME = 'feather_admin_bans' AND COLUMN_NAME IN
@@ -31,11 +31,11 @@ RegisterCommand('AdminModerationContractSmokeTest', function(source, args)
     passed = passed + report('moderation account schema', requiredColumns == 7,
         ('%d/7'):format(requiredColumns))
 
-    local identifier = identity and MySQL.single.await([[
+    local identifier = identity and DB.one([[
         SELECT identifier_type, identifier_value FROM core_account_identifiers
         WHERE account_id = ? AND identifier_type IN ('license', 'license2')
         ORDER BY identifier_type LIMIT 1
-    ]], { identity.accountId }) or nil
+    ]], identity.accountId) or nil
     passed = passed + report('connection identifier', identifier ~= nil,
         identifier and identifier.identifier_type or nil)
 
@@ -91,30 +91,31 @@ RegisterCommand('AdminModerationPersistenceSmokeTest', function(source, args)
 
     local marker = ('admin-contract-smoke-%s-%s'):format(target, GetGameTimer())
     local verifiedCounts = {}
-    local executed, committed = pcall(MySQL.startTransaction, function(query)
-        local common = { identity.accountId, license, name, identity.characterId, identity.characterName,
-            marker, license, identity.accountId, name, identity.characterId, identity.characterName }
-        query([[INSERT INTO feather_admin_warnings
+    local executed, committed = pcall(DB.transaction, function(tx)
+        tx.exec([[INSERT INTO feather_admin_warnings
             (account_id, license, player_name, character_id, character_name, reason,
              admin_license, admin_account_id, admin_name, admin_character_id, admin_character_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], common)
-        query([[INSERT INTO feather_admin_kicks
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], identity.accountId, license, name, identity.characterId, identity.characterName,
+            marker, license, identity.accountId, name, identity.characterId, identity.characterName)
+        tx.exec([[INSERT INTO feather_admin_kicks
             (account_id, license, player_name, character_id, character_name, reason,
              admin_license, admin_account_id, admin_name, admin_character_id, admin_character_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], common)
-        query([[INSERT INTO feather_admin_bans
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], identity.accountId, license, name, identity.characterId, identity.characterName,
+            marker, license, identity.accountId, name, identity.characterId, identity.characterName)
+        tx.exec([[INSERT INTO feather_admin_bans
             (account_id, license, player_name, character_id, character_name, reason,
              admin_license, admin_account_id, admin_name, admin_character_id, admin_character_name)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], common)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]], identity.accountId, license, name, identity.characterId, identity.characterName,
+            marker, license, identity.accountId, name, identity.characterId, identity.characterName)
 
-        local verified = query([[
+        local verified = tx.query([[
             SELECT
               (SELECT COUNT(*) FROM feather_admin_warnings WHERE reason = ? AND account_id = ? AND character_id = ?) AS warnings,
               (SELECT COUNT(*) FROM feather_admin_kicks WHERE reason = ? AND account_id = ? AND character_id = ?) AS kicks,
               (SELECT COUNT(*) FROM feather_admin_bans WHERE reason = ? AND account_id = ? AND character_id = ?) AS bans
-        ]], { marker, identity.accountId, identity.characterId,
+        ]], marker, identity.accountId, identity.characterId,
             marker, identity.accountId, identity.characterId,
-            marker, identity.accountId, identity.characterId }) or {}
+            marker, identity.accountId, identity.characterId) or {}
         local row = verified[1] or {}
         verifiedCounts = {
             warnings = tonumber(row.warnings) or 0,
@@ -124,11 +125,11 @@ RegisterCommand('AdminModerationPersistenceSmokeTest', function(source, args)
         return false
     end)
 
-    local remaining = tonumber(MySQL.scalar.await([[
+    local remaining = tonumber(DB.value([[
         SELECT (SELECT COUNT(*) FROM feather_admin_warnings WHERE reason = ?)
              + (SELECT COUNT(*) FROM feather_admin_kicks WHERE reason = ?)
              + (SELECT COUNT(*) FROM feather_admin_bans WHERE reason = ?)
-    ]], { marker, marker, marker })) or -1
+    ]], marker, marker, marker)) or -1
 
     local function persistenceReport(label, succeeded, detail)
         print(('[AdminModerationPersistenceSmokeTest] %-28s %s%s'):format(
@@ -151,7 +152,7 @@ RegisterCommand('AdminBanInspect', function(source, args)
     local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
     local license = target and FeatherAdmin.Core.User.GetLicense(target) or nil
     if not identity or not license then
-        local latest = MySQL.single.await([[SELECT id, account_id, active, expires_at,
+        local latest = DB.one([[SELECT id, account_id, active, expires_at,
             (expires_at IS NULL OR expires_at > NOW()) AS unexpired
             FROM feather_admin_bans ORDER BY id DESC LIMIT 1]])
         if latest then
@@ -163,10 +164,10 @@ RegisterCommand('AdminBanInspect', function(source, args)
         end
         return
     end
-    local ban = MySQL.single.await([[SELECT id, account_id, license, active,
+    local ban = DB.one([[SELECT id, account_id, license, active,
         expires_at, (expires_at IS NULL OR expires_at > NOW()) AS unexpired
         FROM feather_admin_bans WHERE account_id = ? OR license = ?
-        ORDER BY id DESC LIMIT 1]], { identity.accountId, license })
+        ORDER BY id DESC LIMIT 1]], identity.accountId, license)
     if not ban then
         print(('[AdminBanInspect] source=%s account=%s ban=not_found'):format(target, identity.accountId))
         return
