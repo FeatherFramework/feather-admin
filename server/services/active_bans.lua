@@ -38,7 +38,7 @@ FeatherAdmin.RegisterRPC('feather-admin:active-bans:list', function(params, _, s
         values[#values + 1] = prefix
     end
 
-    local rows = MySQL.query.await(([=[
+    local rows = DB.query(([=[
         SELECT id, account_id AS accountId, player_name AS playerName, character_id AS characterId,
                character_name AS characterName, reason,
                admin_name AS adminName, admin_character_name AS adminCharacterName,
@@ -48,7 +48,7 @@ FeatherAdmin.RegisterRPC('feather-admin:active-bans:list', function(params, _, s
         WHERE active = 1 AND (expires_at IS NULL OR expires_at > NOW()) %s
         ORDER BY created_at DESC, id DESC
         LIMIT %d OFFSET %d
-    ]=]):format(searchClause, limit + 1, offset), values) or {}
+    ]=]):format(searchClause, limit + 1, offset), table.unpack(values, 1, #values)) or {}
 
     local hasNext = #rows > limit
     if hasNext then table.remove(rows) end

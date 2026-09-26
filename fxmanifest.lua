@@ -6,7 +6,7 @@ lua54 'yes'
 name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
-version '0.10.1'
+version '0.11.0'
 
 ui_page 'web/noclip.html'
 
@@ -54,7 +54,7 @@ client_scripts {
 }
 
 server_scripts {
-    '@oxmysql/lib/MySQL.lua',
+    '@feather-mysql/lib/DB.lua',
     'configs/service_policy.lua',
     'server/core/init.lua',
     'server/database.lua',
@@ -62,7 +62,7 @@ server_scripts {
 }
 
 dependencies {
-    'oxmysql',
+    'feather-mysql',
     'feather-core',
     'feather-authority',
     'feather-toolkit',
