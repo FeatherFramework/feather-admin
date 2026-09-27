@@ -13,21 +13,21 @@ RegisterCommand('AdminIdentitySmokeTest', function(source, args)
     end
     local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
     local staff = identity and FeatherAdmin.Identity.GetStaff(identity) or nil
-    local characterColumnCount = tonumber(MySQL.scalar.await([[
+    local characterColumnCount = tonumber(DB.value([[
         SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
         WHERE `TABLE_SCHEMA` = DATABASE()
           AND `TABLE_NAME` LIKE 'feather_admin_%'
           AND `COLUMN_NAME` LIKE '%character_id'
           AND `DATA_TYPE` = 'char' AND `CHARACTER_MAXIMUM_LENGTH` = 36
     ]])) or 0
-    local allCharacterColumns = tonumber(MySQL.scalar.await([[
+    local allCharacterColumns = tonumber(DB.value([[
         SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
         WHERE `TABLE_SCHEMA` = DATABASE()
           AND `TABLE_NAME` LIKE 'feather_admin_%'
           AND `COLUMN_NAME` LIKE '%character_id'
     ]])) or 0
     local authorityProvider = exports['feather-core']:GetProvider('policy', 'feather-authority', 1)
-    local auditAccountColumns = tonumber(MySQL.scalar.await([[
+    local auditAccountColumns = tonumber(DB.value([[
         SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
         WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'feather_admin_actions'
           AND `COLUMN_NAME` IN ('admin_account_id', 'target_account_id')
@@ -63,9 +63,9 @@ RegisterCommand('AdminAuthorityInspect', function(source, args)
         print(('[AdminAuthorityInspect] source=%s identity=unavailable'):format(tostring(target)))
         return
     end
-    local identifiers = tonumber(MySQL.scalar.await([[
+    local identifiers = tonumber(DB.value([[
         SELECT COUNT(*) FROM core_account_identifiers WHERE account_id = ?
-    ]], { identity.accountId })) or 0
+    ]], identity.accountId)) or 0
     print(('[AdminAuthorityInspect] source=%s account=%s character=%s role=%s authority=%s identifiers=%s'):format(
         tostring(target), tostring(identity.accountId), tostring(identity.characterId),
         tostring(staff and staff.roleName or 'Player'),

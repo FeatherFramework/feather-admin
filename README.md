@@ -52,6 +52,7 @@ now use that contract.
 
 ## Dependencies
 
+- `feather-mysql`
 - `feather-core`
 - `feather-organizations`
 - `feather-authority`
@@ -64,6 +65,8 @@ now use that contract.
 These resources must already be installed. They also need to start before Feather Admin.
 
 Feather Admin and Feather Authority create their tables automatically.
+Feather Admin waits for `feather-mysql` before creating its tables and running database-ready callbacks.
+Server code imports `@feather-mysql/lib/DB.lua` and uses plain `DB.*` calls with positional arguments; transactions use `tx.*`.
 
 ## Installation
 
@@ -75,6 +78,7 @@ Feather Admin and Feather Authority create their tables automatically.
 6. Add these lines in this order:
 
    ```cfg
+   ensure feather-mysql
    ensure feather-core
    ensure feather-organizations
    ensure feather-authority

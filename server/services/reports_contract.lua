@@ -16,7 +16,7 @@ RegisterCommand('AdminReportsContractSmokeTest', function(source, args)
     passed = passed + report('reporter account identity', identity and type(identity.accountId) == 'string')
     passed = passed + report('reporter character snapshot', identity and type(identity.characterId) == 'string')
 
-    local columns = tonumber(MySQL.scalar.await([[SELECT COUNT(*) FROM information_schema.COLUMNS
+    local columns = tonumber(DB.value([[SELECT COUNT(*) FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'feather_admin_reports'
           AND COLUMN_NAME IN ('reporter_account_id', 'assigned_admin_account_id', 'closed_admin_account_id')
           AND DATA_TYPE = 'char' AND CHARACTER_MAXIMUM_LENGTH = 36]])) or 0
@@ -53,45 +53,45 @@ RegisterCommand('AdminReportsPersistenceSmokeTest', function(source, args)
 
     local marker = ('report-contract-smoke-%s-%s'):format(target, GetGameTimer())
     local verified = {}
-    local executed, committed = pcall(MySQL.startTransaction, function(query)
-        query([[INSERT INTO feather_admin_reports
+    local executed, committed = pcall(DB.transaction, function(tx)
+        tx.exec([[INSERT INTO feather_admin_reports
             (reporter_account_id, reporter_license, reporter_name, reporter_character_id,
              reporter_character_name, category, message)
             VALUES (?, ?, ?, ?, ?, 'other', ?)]],
-            { identity.accountId, license, identity.accountName or identity.serverName,
-              identity.characterId, identity.characterName, marker })
-        local rows = query([[SELECT id, reporter_account_id, reporter_character_id
-            FROM feather_admin_reports WHERE message = ? FOR UPDATE]], { marker }) or {}
+            identity.accountId, license, identity.accountName or identity.serverName,
+              identity.characterId, identity.characterName, marker)
+        local rows = tx.query([[SELECT id, reporter_account_id, reporter_character_id
+            FROM feather_admin_reports WHERE message = ? FOR UPDATE]], marker) or {}
         local row = rows[1]
         verified.submitted = row and row.reporter_account_id == identity.accountId
             and row.reporter_character_id == identity.characterId
         if not row then return false end
 
-        query([[UPDATE feather_admin_reports SET status = 'claimed',
+        tx.exec([[UPDATE feather_admin_reports SET status = 'claimed',
             assigned_admin_account_id = ?, assigned_admin_license = ?, assigned_admin_name = ?,
             assigned_admin_character_id = ?, assigned_admin_character_name = ?, claimed_at = NOW()
             WHERE id = ? AND status = 'open']],
-            { identity.accountId, license, identity.accountName or identity.serverName,
-              identity.characterId, identity.characterName, row.id })
-        local claimed = (query([[SELECT assigned_admin_account_id FROM feather_admin_reports
-            WHERE id = ?]], { row.id }) or {})[1]
+            identity.accountId, license, identity.accountName or identity.serverName,
+              identity.characterId, identity.characterName, row.id)
+        local claimed = (tx.query([[SELECT assigned_admin_account_id FROM feather_admin_reports
+            WHERE id = ?]], row.id) or {})[1]
         verified.claimed = claimed and claimed.assigned_admin_account_id == identity.accountId
 
-        query([[UPDATE feather_admin_reports SET status = 'closed', resolution = 'smoke complete',
+        tx.exec([[UPDATE feather_admin_reports SET status = 'closed', resolution = 'smoke complete',
             closed_admin_account_id = ?, closed_admin_license = ?, closed_admin_name = ?,
             closed_admin_character_id = ?, closed_admin_character_name = ?, closed_at = NOW()
             WHERE id = ? AND status = 'claimed']],
-            { identity.accountId, license, identity.accountName or identity.serverName,
-              identity.characterId, identity.characterName, row.id })
-        local closed = (query([[SELECT closed_admin_account_id, status FROM feather_admin_reports
-            WHERE id = ?]], { row.id }) or {})[1]
+            identity.accountId, license, identity.accountName or identity.serverName,
+              identity.characterId, identity.characterName, row.id)
+        local closed = (tx.query([[SELECT closed_admin_account_id, status FROM feather_admin_reports
+            WHERE id = ?]], row.id) or {})[1]
         verified.closed = closed and closed.closed_admin_account_id == identity.accountId
             and closed.status == 'closed'
         return false
     end)
 
-    local remaining = tonumber(MySQL.scalar.await(
-        'SELECT COUNT(*) FROM feather_admin_reports WHERE message = ?', { marker })) or -1
+    local remaining = tonumber(DB.value(
+        'SELECT COUNT(*) FROM feather_admin_reports WHERE message = ?', marker)) or -1
     local function output(label, passed, detail)
         print(('[AdminReportsPersistenceSmokeTest] %-28s %s%s'):format(
             label, passed and 'PASS' or 'FAIL', detail and ('  -- ' .. detail) or ''))

@@ -99,15 +99,13 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:submit', function(params, _, src
     end
 
     local maximumOpen = math.max(1, math.min(tonumber(config.maxOpenPerPlayer) or 3, 20))
-    local openCount = tonumber(MySQL.scalar.await([[SELECT COUNT(*) FROM feather_admin_reports
-        WHERE reporter_account_id = ? AND status IN ('open', 'claimed')]], { identity.accountId })) or 0
+    local openCount = tonumber(DB.value([[SELECT COUNT(*) FROM feather_admin_reports
+        WHERE reporter_account_id = ? AND status IN ('open', 'claimed')]], identity.accountId)) or 0
     if openCount >= maximumOpen then return submissionResult(src, false, 'report_limit_reached') end
 
-    local reportId = MySQL.insert.await([[INSERT INTO feather_admin_reports
+    local reportId = DB.insert([[INSERT INTO feather_admin_reports
         (reporter_account_id, reporter_license, reporter_name, reporter_character_id, reporter_character_name, category, message)
-        VALUES (?, ?, ?, ?, ?, ?, ?)]], {
-        identity.accountId, identity.license, identity.name, identity.characterId, identity.characterName, category, message
-    })
+        VALUES (?, ?, ?, ?, ?, ?, ?)]], identity.accountId, identity.license, identity.name, identity.characterId, identity.characterName, category, message)
     if not reportId then return submissionResult(src, false, 'report_submit_failed') end
     lastSubmission[src] = now
     submissionResult(src, true, 'report_submitted', reportId)
@@ -134,7 +132,7 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:list', function(params, _, src)
     local offset = (page - 1) * limit
     local statusClause = status == 'all' and '' or 'WHERE status = ?'
     local values = status == 'all' and {} or { status }
-    local rows = MySQL.query.await(([=[
+    local rows = DB.query(([=[
         SELECT id, reporter_account_id AS reporterAccountId, reporter_license, reporter_name AS reporterName,
                reporter_character_id AS reporterCharacterId,
                reporter_character_name AS reporterCharacterName,
@@ -151,7 +149,7 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:list', function(params, _, src)
         ORDER BY CASE status WHEN 'open' THEN 0 WHEN 'claimed' THEN 1 ELSE 2 END,
                  created_at DESC, id DESC
         LIMIT %d OFFSET %d
-    ]=]):format(statusClause, limit + 1, offset), values) or {}
+    ]=]):format(statusClause, limit + 1, offset), table.unpack(values, 1, #values)) or {}
 
     local actor = characterIdentity(src)
     local reporters = onlineReporters()
@@ -173,14 +171,12 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:claim', function(params, _, src)
     local admin = characterIdentity(src)
     if not reportId or reportId < 1 or reportId % 1 ~= 0 or not admin then return end
 
-    local changed = MySQL.update.await([[UPDATE feather_admin_reports
+    local changed = DB.exec([[UPDATE feather_admin_reports
         SET status = 'claimed', assigned_admin_account_id = ?, assigned_admin_license = ?, assigned_admin_name = ?,
             assigned_admin_character_id = ?, assigned_admin_character_name = ?, claimed_at = NOW()
-        WHERE id = ? AND status = 'open']], {
-        admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, reportId
-    })
+        WHERE id = ? AND status = 'open']], admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, reportId)
     if not changed or changed < 1 then return result(src, false, 'report_claim_failed') end
-    local row = MySQL.single.await('SELECT * FROM feather_admin_reports WHERE id = ?', { reportId })
+    local row = DB.one('SELECT * FROM feather_admin_reports WHERE id = ?', reportId)
     if not row then return result(src, false, 'report_claim_failed') end
     AdminAudit.RecordTarget(src, 'reports.claim', reportTarget(row), ('report_id=%s'):format(reportId))
     notifyReporter(row, 'report_claimed')
@@ -191,17 +187,17 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:release', function(params, _, sr
     if not FeatherAdmin.RequirePermission(src, 'reports.claim') or not AdminDatabase.ready then return end
     local reportId = tonumber(params.reportId)
     if not reportId or reportId < 1 or reportId % 1 ~= 0 then return end
-    local row = MySQL.single.await('SELECT * FROM feather_admin_reports WHERE id = ?', { reportId })
+    local row = DB.one('SELECT * FROM feather_admin_reports WHERE id = ?', reportId)
     if not row or row.status ~= 'claimed' then return result(src, false, 'report_release_failed') end
     local actor = characterIdentity(src)
     if not actor or (row.assigned_admin_account_id ~= actor.accountId and not FeatherAdmin.CanUse(src, 'reports.manage')) then
         return result(src, false, 'action_not_permitted')
     end
 
-    local changed = MySQL.update.await([[UPDATE feather_admin_reports
+    local changed = DB.exec([[UPDATE feather_admin_reports
         SET status = 'open', assigned_admin_account_id = NULL, assigned_admin_license = NULL, assigned_admin_name = NULL,
             assigned_admin_character_id = NULL, assigned_admin_character_name = NULL, claimed_at = NULL
-        WHERE id = ? AND status = 'claimed']], { reportId })
+        WHERE id = ? AND status = 'claimed']], reportId)
     if not changed or changed < 1 then return result(src, false, 'report_release_failed') end
     AdminAudit.RecordTarget(src, 'reports.release', reportTarget(row), ('report_id=%s'):format(reportId))
     result(src, true, 'report_released')
@@ -215,7 +211,7 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:close', function(params, _, src)
     if not reportId or reportId < 1 or reportId % 1 ~= 0 or not resolution then
         return result(src, false, 'invalid_report_resolution')
     end
-    local row = MySQL.single.await('SELECT * FROM feather_admin_reports WHERE id = ?', { reportId })
+    local row = DB.one('SELECT * FROM feather_admin_reports WHERE id = ?', reportId)
     if not row or row.status ~= 'claimed' then return result(src, false, 'report_close_failed') end
     local admin = characterIdentity(src)
     if not admin then return result(src, false, 'report_close_failed') end
@@ -223,12 +219,10 @@ FeatherAdmin.RegisterRPC('feather-admin:reports:close', function(params, _, src)
         return result(src, false, 'action_not_permitted')
     end
 
-    local changed = MySQL.update.await([[UPDATE feather_admin_reports
+    local changed = DB.exec([[UPDATE feather_admin_reports
         SET status = 'closed', resolution = ?, closed_admin_account_id = ?, closed_admin_license = ?, closed_admin_name = ?,
             closed_admin_character_id = ?, closed_admin_character_name = ?, closed_at = NOW()
-        WHERE id = ? AND status = 'claimed']], {
-        resolution, admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, reportId
-    })
+        WHERE id = ? AND status = 'claimed']], resolution, admin.accountId, admin.license, admin.name, admin.characterId, admin.characterName, reportId)
     if not changed or changed < 1 then return result(src, false, 'report_close_failed') end
     row.resolution = resolution
     AdminAudit.RecordTarget(src, 'reports.close', reportTarget(row),

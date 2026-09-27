@@ -69,12 +69,12 @@ local function target(params)
     local accountId = type(params and params.accountId) == 'string' and params.accountId or nil
     local characterId = type(params and params.characterId) == 'string' and params.characterId or nil
     if not accountId or not characterId then return nil end
-    return MySQL.single.await([[SELECT a.id AS accountId, a.display_name AS accountName,
+    return DB.one([[SELECT a.id AS accountId, a.display_name AS accountName,
         p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName
         FROM core_accounts a INNER JOIN character_profiles p
           ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci
         WHERE a.id = ? AND p.character_id = ? AND a.status = 'active' AND p.status = 'active' LIMIT 1]],
-        { accountId, characterId })
+        accountId, characterId)
 end
 
 local function auditTarget(row)

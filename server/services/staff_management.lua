@@ -138,11 +138,11 @@ FeatherAdmin.RegisterRPC('feather-admin:staff:history', function(params, _, src)
     if not profile or not FeatherAdmin.CheckTargetAccountHierarchy(
         src, 'staff.history', profile.accountId, nil) then return end
     local limit = math.max(1, math.min(100, tonumber(Config.staff.historyLimit) or 20))
-    local rows = MySQL.query.await([[SELECT `admin_name` AS `adminName`,
+    local rows = DB.query([[SELECT `admin_name` AS `adminName`,
             `admin_character_name` AS `adminCharacterName`,`details`,
             DATE_FORMAT(`created_at`,'%Y-%m-%d %H:%i:%s') AS `createdAt`
         FROM `feather_admin_actions` WHERE `target_character_id`=? AND `action`='staff.role.assign'
-        ORDER BY `id` DESC LIMIT ? OFFSET ?]], { characterId, limit + 1, (page - 1) * limit }) or {}
+        ORDER BY `id` DESC LIMIT ? OFFSET ?]], characterId, limit + 1, (page - 1) * limit) or {}
     local hasNext = #rows > limit
     if hasNext then table.remove(rows) end
     TriggerClientEvent('feather-admin:staff:history:result', src, rows, page, hasNext)
