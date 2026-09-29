@@ -3,8 +3,9 @@ FeatherAdmin.AuthorityCatalog = {
     result = nil
 }
 
-local CAPABILITY_REQUEST_ID = 'admin-authority-capabilities-001'
+local CAPABILITY_REQUEST_ID = 'admin-authority-capabilities-002'
 local ROLE_REQUEST_ID = 'admin-authority-roles-002'
+local GRANT_MIGRATION_REQUEST_ID = 'admin-authority-grants-003'
 local REASON_CODE = 'feather_admin.authority_catalog'
 
 function FeatherAdmin.AuthorityCatalog.Definitions()
@@ -27,7 +28,7 @@ local function Provision()
     assert(type(ready) == 'table' and ready.ok == true, 'Authority did not become ready')
 
     local definitions = FeatherAdmin.AuthorityCatalog.Definitions()
-    assert(#definitions == 82, 'Expected the reviewed 82-action Admin catalog')
+    assert(#definitions == 86, 'Expected the reviewed 86-action Admin catalog')
     local capabilities = exports['feather-authority']:RegisterCapabilities({
         requestId = CAPABILITY_REQUEST_ID,
         capabilities = definitions
@@ -50,7 +51,7 @@ local function Provision()
                 .. ': ' .. tostring(type(created) == 'table' and created.message or 'invalid result'))
         allReplayed = allReplayed and created.value.replayed == true
 
-        local actions = {}
+        local actions, existing = {}, {}
         for action, required in pairs(Config.permissions or {}) do
             local requiredPrecedence
             for _, candidate in ipairs(Config.authority.roles or {}) do
@@ -61,24 +62,33 @@ local function Provision()
             end
         end
         table.sort(actions)
+        local before = exports['feather-authority']:ListRoleGrants({ roleId = created.value.roleId })
+        assert(type(before) == 'table' and before.ok == true, 'Authority role grants are unavailable')
+        for _, grant in ipairs(before.value) do
+            if grant.status == 'active' then existing[grant.capabilityKey] = true end
+        end
+        local role = exports['feather-authority']:GetRole({ roleId = created.value.roleId })
+        assert(type(role) == 'table' and role.ok == true, 'Authority role is unavailable')
+        local revision = role.value.revision
         for index, action in ipairs(actions) do
-            local grant = exports['feather-authority']:GrantRoleCapability({
-                requestId = ROLE_REQUEST_ID .. ':grant:' .. tier.roleKey .. ':' .. action,
-                roleId = created.value.roleId,
-                capabilityKey = Config.authorityActions[action],
-                expectedRevision = index,
-                scopeType = 'server',
-                reasonCode = REASON_CODE
-            })
-            assert(type(grant) == 'table' and grant.ok == true,
-                tostring(type(grant) == 'table' and grant.code or 'invalid_result')
-                    .. ': ' .. tostring(type(grant) == 'table' and grant.message or 'invalid result'))
-            allReplayed = allReplayed and grant.value.replayed == true
+            local capabilityKey = Config.authorityActions[action]
+            if not existing[capabilityKey] then
+                local grant = exports['feather-authority']:GrantRoleCapability({
+                    requestId = GRANT_MIGRATION_REQUEST_ID .. ':grant:' .. tier.roleKey .. ':' .. action,
+                    roleId = created.value.roleId, capabilityKey = capabilityKey,
+                    expectedRevision = revision, scopeType = 'server', reasonCode = REASON_CODE
+                })
+                assert(type(grant) == 'table' and grant.ok == true,
+                    tostring(type(grant) == 'table' and grant.code or 'invalid_result')
+                        .. ': ' .. tostring(type(grant) == 'table' and grant.message or 'invalid result'))
+                revision = grant.value.roleRevision
+                allReplayed = allReplayed and grant.value.replayed == true
+            end
             totalGrants = totalGrants + 1
             if index % 20 == 0 then Wait(0) end
         end
 
-        local role = exports['feather-authority']:GetRole({ roleId = created.value.roleId })
+        role = exports['feather-authority']:GetRole({ roleId = created.value.roleId })
         local grants = exports['feather-authority']:ListRoleGrants({ roleId = created.value.roleId })
         assert(type(role) == 'table' and role.ok == true and type(grants) == 'table'
             and grants.ok == true and #grants.value == #actions
@@ -94,7 +104,7 @@ local function Provision()
 
     assert(#roleResults == 3 and roleResults[1].grants < roleResults[2].grants
         and roleResults[2].grants < roleResults[3].grants
-        and roleResults[3].grants == 82,
+        and roleResults[3].grants == 86,
         'Authority tier grants are not the reviewed cumulative catalog')
     return {
         capabilities = #definitions,

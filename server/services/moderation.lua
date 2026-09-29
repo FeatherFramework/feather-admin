@@ -266,3 +266,114 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:unban', function(params, _, s
         notify(src, 'ban_revoked')
     end
 end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 128 })
+
+local function chatResult(src, action, result)
+    TriggerClientEvent('feather-admin:chat-moderation:result', src, action,
+        type(result) == 'table' and result or { ok=false, code='invalid_result', message='Chat returned an invalid result.' })
+end
+
+local function chatMuteNotice(scopeType, scopeKey, durationMinutes)
+    local scopeLabel = 'chat'
+    for _, scope in ipairs(Config.moderation.chatMuteScopes or {}) do
+        if scope.scopeType == scopeType and scope.scopeKey == scopeKey then
+            scopeLabel = scope.label
+            break
+        end
+    end
+
+    local duration = tonumber(durationMinutes)
+    local durationLabel = duration == 0 and 'until revoked' or nil
+    for _, option in ipairs(Config.moderation.chatMuteDurations or {}) do
+        if tonumber(option.minutes) == duration then
+            durationLabel = option.label
+            break
+        end
+    end
+    durationLabel = durationLabel or ((tostring(duration or '?')) .. ' minutes')
+
+    return ('You have been muted from %s for %s.'):format(scopeLabel, durationLabel)
+end
+
+FeatherAdmin.RegisterRPC('feather-admin:chat-moderation:issue', function(params, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'chat.mute.issue') then return end
+    local target, reason = resolveTarget(params.target), validReason(params.reason)
+    if not target or not reason
+        or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'chat.mute.issue', target.accountId, target.serverId) then return end
+    local called, result = pcall(function()
+        return exports['feather-chat']:IssueMute({ source=src, accountId=target.accountId,
+            scopeType=params.scopeType, scopeKey=params.scopeKey, reason=reason,
+            durationMinutes=params.durationMinutes })
+    end)
+    if not called then result = { ok=false, code='chat_unavailable', message='Chat moderation is unavailable.' } end
+    if type(result) == 'table' and result.ok then
+        AdminAudit.Record(src, 'chat.mute.issue', target.serverId,
+            ('account=%s scope=%s scope_key=%s duration=%s'):format(target.accountId,
+                tostring(params.scopeType), tostring(params.scopeKey), tostring(params.durationMinutes)))
+        if target.serverId then
+            FeatherAdmin.Notify(target.serverId,
+                chatMuteNotice(params.scopeType, params.scopeKey, params.durationMinutes), 5000)
+        end
+    end
+    chatResult(src, 'issue', result)
+end, { windowMs=3000, maxCalls=2, maxPayloadBytes=1024 })
+
+FeatherAdmin.RegisterRPC('feather-admin:chat-moderation:inspect', function(params, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'chat.mute.inspect') then return end
+    local target = resolveTarget(params.target)
+    if not target or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'chat.mute.inspect',
+        target.accountId, target.serverId) then return end
+    local called, result = pcall(function()
+        return exports['feather-chat']:GetMuteSnapshot({ source=src, accountId=target.accountId })
+    end)
+    if not called then result = { ok=false, code='chat_unavailable', message='Chat moderation is unavailable.' } end
+    chatResult(src, 'inspect', result)
+end, { windowMs=3000, maxCalls=3, maxPayloadBytes=512 })
+
+FeatherAdmin.RegisterRPC('feather-admin:chat-moderation:revoke', function(params, _, src)
+    if not FeatherAdmin.RequirePermission(src, 'chat.mute.revoke') then return end
+    local target = resolveTarget(params.target)
+    if not target or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'chat.mute.revoke',
+        target.accountId, target.serverId) then return end
+    local snapshotCalled, snapshot = pcall(function()
+        return exports['feather-chat']:GetMuteSnapshot({ source=src, accountId=target.accountId })
+    end)
+    if not snapshotCalled then snapshot = { ok=false, code='chat_unavailable', message='Chat moderation is unavailable.' } end
+    if type(snapshot) ~= 'table' or not snapshot.ok then return chatResult(src, 'revoke', snapshot) end
+    local belongs = false
+    for _, mute in ipairs(type(snapshot) == 'table' and snapshot.ok and snapshot.value.mutes or {}) do
+        if mute.muteId == params.muteId then belongs = true break end
+    end
+    if not belongs then return chatResult(src, 'revoke', { ok=false, code='not_found', message='Active mute was not found.' }) end
+    local called, result = pcall(function()
+        return exports['feather-chat']:RevokeMute({ source=src, muteId=params.muteId })
+    end)
+    if not called then result = { ok=false, code='chat_unavailable', message='Chat moderation is unavailable.' } end
+    if type(result) == 'table' and result.ok then
+        AdminAudit.Record(src, 'chat.mute.revoke', target.serverId,
+            ('account=%s mute=%s'):format(target.accountId, tostring(params.muteId)))
+    end
+    chatResult(src, 'revoke', result)
+end, { windowMs=3000, maxCalls=2, maxPayloadBytes=512 })
+
+RegisterCommand('AdminChatDiagnostics', function(source, args)
+    if source ~= 0 then return end
+    local staffSource = tonumber(args and args[1])
+    if not staffSource then
+        print('[AdminChatDiagnostics] FAIL use AdminChatDiagnostics <authorizedStaffSource>')
+        return
+    end
+    local called, result = pcall(function()
+        return exports['feather-chat']:GetModerationDiagnostics({ source=staffSource })
+    end)
+    if not called or type(result) ~= 'table' or not result.ok then
+        print(('[AdminChatDiagnostics] FAIL code=%s message=%s'):format(
+            tostring(type(result) == 'table' and result.code or 'chat_unavailable'),
+            tostring(type(result) == 'table' and result.message or 'Chat moderation is unavailable.')))
+        return
+    end
+    local value = result.value
+    print(('[AdminChatDiagnostics] PASS activeMutes=%d ignores=%d auditRecords=%d providers=%d required=%s messageBodies=%s'):format(
+        value.activeMutes, value.ignores, value.auditRecords,
+        #(value.providers.registered or {}), tostring(value.providers.required),
+        tostring(value.auditIncludesMessageBody)))
+end, true)

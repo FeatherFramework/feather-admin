@@ -56,13 +56,13 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
             and args[1]:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$'),
             'Use <stable requestId>')
         local request = { requestId = args[1], capabilities = FeatherAdmin.AuthorityCatalog.Definitions() }
-        assert(#request.capabilities == 82, 'Expected the reviewed 82-action Admin catalog')
+        assert(#request.capabilities == 86, 'Expected the reviewed 86-action Admin catalog')
         local first = exports['feather-authority']:RegisterCapabilities(request)
         assert(first.ok, tostring(first.code) .. ': ' .. tostring(first.message))
         local replay = exports['feather-authority']:RegisterCapabilities(request)
         assert(replay.ok and replay.value.replayed == true,
             'Exact capability catalog did not replay')
-        assert(#first.value.capabilities == 82 and #replay.value.capabilities == 82,
+        assert(#first.value.capabilities == 86 and #replay.value.capabilities == 86,
             'Registration receipt omitted capability identities')
         for index, identity in ipairs(first.value.capabilities) do
             assert(identity.key == replay.value.capabilities[index].key
@@ -80,8 +80,8 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
         for _, capability in ipairs(listed.value) do
             if capability.ownerResource == GetCurrentResourceName() then owned = owned + 1 end
         end
-        assert(owned == 82, 'Authority catalog does not contain 82 Admin-owned capabilities')
-        print(('[AdminAuthorityCapabilityLiveTest] PASS capabilities=82 registered=%d updated=%d unchanged=%d firstReplayed=%s replayed=true stableIdentity=true mismatchRejected=true ownerBound=true'):format(
+        assert(owned == 86, 'Authority catalog does not contain 86 Admin-owned capabilities')
+        print(('[AdminAuthorityCapabilityLiveTest] PASS capabilities=86 registered=%d updated=%d unchanged=%d firstReplayed=%s replayed=true stableIdentity=true mismatchRejected=true ownerBound=true'):format(
             first.value.registered, first.value.updated, first.value.unchanged,
             tostring(first.value.replayed)))
     end, debug.traceback)
@@ -91,57 +91,39 @@ end, true)
 RegisterCommand('AdminAuthorityRoleCatalogLiveTest', function(source, args)
     if source ~= 0 then return end
     local called, reason = xpcall(function()
-        assert(type(args) == 'table' and #args == 1 and type(args[1]) == 'string'
-            and #args[1] >= 1 and #args[1] <= 64
-            and args[1]:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$'),
-            'Use <stable requestId>')
-        local firstReplayed, totalGrants = true, 0
-        local roleResults = {}
+        local totalGrants, roleResults = 0, {}
         for _, tier in ipairs(Config.authority.roles) do
-            local created = exports['feather-authority']:CreateRole({
-                requestId = args[1] .. ':role:' .. tier.roleKey,
-                roleKey = tier.roleKey, label = tier.label, roleClass = 'staff',
-                reasonCode = 'feather_admin.authority_catalog'
-            })
-            assert(created.ok, tostring(created.code) .. ': ' .. tostring(created.message))
-            firstReplayed = firstReplayed and created.value.replayed == true
-            local actions = {}
+            local role = exports['feather-authority']:FindRoleByKey({ roleKey=tier.roleKey })
+            assert(role.ok, tostring(role.code) .. ': ' .. tostring(role.message))
+            local expected = {}
             for action, required in pairs(Config.permissions) do
                 local requiredPrecedence
                 for _, candidate in ipairs(Config.authority.roles) do
                     if candidate.key == required then requiredPrecedence = candidate.precedence break end
                 end
                 if requiredPrecedence and requiredPrecedence <= tier.precedence then
-                    actions[#actions + 1] = action
+                    expected[Config.authorityActions[action]] = true
                 end
             end
-            table.sort(actions)
-            for index, action in ipairs(actions) do
-                local grant = exports['feather-authority']:GrantRoleCapability({
-                    requestId = args[1] .. ':grant:' .. tier.roleKey .. ':' .. action,
-                    roleId = created.value.roleId, capabilityKey = Config.authorityActions[action],
-                    expectedRevision = index, scopeType = 'server',
-                    reasonCode = 'feather_admin.authority_catalog'
-                })
-                assert(grant.ok, tostring(grant.code) .. ': ' .. tostring(grant.message))
-                firstReplayed = firstReplayed and grant.value.replayed == true
-                totalGrants = totalGrants + 1
-                if index % 20 == 0 then Wait(0) end
+            local grants = exports['feather-authority']:ListRoleGrants({ roleId=role.value.roleId })
+            assert(grants.ok, tostring(grants.code) .. ': ' .. tostring(grants.message))
+            for _, grant in ipairs(grants.value) do
+                assert(grant.status == 'active' and expected[grant.capabilityKey] == true,
+                    'Authority role contains an unexpected grant')
+                expected[grant.capabilityKey] = nil
             end
-            local role = exports['feather-authority']:GetRole({ roleId = created.value.roleId })
-            local grants = exports['feather-authority']:ListRoleGrants({ roleId = created.value.roleId })
-            assert(role.ok and grants.ok and #grants.value == #actions
-                and role.value.revision == #actions + 1,
-                'Authority role or grant catalog is inconsistent for ' .. tier.roleKey)
-            roleResults[#roleResults + 1] = { key = tier.roleKey, roleId = created.value.roleId,
-                grants = #actions, revision = role.value.revision }
+            assert(next(expected) == nil and role.value.revision == #grants.value + 1,
+                'Authority role catalog is incomplete for ' .. tier.roleKey)
+            totalGrants = totalGrants + #grants.value
+            roleResults[#roleResults + 1] = { key=tier.roleKey, roleId=role.value.roleId,
+                grants=#grants.value, revision=role.value.revision }
         end
         assert(roleResults[1].grants < roleResults[2].grants
             and roleResults[2].grants < roleResults[3].grants
-            and roleResults[3].grants == 82, 'Authority tier grants are not cumulative')
-        print(('[AdminAuthorityRoleCatalogLiveTest] PASS roles=3 moderator=%d administrator=%d owner=%d totalGrants=%d cumulative=true stableIdentity=true allReplayed=%s'):format(
+            and roleResults[3].grants == 86, 'Authority tier grants are not cumulative')
+        print(('[AdminAuthorityRoleCatalogLiveTest] PASS roles=3 moderator=%d administrator=%d owner=%d totalGrants=%d cumulative=true stableIdentity=true readOnly=true'):format(
             roleResults[1].grants, roleResults[2].grants, roleResults[3].grants,
-            totalGrants, tostring(firstReplayed)))
+            totalGrants))
     end, debug.traceback)
     if not called then print('[AdminAuthorityRoleCatalogLiveTest] FAIL ' .. tostring(reason)) end
 end, true)
@@ -189,7 +171,7 @@ RegisterCommand('AdminAuthorityRoleParitySmokeTest', function(source)
         local permissions, mappings = 0, 0
         for _ in pairs(Config.permissions) do permissions = permissions + 1 end
         for _ in pairs(Config.authorityActions) do mappings = mappings + 1 end
-        return permissions == 82 and mappings == permissions
+        return permissions == 86 and mappings == permissions
     end)())
     Check('Admin remains default', (function()
         local provider = exports['feather-core']:GetProvider('policy', nil, 1)

@@ -13,6 +13,9 @@ Config.permissions = {
     ['moderation.history'] = 'moderator', ['moderation.warn'] = 'moderator',
     ['moderation.ban'] = 'administrator', ['moderation.unban'] = 'administrator',
     ['moderation.kick'] = 'moderator',
+    ['chat.mute.issue'] = 'moderator', ['chat.mute.revoke'] = 'moderator',
+    ['chat.mute.inspect'] = 'moderator',
+    ['chat.diagnostics'] = 'moderator',
 
     ['reports.view'] = 'moderator', ['reports.claim'] = 'moderator',
     ['reports.close'] = 'moderator', ['reports.manage'] = 'administrator',

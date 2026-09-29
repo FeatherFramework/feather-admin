@@ -102,10 +102,10 @@ RegisterCommand('AdminReleaseContractSmokeTest',function(source)
             {'Authority provider available',authorityProvider.ok==true
                 and authorityProvider.value.provider.owner=='feather-authority'},
             {'Authority catalog ready',type(catalog)=='table' and catalog.ready==true
-                and type(catalog.result)=='table' and catalog.result.capabilities==82
-                and catalog.result.roles==3 and catalog.result.moderator==29
-                and catalog.result.administrator==60 and catalog.result.owner==82
-                and catalog.result.totalGrants==171},
+                and type(catalog.result)=='table' and catalog.result.capabilities==86
+                and catalog.result.roles==3 and catalog.result.moderator==33
+                and catalog.result.administrator==64 and catalog.result.owner==86
+                and catalog.result.totalGrants==183},
             {'owner bootstrap available',registered.AdminBootstrapOwner==true},
             {'clean Authority commands',registered.AdminAuthorityContractSmokeTest==true
                 and not registered.AdminAuthorityMigrationContractSmokeTest
@@ -179,6 +179,10 @@ RegisterCommand('AdminPolicySmokeTest', function(source, args)
         and exports['feather-core']:Authorize('inventory.manage', { source = ownerSource }) or nil
     local unknown = ownerSource and exports['feather-core']:Authorize('smoke.unknown', { source = ownerSource }) or nil
     local playerMenu = playerSource and exports['feather-core']:Authorize('menu.open', { source = playerSource }) or nil
+    local ownerChatMute = ownerSource
+        and exports['feather-core']:Authorize('chat.mute.issue', { source = ownerSource }) or nil
+    local playerChatMute = playerSource
+        and exports['feather-core']:Authorize('chat.mute.issue', { source = playerSource }) or nil
 
     local tests = {
         { name = 'provider available', passed = type(provider) == 'table' and provider.ok == true },
@@ -187,7 +191,11 @@ RegisterCommand('AdminPolicySmokeTest', function(source, args)
             and ownerInventory.value.allowed == true },
         { name = 'unknown action denied', passed = unknown and unknown.ok == true and unknown.value.allowed == false
             and unknown.value.code == 'unknown_action' },
-        { name = 'player menu denied', passed = playerMenu and playerMenu.ok == true and playerMenu.value.allowed == false }
+        { name = 'player menu denied', passed = playerMenu and playerMenu.ok == true and playerMenu.value.allowed == false },
+        { name = 'owner chat mute allowed', passed = ownerChatMute and ownerChatMute.ok == true
+            and ownerChatMute.value.allowed == true },
+        { name = 'player chat mute denied', passed = playerChatMute and playerChatMute.ok == true
+            and playerChatMute.value.allowed == false }
     }
     local passed = 0
     for _, test in ipairs(tests) do

@@ -25,6 +25,7 @@ now use that contract.
 - Kick an online player from the Moderation page with a required reason
 - Issue persistent warnings and review moderation history
 - Apply permanent or temporary account bans
+- Issue, inspect, and revoke scoped account-level Feather Chat mutes
 - Browse, search, inspect, and revoke currently active bans
 - Convert serious player reports into durable staff cases with priorities, ownership, linked records, and resolutions
 - Add account-scoped internal player notes with immutable edit history and Staff Case linking
@@ -60,6 +61,7 @@ now use that contract.
 - `feather-character`
 - `feather-menu-v2`
 - `feather-inventory`
+- `feather-chat`
 - `feather-weapons`
 
 These resources must already be installed. They also need to start before Feather Admin.
@@ -86,6 +88,7 @@ Server code imports `@feather-mysql/lib/DB.lua` and uses plain `DB.*` calls with
    ensure feather-menu-v2
    ensure feather-character
    ensure feather-inventory
+   ensure feather-chat
    ensure feather-weapons
    ensure feather-admin
    ```
@@ -123,7 +126,7 @@ spawned Admin effects.
 
 Every enabled menu action maps to the minimum named role whose Authority catalog receives that capability. The defaults are:
 
-- Moderator: player support, reports, staff cases, warnings, kicks, spectating, travel, healing, and reviving
+- Moderator: player support, reports, staff cases, warnings, kicks, Chat mutes, spectating, travel, healing, and reviving
 - Administrator: report and case oversight, case closure, bans, unbans, identifier searches, item grants, admin-log review, character repair, advanced status tools, appearance tools, and reversible player effects
 - Owner: staff assignments, sensitive log details, and the most disruptive special effects
 
@@ -160,6 +163,8 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `moderation.historyLimit`: limit the history records shown
 - `moderation.maxReasonLength`: set the maximum warning or ban reason length
 - `moderation.maxBanMinutes`: set the longest allowed temporary ban
+- `moderation.chatMuteDurations`: choose the bounded Chat mute durations offered to staff
+- `moderation.chatMuteScopes`: choose the Chat mute scopes offered to staff
 - `moderation.banMessage`: change the message shown to banned players
 - `pedChanger.modelLoadTimeout`: set how long the game waits for a player model to load
 - `pedChanger.categories`: choose which human and animal models appear in the menu
@@ -207,6 +212,10 @@ Senior staff can open **Staff & Oversight**, then **Admin Logs**, to review dura
 Staff with `server.announce` permission can open **Server Operations**, then **Announcements**, enter an optional title and required message, review the confirmation page, and send it to every connected player.
 
 Senior staff can open **Moderation Center**, then **Active Bans**, to browse current bans, search by name, inspect details, and confirm a revocation. Exact-license searches require `moderation.search_identifiers` permission.
+
+Authorized operators can run `AdminChatDiagnostics <staffServerId>` from the
+server console to inspect aggregate active-mute, ignore, audit, and provider
+health without exposing message bodies.
 
 Players can submit a report with `/report <category> <message>`. Staff can open **Moderation Center**, then **Player Reports**, to claim reports, go to an online reporter, release claimed work, and close a report with a required resolution.
 

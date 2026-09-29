@@ -239,6 +239,17 @@ Feather.Locale.register('en_us', {
     no_active_bans = 'No active bans were found.',
     confirm_unban = 'Confirm Unban',
     moderation_unavailable = 'Moderation records are still starting. Please try again.',
+    mute_chat = 'Mute Chat',
+    chat_mute_duration = 'Mute Duration',
+    chat_mute_scope = 'Chat Scope',
+    chat_mutes = 'Active Chat Mutes',
+    view_chat_mutes = 'View Chat Mutes',
+    no_active_chat_mutes = 'No active chat mutes were found.',
+    revoke_chat_mute = 'Revoke Chat Mute',
+    chat_muted = 'Player chat muted.',
+    chat_mute_revoked = 'Chat mute revoked.',
+    chat_mute_failed = 'The chat moderation action failed.',
+    invalid_chat_mute = 'Select a valid chat scope, duration, and reason.',
 
     -- Player reports
     report_command_suggestion = 'Send a report to the server staff',
