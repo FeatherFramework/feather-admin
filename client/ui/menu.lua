@@ -53,6 +53,7 @@ local function EnsureMenu()
         position = { x = '22%', y = '50%' },
         size = {
             width = '32rem',
+            height = '80vh',
             minWidth = '24rem',
             maxWidth = '92vw',
             maxHeight = '88vh',

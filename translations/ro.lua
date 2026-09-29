@@ -239,6 +239,17 @@ Feather.Locale.register('ro', {
     no_active_bans = 'Nu au fost găsite interdicții active.',
     confirm_unban = 'Confirmă ridicarea interdicției',
     moderation_unavailable = 'Înregistrările de moderare încă se inițializează. Încearcă din nou.',
+    mute_chat = 'Dezactivează chatul',
+    chat_mute_duration = 'Durata dezactivării chatului',
+    chat_mute_scope = 'Domeniu chat',
+    chat_mutes = 'Restricții chat active',
+    view_chat_mutes = 'Vezi restricțiile chat',
+    no_active_chat_mutes = 'Nu au fost găsite restricții chat active.',
+    revoke_chat_mute = 'Revocă restricția chat',
+    chat_muted = 'Chatul jucătorului a fost dezactivat.',
+    chat_mute_revoked = 'Restricția chat a fost revocată.',
+    chat_mute_failed = 'Acțiunea de moderare a chatului a eșuat.',
+    invalid_chat_mute = 'Selectează un domeniu, o durată și un motiv valide.',
 
     -- Player reports
     report_command_suggestion = 'Trimite o sesizare echipei serverului',

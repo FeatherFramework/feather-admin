@@ -114,6 +114,24 @@ Config = {
             { label = '7 Days', minutes = 10080 },
             { label = '30 Days', minutes = 43200 }
         },
+        chatMuteDurations = {
+            { label = '1 Minute', minutes = 1 },
+            { label = '15 Minutes', minutes = 15 },
+            { label = '1 Hour', minutes = 60 },
+            { label = '6 Hours', minutes = 360 },
+            { label = '1 Day', minutes = 1440 },
+            { label = '3 Days', minutes = 4320 },
+            { label = '7 Days', minutes = 10080 }
+        },
+        chatMuteScopes = {
+            { label = 'All Player Chat', scopeType = 'all' },
+            { label = 'Say', scopeType = 'channel', scopeKey = 'local.say' },
+            { label = 'Whisper', scopeType = 'channel', scopeKey = 'local.whisper' },
+            { label = 'Shout', scopeType = 'channel', scopeKey = 'local.shout' },
+            { label = '/me', scopeType = 'channel', scopeKey = 'roleplay.me' },
+            { label = '/do', scopeType = 'channel', scopeKey = 'roleplay.do' },
+            { label = 'OOC', scopeType = 'ooc' }
+        },
         banMessage = 'You are banned from this server.'
     },
     -----------------------------------------------------

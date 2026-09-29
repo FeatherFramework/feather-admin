@@ -94,6 +94,25 @@ function AdminModeration.Unban(banId, origin)
     Feather.RPC.Notify('feather-admin:moderation:unban', { banId = banId })
 end
 
+function AdminModeration.Mute(reason, duration, scope)
+    if not validReason(reason) or type(scope) ~= 'table' then return false end
+    duration = tonumber(duration)
+    if not duration or duration < 0 or duration % 1 ~= 0 then return false end
+    Feather.RPC.Notify('feather-admin:chat-moderation:issue', { target=AdminModeration.target,
+        reason=reason, durationMinutes=duration > 0 and duration or nil,
+        scopeType=scope.scopeType, scopeKey=scope.scopeKey })
+    return true
+end
+
+function AdminModeration.RequestMutes()
+    Feather.RPC.Notify('feather-admin:chat-moderation:inspect', { target=AdminModeration.target })
+end
+
+function AdminModeration.RevokeMute(muteId)
+    Feather.RPC.Notify('feather-admin:chat-moderation:revoke', {
+        target=AdminModeration.target, muteId=muteId })
+end
+
 RegisterNetEvent('feather-admin:moderation:search:result', function(results)
     AdminModeration.results = type(results) == 'table' and results or {}
     if AdminModeration.searchOrigin == 'players' then
@@ -120,4 +139,18 @@ RegisterNetEvent('feather-admin:moderation:result', function(messageKey)
     else
         AdminModeration.RequestHistory()
     end
+end)
+
+RegisterNetEvent('feather-admin:chat-moderation:result', function(action, result)
+    if type(result) ~= 'table' or not result.ok then
+        Feather.Notify.RightNotify(type(result) == 'table' and result.message
+            or AdminTranslate('chat_mute_failed'), 4000)
+        return
+    end
+    if action == 'inspect' then
+        AdminUI.OpenChatMutes(type(result.value) == 'table' and result.value.mutes or {})
+        return
+    end
+    Feather.Notify.RightNotify(AdminTranslate(action == 'issue' and 'chat_muted' or 'chat_mute_revoked'), 3000)
+    if action == 'revoke' then AdminModeration.RequestMutes() else AdminUI.Close() end
 end)

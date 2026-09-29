@@ -27,6 +27,10 @@ Config.hierarchy = {
         ['moderation.kick'] = false,
         ['moderation.ban'] = false,
         ['moderation.unban'] = false,
+        ['chat.mute.issue'] = false,
+        ['chat.mute.revoke'] = false,
+        ['chat.mute.inspect'] = false,
+        ['chat.diagnostics'] = true,
 
         -- Staff cases
         ['cases.create'] = false,
