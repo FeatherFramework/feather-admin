@@ -272,27 +272,6 @@ local function chatResult(src, action, result)
         type(result) == 'table' and result or { ok=false, code='invalid_result', message='Chat returned an invalid result.' })
 end
 
-local function chatMuteNotice(scopeType, scopeKey, durationMinutes)
-    local scopeLabel = 'chat'
-    for _, scope in ipairs(Config.moderation.chatMuteScopes or {}) do
-        if scope.scopeType == scopeType and scope.scopeKey == scopeKey then
-            scopeLabel = scope.label
-            break
-        end
-    end
-
-    local duration = tonumber(durationMinutes)
-    local durationLabel = duration == 0 and 'until revoked' or nil
-    for _, option in ipairs(Config.moderation.chatMuteDurations or {}) do
-        if tonumber(option.minutes) == duration then
-            durationLabel = option.label
-            break
-        end
-    end
-    durationLabel = durationLabel or ((tostring(duration or '?')) .. ' minutes')
-
-    return ('You have been muted from %s for %s.'):format(scopeLabel, durationLabel)
-end
 
 FeatherAdmin.RegisterRPC('feather-admin:chat-moderation:issue', function(params, _, src)
     if not FeatherAdmin.RequirePermission(src, 'chat.mute.issue') then return end
@@ -310,8 +289,9 @@ FeatherAdmin.RegisterRPC('feather-admin:chat-moderation:issue', function(params,
             ('account=%s scope=%s scope_key=%s duration=%s'):format(target.accountId,
                 tostring(params.scopeType), tostring(params.scopeKey), tostring(params.durationMinutes)))
         if target.serverId then
-            FeatherAdmin.Notify(target.serverId,
-                chatMuteNotice(params.scopeType, params.scopeKey, params.durationMinutes), 5000)
+            TriggerClientEvent('feather-admin:chat-moderation:notice', target.serverId, {
+                scopeType=params.scopeType, scopeKey=params.scopeKey,
+                durationMinutes=params.durationMinutes })
         end
     end
     chatResult(src, 'issue', result)

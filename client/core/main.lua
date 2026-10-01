@@ -30,13 +30,11 @@ CreateThread(function()
 
     if Config.commands.enabled then
         local command = Config.commands.openMenu
-        local suggestion = AdminTranslate(Config.commands.suggestionKey)
         RegisterCommand(command, function()
             if not InMenu then
                 Feather.RPC.Notify('feather-admin:access:request', {})
             end
         end, false)
-        TriggerEvent('chat:addSuggestion', '/' .. command, suggestion)
     end
 end)
 

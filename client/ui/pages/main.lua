@@ -3,6 +3,9 @@ function AdminUI.OpenMain()
     AdminUI.SetTarget(GetPlayerServerId(PlayerId()))
 
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('main_menu'))
+    if AdminUI.CanUse('cases.view') then
+        AdminUI.AddButton(page, AdminChatTranslate('chat_case_list'), function() AdminChatCases.RequestList(0) end)
+    end
 
     if AdminUI.CanUse('players.view') then
         AdminUI.AddButton(page, AdminTranslate('player_list'), function()
