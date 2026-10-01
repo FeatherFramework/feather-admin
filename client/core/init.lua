@@ -65,5 +65,10 @@ AdminStaff = {
 }
 
 function AdminTranslate(key)
-    return Feather.Locale.translate(0, key)
+    local ok, text = pcall(Feather.Locale.translate, 0, key)
+    if not ok or type(text) ~= 'string' or text == ''
+        or text:match('^Translation %[') or text:match('^Locale %[') then
+        return AdminEnglishTranslations and AdminEnglishTranslations[key] or key
+    end
+    return text
 end

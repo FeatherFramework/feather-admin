@@ -259,6 +259,56 @@ local function InitializeDatabase()
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
+    DB.exec([[
+        CREATE TABLE IF NOT EXISTS feather_admin_chat_conversations (
+            conversation_id CHAR(36) NOT NULL PRIMARY KEY,
+            target_account_id CHAR(36) NOT NULL,
+            assigned_account_id CHAR(36) NOT NULL,
+            target_character_name VARCHAR(150) NULL,
+            status VARCHAR(16) NOT NULL DEFAULT 'open',
+            last_sequence BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            closed_by_account_id CHAR(36) NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            closed_at TIMESTAMP NULL,
+            archived_at TIMESTAMP NULL,
+            INDEX idx_fa_chat_target (target_account_id, status),
+            INDEX idx_fa_chat_staff (assigned_account_id, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+    ]])
+    if tonumber(DB.value([[SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'feather_admin_chat_conversations'
+        AND COLUMN_NAME = 'target_character_name']])) == 0 then
+        DB.exec('ALTER TABLE feather_admin_chat_conversations ADD COLUMN target_character_name VARCHAR(150) NULL')
+    end
+    DB.exec([[
+        CREATE TABLE IF NOT EXISTS feather_admin_chat_messages (
+            message_id CHAR(36) NOT NULL PRIMARY KEY,
+            conversation_id CHAR(36) NOT NULL,
+            author_account_id CHAR(36) NOT NULL,
+            submission_id CHAR(36) NOT NULL,
+            sequence BIGINT UNSIGNED NOT NULL,
+            body TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY idx_fa_chat_submission (conversation_id, author_account_id, submission_id),
+            UNIQUE KEY idx_fa_chat_sequence (conversation_id, sequence),
+            CONSTRAINT fk_fa_chat_conversation FOREIGN KEY (conversation_id)
+                REFERENCES feather_admin_chat_conversations (conversation_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+    ]])
+
+    DB.exec([[
+        CREATE TABLE IF NOT EXISTS feather_admin_chat_case_links (
+            conversation_id CHAR(36) NOT NULL PRIMARY KEY,
+            case_id BIGINT UNSIGNED NOT NULL,
+            linked_by_account_id CHAR(36) NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_fa_chat_internal_case (case_id),
+            CONSTRAINT fk_fa_chat_link_conversation FOREIGN KEY (conversation_id)
+                REFERENCES feather_admin_chat_conversations (conversation_id),
+            CONSTRAINT fk_fa_chat_link_case FOREIGN KEY (case_id)
+                REFERENCES feather_admin_cases (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+    ]])
     AdminDatabase.ready = true
     local callbacks = AdminDatabase.callbacks
     AdminDatabase.callbacks = {}

@@ -42,6 +42,13 @@ function AdminUI.OpenSelectedPlayer()
         end)
     end
 
+    if AdminUI.CanUse('cases.create') and AdminUI.CanUse('cases.view') and AdminUI.CanUse('cases.claim') then
+        AdminUI.AddButton(page, AdminChatTranslate('chat_case_header'), AdminUI.OpenChatConversationCreate)
+    end
+    if AdminUI.CanUse('cases.view') then
+        AdminUI.AddButton(page, AdminChatTranslate('chat_case_list'), function() AdminChatCases.RequestList(0) end)
+    end
+
     if AdminUI.CanUse('staff.role.assign') then
         AdminUI.AddButton(page, AdminTranslate('staff_role'), function()
             if not AdminUI.RequireUseOnTarget('staff.role.assign') then return end

@@ -115,28 +115,35 @@ Config = {
             { label = '30 Days', minutes = 43200 }
         },
         chatMuteDurations = {
-            { label = '1 Minute', minutes = 1 },
-            { label = '15 Minutes', minutes = 15 },
-            { label = '1 Hour', minutes = 60 },
-            { label = '6 Hours', minutes = 360 },
-            { label = '1 Day', minutes = 1440 },
-            { label = '3 Days', minutes = 4320 },
-            { label = '7 Days', minutes = 10080 }
+            { label = '1 Minute', minutes = 1, translationKey = 'chat_duration_1' },
+            { label = '15 Minutes', minutes = 15, translationKey = 'chat_duration_15' },
+            { label = '1 Hour', minutes = 60, translationKey = 'chat_duration_60' },
+            { label = '6 Hours', minutes = 360, translationKey = 'chat_duration_360' },
+            { label = '1 Day', minutes = 1440, translationKey = 'chat_duration_1440' },
+            { label = '3 Days', minutes = 4320, translationKey = 'chat_duration_4320' },
+            { label = '7 Days', minutes = 10080, translationKey = 'chat_duration_10080' }
         },
         chatMuteScopes = {
-            { label = 'All Player Chat', scopeType = 'all' },
-            { label = 'Say', scopeType = 'channel', scopeKey = 'local.say' },
-            { label = 'Whisper', scopeType = 'channel', scopeKey = 'local.whisper' },
-            { label = 'Shout', scopeType = 'channel', scopeKey = 'local.shout' },
-            { label = '/me', scopeType = 'channel', scopeKey = 'roleplay.me' },
-            { label = '/do', scopeType = 'channel', scopeKey = 'roleplay.do' },
-            { label = 'OOC', scopeType = 'ooc' }
+            { label = 'All Player Chat', translationKey = 'chat_scope_all', scopeType = 'all' },
+            { label = 'Say', translationKey = 'chat_scope_say', scopeType = 'channel', scopeKey = 'local.say' },
+            { label = 'Whisper', translationKey = 'chat_scope_whisper', scopeType = 'channel', scopeKey = 'local.whisper' },
+            { label = 'Shout', translationKey = 'chat_scope_shout', scopeType = 'channel', scopeKey = 'local.shout' },
+            { label = '/me', translationKey = 'chat_scope_me', scopeType = 'channel', scopeKey = 'roleplay.me' },
+            { label = '/do', translationKey = 'chat_scope_do', scopeType = 'channel', scopeKey = 'roleplay.do' },
+            { label = 'OOC', translationKey = 'chat_scope_ooc', scopeType = 'ooc' }
         },
         banMessage = 'You are banned from this server.'
     },
     -----------------------------------------------------
 
     -- Persistent staff cases created from serious player reports.
+    chatConversations = {
+        manualArchiveEnabled = true,
+        autoArchiveClosedDays = 0, -- 0 disables scheduled archiving; never archives open conversations.
+        archiveSweepMinutes = 60,
+        archiveBatchLimit = 100
+        -- History is retained indefinitely. No automatic message deletion.
+    },
     cases = {
         pageLimit = 20,          -- Cases shown on each queue page.
         activityLimit = 20,      -- Recent records available for linking.

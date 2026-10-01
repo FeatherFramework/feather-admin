@@ -143,14 +143,14 @@ end)
 
 RegisterNetEvent('feather-admin:chat-moderation:result', function(action, result)
     if type(result) ~= 'table' or not result.ok then
-        Feather.Notify.RightNotify(type(result) == 'table' and result.message
-            or AdminTranslate('chat_mute_failed'), 4000)
+        Feather.Notify.RightNotify(AdminChatTranslate('chat_action_failed_code', {
+            code=type(result) == 'table' and result.code or 'unavailable' }), 4000)
         return
     end
     if action == 'inspect' then
         AdminUI.OpenChatMutes(type(result.value) == 'table' and result.value.mutes or {})
         return
     end
-    Feather.Notify.RightNotify(AdminTranslate(action == 'issue' and 'chat_muted' or 'chat_mute_revoked'), 3000)
+    Feather.Notify.RightNotify(AdminChatTranslate(action == 'issue' and 'chat_muted' or 'chat_mute_revoked'), 3000)
     if action == 'revoke' then AdminModeration.RequestMutes() else AdminUI.Close() end
 end)

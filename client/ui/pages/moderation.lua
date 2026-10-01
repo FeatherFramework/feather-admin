@@ -1,30 +1,30 @@
 local function targetLabel(target)
-    if not target then return AdminTranslate('not_available') end
+    if not target then return AdminChatTranslate('not_available') end
 
     local name = target.characterName or target.playerName or target.license
     if target.serverId then return ('%s (%s)'):format(name or 'Player', target.serverId) end
 
-    return tostring(name or AdminTranslate('not_available'))
+    return tostring(name or AdminChatTranslate('not_available'))
 end
 
 local function targetDetails(target)
-    if not target then return AdminTranslate('not_available') end
+    if not target then return AdminChatTranslate('not_available') end
     local details = {
-        ('%s: %s'):format(AdminTranslate('status'),
-            AdminTranslate(target.serverId and 'online' or 'offline')),
-        ('%s: %s'):format(AdminTranslate('character_name'),
-            tostring(target.characterName or AdminTranslate('not_available'))),
-        ('%s: %s'):format(AdminTranslate('account_name'),
-            tostring(target.serverName or target.playerName or AdminTranslate('not_available')))
+        ('%s: %s'):format(AdminChatTranslate('status'),
+            AdminChatTranslate(target.serverId and 'online' or 'offline')),
+        ('%s: %s'):format(AdminChatTranslate('character_name'),
+            tostring(target.characterName or AdminChatTranslate('not_available'))),
+        ('%s: %s'):format(AdminChatTranslate('account_name'),
+            tostring(target.serverName or target.playerName or AdminChatTranslate('not_available')))
     }
     if target.serverId then
-        details[#details + 1] = ('%s: %s'):format(AdminTranslate('server_id'), tostring(target.serverId))
+        details[#details + 1] = ('%s: %s'):format(AdminChatTranslate('server_id'), tostring(target.serverId))
     end
     if target.characterId then
-        details[#details + 1] = ('%s: %s'):format(AdminTranslate('character_id'), tostring(target.characterId))
+        details[#details + 1] = ('%s: %s'):format(AdminChatTranslate('character_id'), tostring(target.characterId))
     end
     if target.roleName then
-        details[#details + 1] = ('%s: %s'):format(AdminTranslate('role_name'),
+        details[#details + 1] = ('%s: %s'):format(AdminChatTranslate('role_name'),
             tostring(target.roleName))
     end
     return table.concat(details, '\n')
@@ -42,7 +42,7 @@ local function availableActions(target)
     for _, name in ipairs({ 'warn', 'kick', 'ban', 'mute' }) do
         local definition = actionDefinitions[name]
         if AdminUI.CanUseOnTarget(definition.permission, target.serverId) and (not definition.onlineOnly or target.serverId) then
-            actions[#actions + 1] = { display = AdminTranslate(definition.label), value = name }
+            actions[#actions + 1] = { display = AdminChatTranslate(definition.label), value = name }
         end
     end
     return actions
@@ -54,11 +54,11 @@ local function chatMuteOptions(name)
         if name == 'chatMuteDurations' then
             local minutes = tonumber(entry.minutes)
             if type(entry.label) == 'string' and minutes and minutes >= 0 and minutes % 1 == 0 then
-                options[#options + 1] = { display=entry.label, value=minutes }
+                options[#options + 1] = { display=AdminChatOption(entry), value=minutes }
             end
         elseif type(entry.label) == 'string' and type(entry.scopeType) == 'string' then
             options[#options + 1] = {
-                display = entry.label,
+                display = AdminChatOption(entry),
                 value = ('%s:%s'):format(entry.scopeType, tostring(entry.scopeKey or '')),
                 scopeType = entry.scopeType,
                 scopeKey = entry.scopeKey
@@ -99,48 +99,51 @@ function AdminUI.OpenModerationConfirmation(action, reason, duration, scope)
     local parsedDuration
     if action == 'ban' then
         if duration == nil or duration == '' then
-            Feather.Notify.RightNotify(AdminTranslate('invalid_ban_duration'), 3000)
+            Feather.Notify.RightNotify(AdminChatTranslate('invalid_ban_duration'), 3000)
             return
         end
         local valid, problem
         valid, problem, parsedDuration = AdminModeration.ValidateBan(reason, duration)
         if not valid then
-            Feather.Notify.RightNotify(AdminTranslate(problem == 'duration' and 'invalid_ban_duration' or 'invalid_moderation_reason'), 3000)
+            Feather.Notify.RightNotify(AdminChatTranslate(problem == 'duration' and 'invalid_ban_duration' or 'invalid_moderation_reason'), 3000)
             return
         end
     elseif action == 'mute' then
         parsedDuration = tonumber(duration)
         if not AdminModeration.ValidateReason(reason) or not parsedDuration
             or parsedDuration < 0 or parsedDuration % 1 ~= 0 or type(scope) ~= 'table' then
-            Feather.Notify.RightNotify(AdminTranslate('invalid_chat_mute'), 3000)
+            Feather.Notify.RightNotify(AdminChatTranslate('invalid_chat_mute'), 3000)
             return
         end
     elseif not AdminModeration.ValidateReason(reason) then
-        Feather.Notify.RightNotify(AdminTranslate('invalid_moderation_reason'), 3000)
+        Feather.Notify.RightNotify(AdminChatTranslate('invalid_moderation_reason'), 3000)
         return
     end
 
     local page = AdminUI.RegisterPage('moderation_confirmation')
 
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('confirm_moderation_action'))
+    AdminUI.AddHeader(page, AdminChatTranslate('admin_header'), AdminChatTranslate('confirm_moderation_action'))
 
     local details = {
-        ('%s: %s'):format(AdminTranslate('player'), targetLabel(AdminModeration.target)),
-        ('%s: %s'):format(AdminTranslate('moderation_action'), AdminTranslate(definition.label)),
-        ('%s: %s'):format(AdminTranslate('reason'), reason)
+        ('%s: %s'):format(AdminChatTranslate('player'), targetLabel(AdminModeration.target)),
+        ('%s: %s'):format(AdminChatTranslate('moderation_action'), AdminChatTranslate(definition.label)),
+        ('%s: %s'):format(AdminChatTranslate('reason'), reason)
     }
-    if action == 'ban' or action == 'mute' then
-        details[#details + 1] = ('%s: %s'):format(AdminTranslate('ban_duration'),
-            parsedDuration == 0 and AdminTranslate('permanent')
-                or ('%s %s'):format(parsedDuration, AdminTranslate('minutes')))
+    if action == 'mute' then
+        details[#details + 1] = ('%s: %s'):format(AdminChatTranslate('chat_mute_duration'),
+            AdminChatDuration(parsedDuration))
+    elseif action == 'ban' then
+        details[#details + 1] = ('%s: %s'):format(AdminChatTranslate('ban_duration'),
+            parsedDuration == 0 and AdminChatTranslate('permanent')
+                or ('%s %s'):format(parsedDuration, AdminChatTranslate('minutes')))
     end
     if action == 'mute' then
-        details[#details + 1] = ('%s: %s'):format(AdminTranslate('chat_mute_scope'),
-            tostring(scope.label or scope.scopeKey or scope.scopeType))
+        details[#details + 1] = ('%s: %s'):format(AdminChatTranslate('chat_mute_scope'),
+            AdminChatScope(scope.scopeType, scope.scopeKey, scope.label))
     end
     AdminUI.AddText(page, table.concat(details, '\n'))
 
-    AdminUI.AddButton(page, AdminTranslate('confirm_action'), function()
+    AdminUI.AddButton(page, AdminChatTranslate('confirm_action'), function()
         local succeeded = action == 'warn' and AdminModeration.Warn(reason)
             or action == 'kick' and AdminModeration.Kick(reason)
             or action == 'ban' and AdminModeration.Ban(reason, parsedDuration)
@@ -150,7 +153,7 @@ function AdminUI.OpenModerationConfirmation(action, reason, duration, scope)
 
     AdminUI.AddFooter(page)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenModerationTarget)
+    AdminUI.AddFooterButton(page, AdminChatTranslate('back'), AdminUI.OpenModerationTarget)
 
     AdminUI.OpenPage('moderation_confirmation')
 end
@@ -162,27 +165,27 @@ function AdminUI.OpenModeration()
     local query
     local page = AdminUI.RegisterPage('moderation')
 
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('moderation_header'))
+    AdminUI.AddHeader(page, AdminChatTranslate('admin_header'), AdminChatTranslate('moderation_header'))
 
     if AdminUI.CanUse('moderation.search') then
-        AdminUI.AddInput(page, AdminTranslate('search_query'), AdminTranslate('search_query_placeholder'), function(data)
+        AdminUI.AddInput(page, AdminChatTranslate('search_query'), AdminChatTranslate('search_query_placeholder'), function(data)
             query = data.value
         end)
 
-        AdminUI.AddButton(page, AdminTranslate('search'), function()
+        AdminUI.AddButton(page, AdminChatTranslate('search'), function()
             if not AdminModeration.Search(query) then
-                Feather.Notify.RightNotify(AdminTranslate('search_query_placeholder'), 3000)
+                Feather.Notify.RightNotify(AdminChatTranslate('search_query_placeholder'), 3000)
             end
         end)
     end
 
     AdminUI.AddLine(page)
 
-    AdminUI.AddText(page, AdminTranslate('offline_search_help'))
+    AdminUI.AddText(page, AdminChatTranslate('offline_search_help'))
 
     AdminUI.AddFooter(page)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenMain)
+    AdminUI.AddFooterButton(page, AdminChatTranslate('back'), AdminUI.OpenMain)
 
     AdminUI.OpenPage('moderation')
 end
@@ -190,10 +193,10 @@ end
 function AdminUI.OpenModerationSearchResults()
     local page = AdminUI.RegisterPage('moderation_search_results')
 
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('moderation_header'))
+    AdminUI.AddHeader(page, AdminChatTranslate('admin_header'), AdminChatTranslate('moderation_header'))
 
     if #AdminModeration.results == 0 then
-        AdminUI.AddText(page, AdminTranslate('no_search_results'))
+        AdminUI.AddText(page, AdminChatTranslate('no_search_results'))
     else
         for _, result in ipairs(AdminModeration.results) do
             local selected = result
@@ -205,7 +208,7 @@ function AdminUI.OpenModerationSearchResults()
 
     AdminUI.AddFooter(page)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenModeration)
+    AdminUI.AddFooterButton(page, AdminChatTranslate('back'), AdminUI.OpenModeration)
 
     AdminUI.OpenPage('moderation_search_results')
 end
@@ -213,46 +216,46 @@ end
 function AdminUI.OpenModerationHistory(history)
     local page = AdminUI.RegisterPage('moderation_history')
 
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('moderation_history_header'))
+    AdminUI.AddHeader(page, AdminChatTranslate('admin_header'), AdminChatTranslate('moderation_history_header'))
 
     if #history == 0 then
-        AdminUI.AddText(page, AdminTranslate('no_moderation_history'))
+        AdminUI.AddText(page, AdminChatTranslate('no_moderation_history'))
     end
 
     for _, record in ipairs(history) do
         local entry = record
-        local issuedBy = entry.adminName or AdminTranslate('not_available')
+        local issuedBy = entry.adminName or AdminChatTranslate('not_available')
         if entry.adminCharacterName then
             issuedBy = ('%s (%s)'):format(issuedBy, entry.adminCharacterName)
         end
-        local status = entry.kind == 'warning' and AdminTranslate('warning')
-            or entry.kind == 'kick' and AdminTranslate('kick')
-            or AdminTranslate(entry.status == 'active' and 'active_ban'
+        local status = entry.kind == 'warning' and AdminChatTranslate('warning')
+            or entry.kind == 'kick' and AdminChatTranslate('kick')
+            or AdminChatTranslate(entry.status == 'active' and 'active_ban'
                 or entry.status == 'revoked' and 'revoked_ban'
                 or entry.status == 'superseded' and 'superseded_ban'
                 or 'expired_ban')
         local lines = {
             ('%s #%s'):format(status, entry.id),
-            ('%s: %s'):format(AdminTranslate('reason'), entry.reason),
-            ('%s: %s'):format(AdminTranslate('issued_by'), issuedBy),
-            ('%s: %s'):format(AdminTranslate('issued_at'), entry.createdAt or AdminTranslate('not_available'))
+            ('%s: %s'):format(AdminChatTranslate('reason'), entry.reason),
+            ('%s: %s'):format(AdminChatTranslate('issued_by'), issuedBy),
+            ('%s: %s'):format(AdminChatTranslate('issued_at'), entry.createdAt or AdminChatTranslate('not_available'))
         }
         if entry.kind == 'ban' then
-            lines[#lines + 1] = ('%s: %s'):format(AdminTranslate('expires'), entry.expiresAt or AdminTranslate('permanent'))
+            lines[#lines + 1] = ('%s: %s'):format(AdminChatTranslate('expires'), entry.expiresAt or AdminChatTranslate('permanent'))
             if entry.revokedBy then
                 local revokedBy = entry.revokedBy
                 if entry.revokedByCharacterName then
                     revokedBy = ('%s (%s)'):format(revokedBy, entry.revokedByCharacterName)
                 end
-                lines[#lines + 1] = ('%s: %s'):format(AdminTranslate('revoked_by'), revokedBy)
-                lines[#lines + 1] = ('%s: %s'):format(AdminTranslate('revoked_at'), entry.revokedAt or AdminTranslate('not_available'))
+                lines[#lines + 1] = ('%s: %s'):format(AdminChatTranslate('revoked_by'), revokedBy)
+                lines[#lines + 1] = ('%s: %s'):format(AdminChatTranslate('revoked_at'), entry.revokedAt or AdminChatTranslate('not_available'))
             end
         end
 
         AdminUI.AddText(page, table.concat(lines, '\n'))
 
         if entry.kind == 'ban' and entry.status == 'active' and AdminUI.CanUse('moderation.unban') then
-            AdminUI.AddButton(page, AdminTranslate('unban'), function()
+            AdminUI.AddButton(page, AdminChatTranslate('unban'), function()
                 AdminModeration.Unban(entry.id)
             end, AdminUI.Styles.button)
         end
@@ -260,32 +263,31 @@ function AdminUI.OpenModerationHistory(history)
 
     AdminUI.AddFooter(page)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenModerationTarget)
+    AdminUI.AddFooterButton(page, AdminChatTranslate('back'), AdminUI.OpenModerationTarget)
 
     AdminUI.OpenPage('moderation_history')
 end
 
 function AdminUI.OpenChatMutes(mutes)
     local page = AdminUI.RegisterPage('chat_mutes')
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('chat_mutes'))
-    if #mutes == 0 then AdminUI.AddText(page, AdminTranslate('no_active_chat_mutes')) end
+    AdminUI.AddHeader(page, AdminChatTranslate('admin_header'), AdminChatTranslate('chat_mutes'))
+    if #mutes == 0 then AdminUI.AddText(page, AdminChatTranslate('no_active_chat_mutes')) end
     for _, value in ipairs(mutes) do
         local mute = value
-        local scope = mute.scopeType == 'channel' and mute.scopeKey or mute.scopeType
         AdminUI.AddText(page, table.concat({
-            ('%s: %s'):format(AdminTranslate('chat_mute_scope'), tostring(scope)),
-            ('%s: %s'):format(AdminTranslate('reason'), tostring(mute.reason)),
-            ('%s: %s'):format(AdminTranslate('issued_at'), tostring(mute.createdAt)),
-            ('%s: %s'):format(AdminTranslate('expires'), tostring(mute.expiresAt or AdminTranslate('permanent')))
+            ('%s: %s'):format(AdminChatTranslate('chat_mute_scope'), AdminChatScope(mute.scopeType, mute.scopeKey)),
+            ('%s: %s'):format(AdminChatTranslate('reason'), tostring(mute.reason)),
+            ('%s: %s'):format(AdminChatTranslate('issued_at'), tostring(mute.createdAt)),
+            ('%s: %s'):format(AdminChatTranslate('expires'), tostring(mute.expiresAt or AdminChatTranslate('permanent')))
         }, '\n'))
         if AdminUI.CanUseOnTarget('chat.mute.revoke', AdminModeration.target and AdminModeration.target.serverId) then
-            AdminUI.AddButton(page, AdminTranslate('revoke_chat_mute'), function()
+            AdminUI.AddButton(page, AdminChatTranslate('revoke_chat_mute'), function()
                 AdminModeration.RevokeMute(mute.muteId)
             end, AdminUI.Styles.button)
         end
     end
     AdminUI.AddFooter(page)
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenModerationTarget)
+    AdminUI.AddFooterButton(page, AdminChatTranslate('back'), AdminUI.OpenModerationTarget)
     AdminUI.OpenPage('chat_mutes')
 end
 
@@ -309,18 +311,18 @@ function AdminUI.OpenModerationTarget()
 
     local page = AdminUI.RegisterPage('moderation_target')
 
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('moderation_target_header'))
+    AdminUI.AddHeader(page, AdminChatTranslate('admin_header'), AdminChatTranslate('moderation_target_header'))
 
     AdminUI.AddText(page, targetDetails(target))
 
     AdminUI.AddLine(page)
 
-    AdminUI.AddArrows(page, AdminTranslate('moderation_action'), actions, selectedIndex, function(data)
+    AdminUI.AddArrows(page, AdminChatTranslate('moderation_action'), actions, selectedIndex, function(data)
         form.action = data.value.value
         AdminUI.OpenModerationTarget()
     end)
 
-    AdminUI.AddInput(page, AdminTranslate('reason'), AdminTranslate('moderation_reason_placeholder'), function(data)
+    AdminUI.AddInput(page, AdminChatTranslate('reason'), AdminChatTranslate('moderation_reason_placeholder'), function(data)
         form.reason = data.value
     end, form.reason)
 
@@ -329,20 +331,20 @@ function AdminUI.OpenModerationTarget()
         if #durations > 0 then
             local durationIndex = selectedDurationIndex(durations, form.duration)
             form.duration = durations[durationIndex + 1].value
-            AdminUI.AddArrows(page, AdminTranslate('ban_duration'), durations, durationIndex, function(data)
+            AdminUI.AddArrows(page, AdminChatTranslate('ban_duration'), durations, durationIndex, function(data)
                 form.duration = data.value.value
             end)
         else
-            AdminUI.AddText(page, AdminTranslate('invalid_ban_duration'))
+            AdminUI.AddText(page, AdminChatTranslate('invalid_ban_duration'))
         end
     elseif form.action == 'mute' then
         local durations, scopes = chatMuteOptions('chatMuteDurations'), chatMuteOptions('chatMuteScopes')
         if #durations == 0 or #scopes == 0 then
-            AdminUI.AddText(page, AdminTranslate('invalid_chat_mute'))
+            AdminUI.AddText(page, AdminChatTranslate('invalid_chat_mute'))
         else
             local durationIndex = selectedDurationIndex(durations, form.duration)
             form.duration = durations[durationIndex + 1].value
-            AdminUI.AddArrows(page, AdminTranslate('chat_mute_duration'), durations, durationIndex, function(data)
+            AdminUI.AddArrows(page, AdminChatTranslate('chat_mute_duration'), durations, durationIndex, function(data)
                 form.duration = data.value.value
             end)
             local scopeIndex = 0
@@ -356,7 +358,7 @@ function AdminUI.OpenModerationTarget()
                 scopeKey = selectedScope.scopeKey,
                 label = selectedScope.display
             }
-            AdminUI.AddArrows(page, AdminTranslate('chat_mute_scope'), scopes, scopeIndex, function(data)
+            AdminUI.AddArrows(page, AdminChatTranslate('chat_mute_scope'), scopes, scopeIndex, function(data)
                 form.scope = {
                     scopeType = data.value.scopeType,
                     scopeKey = data.value.scopeKey,
@@ -369,19 +371,19 @@ function AdminUI.OpenModerationTarget()
     AdminUI.AddLine(page)
 
     if AdminUI.CanUseOnTarget('moderation.history', target.serverId) then
-        AdminUI.AddButton(page, AdminTranslate('view_history'), AdminModeration.RequestHistory)
+        AdminUI.AddButton(page, AdminChatTranslate('view_history'), AdminModeration.RequestHistory)
     end
     if AdminUI.CanUseOnTarget('chat.mute.inspect', target.serverId) then
-        AdminUI.AddButton(page, AdminTranslate('view_chat_mutes'), AdminModeration.RequestMutes)
+        AdminUI.AddButton(page, AdminChatTranslate('view_chat_mutes'), AdminModeration.RequestMutes)
     end
 
     AdminUI.AddFooter(page)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('submit'), function()
+    AdminUI.AddFooterButton(page, AdminChatTranslate('submit'), function()
         AdminUI.OpenModerationConfirmation(form.action, form.reason, form.duration, form.scope)
     end, AdminUI.Styles.button)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), function()
+    AdminUI.AddFooterButton(page, AdminChatTranslate('back'), function()
         if target.serverId then
             AdminUI.OpenSelectedPlayer()
         elseif AdminModeration.searchOrigin == 'players' then

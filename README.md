@@ -165,6 +165,45 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `moderation.maxBanMinutes`: set the longest allowed temporary ban
 - `moderation.chatMuteDurations`: choose the bounded Chat mute durations offered to staff
 - `moderation.chatMuteScopes`: choose the Chat mute scopes offered to staff
+
+Chat-related labels, conversation statuses and notifications use the standard
+Feather locale system and the player's saved language. English, Romanian and
+Spanish cover the Chat-specific keys. Other incomplete languages fall back to
+English for these Admin screens. Names, message bodies, mute reasons and stable
+API error codes are not translated. No development/alpha notice is displayed;
+the conversation helper text explains normal player-facing usage.
+
+Mute scope/duration options accept an optional `translationKey` from
+`translations/*.lua`. Defaults supply keys; owner-defined options without keys
+retain their configured `label`. Successful mutes send only scope/duration data
+to the target, who resolves the notice in their own language. No notice is sent
+for a failed mute. Command suggestions carry a locale key for Chat to resolve
+in each player's language.
+
+Translation acceptance checks:
+
+- **Server console:** `AdminChatTranslationContractSmokeTest` (expect 6/6;
+  static catalog/wiring checks, no connected players or database writes).
+- **Player F8 console:** `AdminChatTranslationSmokeTest` (expect 6/6; connected
+  client required, no active character/admin privilege or database writes needed).
+- **Live UI:** active admin character required. Choose Romanian or Spanish in
+  Settings and reopen Admin. Check conversation create/list/history, reply,
+  close/archive status, mute scope/duration selection and confirmation. Names,
+  messages and reasons should remain unchanged. Test a denied mute/action too;
+  the failure label should translate while its stable error code remains readable.
+- **Two-player notification:** one authorized admin and a lower-ranked target
+  on active characters. Choose different account languages, issue a one-minute
+  Say mute, and verify the target's brief notice uses the **target's** language.
+  Confirm the mute expires or revoke it afterward. Test conversation create/reply/
+  close notifications in each participant's language. These actions persist real
+  conversations/moderation records, so use disposable test conversations.
+
+Local contract tests: `node --test tests/chat_translations.test.mjs` from this
+resource's source directory. Reload updated Admin and Chat code before live
+acceptance; do not restart Character or Core as part of these tests.
+Admin's translation catalogs also load server-side for Chat operator diagnostics.
+After this manifest update, run `refresh` before restarting Admin. This does not
+require restarting Core or Character.
 - `moderation.banMessage`: change the message shown to banned players
 - `pedChanger.modelLoadTimeout`: set how long the game waits for a player model to load
 - `pedChanger.categories`: choose which human and animal models appear in the menu
@@ -251,6 +290,22 @@ All English menu text is stored in `translations/en_us.lua`. Server owners who o
 - Check the model name for spelling mistakes.
 
 ## Development
+
+### Staff conversation archiving
+
+`Config.chatConversations` controls manual archiving and optional automatic
+archiving of closed staff conversations. `autoArchiveClosedDays = 0` disables
+scheduled archiving (default). Set a whole number of days from 1 to 3650 to
+archive closed conversations after that age. Open conversations are never
+automatically archived. Sweeps are bounded to `archiveBatchLimit` (1–100) and
+run every `archiveSweepMinutes` (1–1440). Restart Admin after config changes.
+
+Archiving does not delete messages: history is retained indefinitely. There is
+no automatic purge. Staff may link a conversation to an internal case through
+Admin's Your Conversations page using its case ID; this requires `cases.link`, valid
+assignment/management permissions and matching target accounts. Internal case
+summaries, notes and links are never included in player conversation history.
+Closing/archiving a conversation does not close the linked internal case.
 
 This resource is under active development. Test new versions on a private or test server before using them on a live server.
 
