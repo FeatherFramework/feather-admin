@@ -264,7 +264,8 @@ Every page has a **Back** button. Use **Close** on the main page or tap **ESC** 
 
 Use **Self Tools** for personal travel, status, and appearance actions. While noclip is active, use `W`/`S` to move forward or backward, `A`/`D` to strafe, `Space`/`Ctrl` to move vertically, `Shift` to change speed, and `Backspace` to exit. A small on-screen panel shows these controls and the current speed.
 
-The remaining feature roadmap and planned navigation layout are documented in `MASTER_PLAN.md`.
+The remaining feature roadmap and planned navigation layout are maintained in the
+[Feather Framework documentation repository](https://github.com/FeatherFramework/feather-framework-docs/blob/main/feather-admin/FEATHER_ADMIN_MASTER_PLAN.md).
 
 ## Localization
 
