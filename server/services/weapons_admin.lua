@@ -115,13 +115,20 @@ FeatherAdmin.RegisterRPC('feather-admin:weapons:issue', function(params, _, src)
     if not subject or not definitionId or not FeatherAdmin.CheckTargetAccountHierarchy(
             src, 'weapons.issue', subject.accountId, subject.serverId) then return end
     local actor = FeatherAdmin.Identity.Resolve(src)
+    local requestId = type(params.requestId) == 'string' and params.requestId or nil
+    if not actor or not actor.accountId or not requestId or #requestId > 64
+        or not requestId:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$') then
+        return TriggerClientEvent('feather-admin:weapons:result', src, false, 'weapon_issue_failed')
+    end
     local issued = exports['feather-weapons']:IssueWeapon({
         characterId = subject.characterId,
         definitionId = definitionId,
+        purpose = 'admin_issue',
+        requestId = ('admin:%s:%s'):format(actor.accountId, requestId),
         condition = tonumber(Config.weapons.issuedCondition) or 100,
         provenance = { type = 'admin_grant', reference = subject.accountId }
     }, {
-        actorSource = subject.serverId == src and src or nil,
+        actorSource = src,
         actorCharacterId = actor and actor.characterId,
         characterId = subject.characterId,
         reason = 'admin_weapon_grant',
@@ -130,7 +137,8 @@ FeatherAdmin.RegisterRPC('feather-admin:weapons:issue', function(params, _, src)
     if failed(issued) then
         local code = issued and issued.error and issued.error.code or 'internal'
         AdminAudit.RecordTarget(src, 'weapons.issue.failed', auditTarget(subject),
-            ('definition=%s reason=%s'):format(definitionId, tostring(code)))
+            ('definition=%s reason=%s message=%s'):format(definitionId, tostring(code),
+                tostring(issued and issued.error and issued.error.message)))
         return TriggerClientEvent('feather-admin:weapons:result', src, false, 'weapon_issue_failed')
     end
     AdminAudit.RecordTarget(src, 'weapons.issue', auditTarget(subject),

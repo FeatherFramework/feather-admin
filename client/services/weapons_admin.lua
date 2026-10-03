@@ -16,8 +16,13 @@ function AdminWeapons.RequestCatalog()
     Feather.RPC.Notify('feather-admin:weapons:catalog', {})
 end
 
+local issueSequence = 0
+local issueSession = ('%08x-%08x'):format(GetGameTimer(), math.random(0, 0x7fffffff))
 function AdminWeapons.Issue(definitionId)
-    Feather.RPC.Notify('feather-admin:weapons:issue', payload({ definitionId = definitionId }))
+    issueSequence = issueSequence + 1
+    local requestId = ('%s-%d'):format(issueSession, issueSequence)
+    Feather.RPC.Notify('feather-admin:weapons:issue',
+        payload({ definitionId = definitionId, requestId = requestId }))
 end
 
 function AdminWeapons.GrantAmmo(definitionId, quantity)
