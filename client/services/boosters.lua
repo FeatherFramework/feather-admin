@@ -1,3 +1,14 @@
+local function medicalEnabled()
+    local state = GetResourceState('feather-medical')
+    if state == 'missing' then return false end
+    if state ~= 'started' then return nil end
+    local called, health = pcall(function() return exports['feather-medical']:GetHealth() end)
+    if not called or type(health) ~= 'table' or type(health.enabled) ~= 'boolean' then return nil end
+    if health.enabled == false then return false end
+    if health.state ~= 'ready' then return nil end
+    return true
+end
+
 AdminBoosters = {}
 
 local state = {
@@ -195,6 +206,7 @@ local actionHandlers = {
 }
 
 RegisterNetEvent('feather-admin:booster:revive', function()
+    if medicalEnabled() ~= false then return end
     local ped = PlayerPedId()
     ResurrectPed(ped)
     SetAttributeCoreValue(ped, 0, 100)
