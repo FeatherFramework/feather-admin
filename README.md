@@ -311,3 +311,12 @@ Closing/archiving a conversation does not close the linked internal case.
 This resource is under active development. Test new versions on a private or test server before using them on a live server.
 
 For Feather Framework documentation, visit [featherframework.net/api](https://featherframework.net/api).
+
+
+## Medical revive
+
+Admin checks Medical's GetHealth export. Enabled Medical receives authorized
+recovery requests with the existing staff permission and hierarchy checks.
+Installed but stopped or unhealthy Medical blocks revival instead of falling back
+to a direct revive. Absent or explicitly disabled Medical retains normal Admin
+behavior. Configure Medical in its config.lua; no Medical convars are required.

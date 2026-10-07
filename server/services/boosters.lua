@@ -1,3 +1,14 @@
+local function medicalEnabled()
+    local state = GetResourceState('feather-medical')
+    if state == 'missing' then return false end
+    if state ~= 'started' then return nil end
+    local called, health = pcall(function() return exports['feather-medical']:GetHealth() end)
+    if not called or type(health) ~= 'table' or type(health.enabled) ~= 'boolean' then return nil end
+    if health.enabled == false then return false end
+    if health.state ~= 'ready' then return nil end
+    return true
+end
+
 local allowedActions = {
     invisibility = true,
     invincibility = true,
@@ -11,6 +22,13 @@ local allowedActions = {
 local pendingRevives = {}
 local pendingByAdmin = {}
 local nextReviveRequest = 0
+
+exports('CanMedicalRevive', function(actor, target)
+    if GetInvokingResource() ~= 'feather-medical' then return false end
+    local identity = FeatherAdmin.Identity.Resolve(target)
+    if not identity or not FeatherAdmin.CanUse(actor, 'booster.revive') then return false end
+    return FeatherAdmin.CanActOnAccount(actor, identity.accountId, 'booster.revive') == true
+end)
 
 local function notify(adminId, key)
     TriggerClientEvent('feather-admin:booster:result', adminId, key)
@@ -35,6 +53,25 @@ FeatherAdmin.RegisterRPC('feather-admin:booster:request', function(params, _, sr
     if target == nil then result(false) return end
 
     if action == 'revive' then
+        local medicalEnabledNow = medicalEnabled()
+        if medicalEnabledNow == nil then
+            AdminAudit.Record(src, 'booster.revive.blocked', target, 'reason=medical_unavailable')
+            notify(src, 'death_check_failed')
+            result(false)
+            return
+        end
+        if medicalEnabledNow then
+            local called, recovery = pcall(function()
+                return exports['feather-medical']:RequestStaffRecovery(src, target)
+            end)
+            local accepted = called and type(recovery) == 'table' and recovery.ok == true
+            AdminAudit.Record(src, accepted and 'booster.revive.requested' or 'booster.revive.blocked', target,
+                accepted and ('medical_operation=' .. recovery.value.operationId)
+                    or ('reason=' .. tostring(called and type(recovery) == 'table' and recovery.code or 'medical_unavailable')))
+            if not accepted then notify(src, 'death_check_failed') end
+            result(accepted)
+            return
+        end
         if pendingByAdmin[src] then
             notify(src, 'death_check_pending')
             result(false)
@@ -62,6 +99,7 @@ FeatherAdmin.RegisterRPC('feather-admin:booster:request', function(params, _, sr
 end, { windowMs = 1000, maxCalls = 5, maxPayloadBytes = 256 })
 
 FeatherAdmin.RegisterRPC('feather-admin:booster:death:result', function(params, _, src)
+    if medicalEnabled() ~= false then return end
     local requestId = tostring(params.requestId or '')
     local pending = pendingRevives[requestId]
     if not pending or pending.targetId ~= src then return end
