@@ -2,6 +2,12 @@
 
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Staff access uses character-scoped Feather Authority roles and explicit capability grants.
 
+With `feather-audit` started, Staff Oversight → Framework Audit provides bounded
+event searches, detail reads, and related-event navigation. It requires
+`audit.search` (Administrator by default); `audit.sensitive.view` (Owner by default)
+controls restricted events and approved restricted detail fields. Feather Audit
+is Admin's central audit store. Audit availability does not block Admin startup.
+
 > [!WARNING]
 > Online identity, Inventory grants, moderation, reports, Staff Cases, and
 > action auditing use Core account sessions and UUID Character profiles.
@@ -47,7 +53,7 @@ now use that contract.
 - Freeze, cage, handcuff, or remove a player from a vehicle
 - Apply several optional player effects
 - Open the menu with a key or chat command
-- Store admin actions in the database and review them from a paginated Admin Logs page
+- Queue admin actions durably and review them through Feather Audit's paginated viewer
 - Filter admin logs by administrator, player, action, or date
 - Record admin actions in the server console and optionally Discord
 
@@ -147,7 +153,7 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `commands.openMenu`: change the menu command; the default is `adminMenu`
 - `configs/permissions.lua`: choose the minimum named role for every admin action
 - `configs/hierarchy.lua`: control staff hierarchy, helpful exemptions, and allowed self-actions
-- `logging.webhook`: optionally send admin action logs to a Discord webhook
+- Server-only `configs/audit.lua`: producer instance, batch size, and polling interval
 - `serverOverview.resources`: choose which resources appear on Server Overview
 - `announcements`: configure title/message limits, cooldown, and display duration
 - `economy.maxAmount`: reserved for the future provider-backed economy screen
@@ -210,8 +216,9 @@ require restarting Core or Character.
 
 Only ped models listed in `configs/config.lua` can be used. This prevents players from requesting unapproved models.
 
-Admin owns its webhook delivery queue and retries rate limits or temporary
-server failures. Core is not required to provide Discord helpers.
+Admin owns a durable audit outbox. Events are delivered to Feather Audit with
+stable IDs and retried during Audit downtime. Admin webhook delivery is retired;
+Feather Audit's future notification service owns that responsibility.
 
 ## Usage
 
@@ -246,7 +253,12 @@ Owners can select an online or offline character through **Players**, open **Sta
 
 Player searches use prefix matching for names. License searches require the complete `license:` identifier and the `moderation.search_identifiers` permission. Use **Self Tools** for travel, status, and appearance actions that apply to your own character.
 
-Senior staff can open **Staff & Oversight**, then **Admin Logs**, to review durable action records. Choose an action from the categorized action picker, filter completed or blocked attempts, filter names by their beginning, and enter dates as `MM-DD-YYYY`. License identifiers and economy details are visible only to staff with `audit.sensitive` permission.
+Administrators can open **Staff & Oversight → Framework Audit** and filter source
+`feather-admin`, event type `admin.action.recorded`, exact Admin action, and target
+account/character IDs. Approved actor/target names and character IDs appear in
+detail; free-form details require Owner's sensitive permission. Raw licenses are
+not submitted. Case activity uses visible Audit events from the last seven days;
+role history opens a seven-day character/action query in the same viewer.
 
 Staff with `server.announce` permission can open **Server Operations**, then **Announcements**, enter an optional title and required message, review the confirmation page, and send it to every connected player.
 
@@ -320,3 +332,50 @@ recovery requests with the existing staff permission and hierarchy checks.
 Installed but stopped or unhealthy Medical blocks revival instead of falling back
 to a direct revive. Absent or explicitly disabled Medical retains normal Admin
 behavior. Configure Medical in its config.lua; no Medical convars are required.
+## Feather Audit metadata permissions
+
+Admin now produces `admin.action.recorded` v1 through `feather_admin_audit_outbox`.
+Configure `configs/audit.lua` sourceInstance to match Audit's SourceInstance.
+`AdminAuditOutboxStatus` reports pending/leased/delivered/quarantined counts;
+`AdminAuditPublish` requests a publish pass. Quarantined rows require investigation,
+not automatic re-enqueue. Payload and producer ID persist unchanged across retries.
+The retired actions table is no longer created/read/written; existing test tables
+are left inert and history is not imported. Old audit permission keys are reserved
+catalog entries, not active read authorization.
+
+Audit outages do not block action execution. A completed outbox insert is durable;
+database failure during queueing reports AUDIT QUEUE FAILED. Remote actions and
+their subsequent audit insert are not atomic. Action records retain the existing
+logger's semantics; a recorded client request does not prove its in-game effect.
+
+Server-console operators can assign Administrator to a loaded character with
+`AdminBootstrapAdministrator <serverId> <stableRequestId>`. The command uses
+Authority's audited assignment path, refreshes access immediately, and rejects
+a target character already holding Owner authority. The assignment belongs to
+that character, not every character on its account. Reuse the same request ID
+only to retry the same operation; use a fresh ID for a new assignment intent.
+
+Admin provisions `staff.admin.audit.search` for Administrator and Owner, and
+`staff.admin.audit.sensitive.view` for Owner. These grants are separate from
+retired Admin audit-log permission keys. Audit enforces active read grants through Authority and
+Core's current character session; sealed events remain excluded.
+
+The Audit development API is `exports['feather-audit']:Search(request, actorSource)`
+from the Admin server adapter. Do not accept a player-supplied actorSource.
+See Audit's README for its bounded metadata request and result contract.
+# Audit test role recovery
+
+`AdminAuditDowngradeTestOwner <source> <unique runId>` temporarily replaces Owner
+with Administrator during an active Audit development read pause. It reports
+retained search and removed sensitive access. `AdminAuditRestoreTestRole <runId>`
+restores the saved original role, including Owner. After an Admin restart, restore
+the original Owner character with AdminBootstrapOwner and a fresh request ID.
+
+The server-console commands `AdminAuditRevokeTestRole <source> <unique runId>`
+and `AdminAuditRestoreTestRole <runId>` temporarily remove and restore the
+loaded Administrator character's Admin assignment through Authority. Revocation
+requires Audit development smoke commands and an active paused read on the same
+session. Owners are refused. Restore after the read completes; retry the same
+run ID if restoration fails. After an Admin restart, recovery requires loading
+the original character and using `AdminBootstrapAdministrator` with a fresh
+request ID. Full acceptance procedures live in feather-framework-docs.

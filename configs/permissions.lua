@@ -1,6 +1,8 @@
 -- Minimum Authority role required by the reviewed default Admin catalog.
 -- These keys build explicit capability grants; they are not numeric permission levels.
 Config.permissions = {
+    ['audit.search'] = 'administrator',
+    ['audit.sensitive.view'] = 'owner',
     ['roles.assignment.manage'] = 'owner',
     ['menu.open'] = 'moderator', ['server.overview'] = 'moderator',
     ['server.announce'] = 'administrator', ['players.view'] = 'moderator',

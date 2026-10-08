@@ -159,28 +159,22 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:detail', function(params, _, src)
     }
     for _, source in ipairs(sources) do
         local records = DB.query(([=[SELECT id, '%s' AS kind, %s AS details,
-            DATE_FORMAT(created_at, '%%m-%%d-%%Y %%h:%%i %%p') AS createdAt
+            DATE_FORMAT(created_at, '%%Y-%%m-%%dT%%H:%%i:%%s') AS createdAt
             FROM %s WHERE %s = ? ORDER BY id DESC LIMIT %d]=]):format(
             source.kind, source.detailColumn, source.tableName, source.accountColumn, limit), targetAccountId) or {}
         for _, record in ipairs(records) do activity[#activity + 1] = record end
     end
-    if FeatherAdmin.CanUse(src, 'audit.view') then
-        local audits = DB.query(([=[SELECT id, 'audit' AS kind, action,
-            COALESCE(details, '') AS details,
-            DATE_FORMAT(created_at, '%%m-%%d-%%Y %%h:%%i %%p') AS createdAt
-            FROM feather_admin_actions WHERE target_account_id = ? ORDER BY id DESC LIMIT %d]=]):format(limit),
-            targetAccountId) or {}
-        for _, record in ipairs(audits) do
-            if not FeatherAdmin.CanUse(src, 'audit.sensitive') then
-                if tostring(record.action):sub(1, 8) == 'economy.' then
-                    record.details = 'Restricted'
-                else
-                    record.details = tostring(record.details):gsub('license=[^%s]+', 'license=restricted')
-                end
+    if FeatherAdmin.CanUse(src, 'audit.search') then
+        local now = os.time()
+        local called, audits = pcall(function()
+            return exports['feather-audit']:Search({ fromEpoch = now - 7 * 86400, toEpoch = now,
+                sourceResource = 'feather-admin', targetAccountId = targetAccountId, limit = limit }, src)
+        end)
+        if called and type(audits) == 'table' and audits.ok then
+            for _, event in ipairs(audits.value.events) do
+                activity[#activity + 1] = { id = event.eventId, kind = 'audit',
+                    details = event.eventType .. ': ' .. event.result, createdAt = event.occurredAt }
             end
-            record.details = ('%s: %s'):format(record.action, record.details)
-            record.action = nil
-            activity[#activity + 1] = record
         end
     end
     table.sort(activity, function(a, b) return tostring(a.createdAt) > tostring(b.createdAt) end)
@@ -238,21 +232,33 @@ FeatherAdmin.RegisterRPC('feather-admin:cases:link', function(params, _, src)
     local caseId, recordId = tonumber(params.caseId), tonumber(params.recordId)
     local kind = type(params.kind) == 'string' and params.kind or ''
     local tables = { warning = 'feather_admin_warnings', kick = 'feather_admin_kicks',
-        ban = 'feather_admin_bans', audit = 'feather_admin_actions',
+        ban = 'feather_admin_bans',
         note = 'feather_admin_player_notes' }
     local tableName = tables[kind]
+    if kind == 'audit' then recordId = clean(params.recordId, 36) end
     local row = caseId and caseRow(caseId)
-    if not row or row.status == 'closed' or not recordId or recordId % 1 ~= 0 or not tableName then
+    if not row or row.status == 'closed' or not recordId
+        or (kind ~= 'audit' and (recordId < 1 or recordId % 1 ~= 0 or not tableName)) then
         return actionResult(src, false, 'case_link_failed')
     end
-    if kind == 'audit' and not FeatherAdmin.CanUse(src, 'audit.view') then
+    if kind == 'audit' and not FeatherAdmin.CanUse(src, 'audit.search') then
         return actionResult(src, false, 'action_not_permitted')
     end
     if not FeatherAdmin.CheckTargetAccountHierarchy(src, 'cases.link', row.targetAccountId, nil) then return end
     if not canManageCase(src, row) then return actionResult(src, false, 'action_not_permitted') end
     local accountColumn = (kind == 'audit' or kind == 'note') and 'target_account_id' or 'account_id'
-    local record = DB.one(('SELECT id FROM %s WHERE id = ? AND %s = ?'):format(tableName, accountColumn),
-        recordId, row.targetAccountId)
+    local record
+    if kind == 'audit' then
+        local now = os.time()
+        local called, result = pcall(function()
+            return exports['feather-audit']:GetEvent({ fromEpoch = now - 7 * 86400, toEpoch = now,
+                eventId = recordId, sourceResource = 'feather-admin', targetAccountId = row.targetAccountId }, src)
+        end)
+        record = called and type(result) == 'table' and result.ok and result.value.event or nil
+    else
+        record = DB.one(('SELECT id FROM %s WHERE id = ? AND %s = ?'):format(tableName, accountColumn),
+            recordId, row.targetAccountId)
+    end
     if not record then return actionResult(src, false, 'case_link_failed') end
     local admin = identity(src)
     if not admin then return actionResult(src, false, 'case_link_failed') end

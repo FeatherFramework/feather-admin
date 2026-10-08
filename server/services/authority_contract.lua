@@ -56,13 +56,13 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
             and args[1]:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$'),
             'Use <stable requestId>')
         local request = { requestId = args[1], capabilities = FeatherAdmin.AuthorityCatalog.Definitions() }
-        assert(#request.capabilities == 86, 'Expected the reviewed 86-action Admin catalog')
+        assert(#request.capabilities == 88, 'Expected the reviewed 88-action Admin catalog')
         local first = exports['feather-authority']:RegisterCapabilities(request)
         assert(first.ok, tostring(first.code) .. ': ' .. tostring(first.message))
         local replay = exports['feather-authority']:RegisterCapabilities(request)
         assert(replay.ok and replay.value.replayed == true,
             'Exact capability catalog did not replay')
-        assert(#first.value.capabilities == 86 and #replay.value.capabilities == 86,
+        assert(#first.value.capabilities == 88 and #replay.value.capabilities == 88,
             'Registration receipt omitted capability identities')
         for index, identity in ipairs(first.value.capabilities) do
             assert(identity.key == replay.value.capabilities[index].key
@@ -80,8 +80,8 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
         for _, capability in ipairs(listed.value) do
             if capability.ownerResource == GetCurrentResourceName() then owned = owned + 1 end
         end
-        assert(owned == 86, 'Authority catalog does not contain 86 Admin-owned capabilities')
-        print(('[AdminAuthorityCapabilityLiveTest] PASS capabilities=86 registered=%d updated=%d unchanged=%d firstReplayed=%s replayed=true stableIdentity=true mismatchRejected=true ownerBound=true'):format(
+        assert(owned == 88, 'Authority catalog does not contain 88 Admin-owned capabilities')
+        print(('[AdminAuthorityCapabilityLiveTest] PASS capabilities=88 registered=%d updated=%d unchanged=%d firstReplayed=%s replayed=true stableIdentity=true mismatchRejected=true ownerBound=true'):format(
             first.value.registered, first.value.updated, first.value.unchanged,
             tostring(first.value.replayed)))
     end, debug.traceback)
@@ -120,7 +120,7 @@ RegisterCommand('AdminAuthorityRoleCatalogLiveTest', function(source, args)
         end
         assert(roleResults[1].grants < roleResults[2].grants
             and roleResults[2].grants < roleResults[3].grants
-            and roleResults[3].grants == 86, 'Authority tier grants are not cumulative')
+            and roleResults[3].grants == 88, 'Authority tier grants are not cumulative')
         print(('[AdminAuthorityRoleCatalogLiveTest] PASS roles=3 moderator=%d administrator=%d owner=%d totalGrants=%d cumulative=true stableIdentity=true readOnly=true'):format(
             roleResults[1].grants, roleResults[2].grants, roleResults[3].grants,
             totalGrants))
@@ -171,7 +171,7 @@ RegisterCommand('AdminAuthorityRoleParitySmokeTest', function(source)
         local permissions, mappings = 0, 0
         for _ in pairs(Config.permissions) do permissions = permissions + 1 end
         for _ in pairs(Config.authorityActions) do mappings = mappings + 1 end
-        return permissions == 86 and mappings == permissions
+        return permissions == 88 and mappings == permissions
     end)())
     Check('Admin remains default', (function()
         local provider = exports['feather-core']:GetProvider('policy', nil, 1)
@@ -212,4 +212,175 @@ RegisterCommand('AdminAuthorityHierarchyContractSmokeTest', function(source, arg
             actor.accountId, target.accountId, tostring(hierarchyAllowed)))
     end, debug.traceback)
     if not called then print('[AdminAuthorityHierarchyContractSmokeTest] FAIL ' .. tostring(reason)) end
+end, true)
+RegisterCommand('AdminAuditReadLiveTest', function(source, args)
+    if source ~= 0 then return end
+    local actorSource = tonumber(args[1])
+    local expected = args[2]
+    if not actorSource or (expected ~= 'allow' and expected ~= 'deny') then
+        return print('[AdminAuditReadLiveTest] Use <loaded player server ID> <allow|deny>')
+    end
+    local called, problem = xpcall(function()
+        local now = os.time()
+        local request = { fromEpoch = now - 86400, toEpoch = now + 60, limit = 5,
+            sourceResource = 'feather-audit-smoke' }
+        local result = exports['feather-audit']:Search(request, actorSource)
+        if expected == 'allow' then
+            assert(type(result) == 'table' and result.ok == true,
+                'Read did not succeed: ' .. tostring(type(result) == 'table' and result.code))
+            assert(type(result.value.events) == 'table' and #result.value.events >= 1 and #result.value.events <= 5,
+                'Read returned an invalid bounded result')
+            for _, row in ipairs(result.value.events) do
+                assert(row.context == nil and row.summary == nil and row.actorId == nil,
+                    'Protected content was returned')
+            end
+            print(('[AdminAuditReadLiveTest] PASS allowed rows=%d metadataOnly=true'):format(#result.value.events))
+        else
+            assert(type(result) == 'table' and result.ok == false and result.code == 'forbidden',
+                'Unprivileged read was not denied')
+            local malformed = exports['feather-audit']:Search(false, actorSource)
+            assert(type(malformed) == 'table' and malformed.code == 'forbidden',
+                'Denied caller inferred request validation')
+            print('[AdminAuditReadLiveTest] PASS denied validAndMalformed=true')
+        end
+    end, debug.traceback)
+    if not called then print('[AdminAuditReadLiveTest] FAIL ' .. tostring(problem)) end
+end, true)
+RegisterCommand('AdminAuditQueryLiveTest', function(source, args)
+    if source ~= 0 then return end
+    local actorSource, expected = tonumber(args[1]), args[2]
+    if not actorSource or (expected ~= 'allow' and expected ~= 'deny') then
+        return print('[AdminAuditQueryLiveTest] Use <loaded player server ID> <allow|deny>')
+    end
+    local called, problem = xpcall(function()
+        local audit = exports['feather-audit']
+        local now = os.time()
+        local request = { fromEpoch = now - 86400, toEpoch = now + 60, limit = 1,
+            sourceResource = 'feather-audit-smoke' }
+        local first = audit:Search(request, actorSource)
+        if expected == 'deny' then
+            local detail = audit:GetEvent(false, actorSource)
+            local correlation = audit:GetCorrelation(false, actorSource)
+            assert(first.code == 'forbidden' and detail.code == 'forbidden'
+                and correlation.code == 'forbidden', 'One read operation was not denied')
+            print('[AdminAuditQueryLiveTest] PASS denied search/detail/correlation=true')
+            return
+        end
+        assert(first.ok and #first.value.events == 1 and first.value.nextCursor,
+            'First page missing; run AuditPaginationSmokeTest first')
+        local event = first.value.events[1]
+        request.cursor = first.value.nextCursor
+        local second = audit:Search(request, actorSource)
+        assert(second.ok and #second.value.events == 1
+            and second.value.events[1].eventId ~= event.eventId, 'Second page duplicated or missing')
+        request.limit = 2
+        local changed = audit:Search(request, actorSource)
+        assert(not changed.ok and changed.code == 'invalid_cursor', 'Changed query reused a cursor')
+        local detail = audit:GetEvent({ fromEpoch = now - 86400, toEpoch = now + 60,
+            eventId = event.eventId }, actorSource)
+        assert(detail.ok and detail.value.event and detail.value.event.eventId == event.eventId,
+            'Detail lookup failed')
+        assert(event.correlationId, 'Latest event has no correlation; run pagination smoke first')
+        local correlation = audit:GetCorrelation({ fromEpoch = now - 86400, toEpoch = now + 60,
+            correlationId = event.correlationId, limit = 5 }, actorSource)
+        assert(correlation.ok and #correlation.value.events == 3, 'Correlation fixture missing')
+        print('[AdminAuditQueryLiveTest] PASS allowed pagination=true cursorBound=true detail=true correlation=true')
+    end, debug.traceback)
+    if not called then print('[AdminAuditQueryLiveTest] FAIL ' .. tostring(problem)) end
+end, true)
+RegisterCommand('AdminAuditVisibilityLiveTest', function(source, args)
+    if source ~= 0 then return end
+    local actorSource, mode = tonumber(args[1]), args[2]
+    if not actorSource or (mode ~= 'standard' and mode ~= 'sensitive' and mode ~= 'deny') then
+        return print('[AdminAuditVisibilityLiveTest] Use <loaded server ID> <standard|sensitive|deny>')
+    end
+    local called, problem = xpcall(function()
+        local audit = exports['feather-audit']
+        local canSearch = FeatherAdmin.CanUse(actorSource, 'audit.search')
+        local canSensitive = FeatherAdmin.CanUse(actorSource, 'audit.sensitive.view')
+        if (mode == 'standard' and (not canSearch or canSensitive))
+            or (mode == 'sensitive' and (not canSearch or not canSensitive))
+            or (mode == 'deny' and canSearch) then
+            return print(('[AdminAuditVisibilityLiveTest] FAIL precondition mode=%s searchGranted=%s sensitiveGranted=%s; standard requires Administrator, sensitive requires Owner, deny requires nonstaff/Moderator.'):format(
+                mode, tostring(canSearch), tostring(canSensitive)))
+        end
+        local fixture = audit:GetVisibilitySmokeFixture()
+        assert(type(fixture) == 'table', 'Run AuditVisibilitySmokeTest after Audit restart')
+        local query = { fromEpoch = fixture.fromEpoch, toEpoch = fixture.toEpoch,
+            correlationId = fixture.correlationId, limit = 5 }
+        local search = audit:Search(query, actorSource)
+        local detail = audit:GetEvent({ fromEpoch = fixture.fromEpoch, toEpoch = fixture.toEpoch,
+            eventId = fixture.restrictedId }, actorSource)
+        local sealed = audit:GetEvent({ fromEpoch = fixture.fromEpoch, toEpoch = fixture.toEpoch,
+            eventId = fixture.sealedId }, actorSource)
+        local correlation = audit:GetCorrelation(query, actorSource)
+        if mode == 'deny' then
+            assert(search.code == 'forbidden' and detail.code == 'forbidden'
+                and sealed.code == 'forbidden' and correlation.code == 'forbidden', 'Read did not fail closed')
+        else
+            local count = mode == 'sensitive' and 2 or 1
+            assert(search.ok and #search.value.events == count,
+                ('Search visibility mismatch expected=%d actual=%s code=%s'):format(count,
+                    tostring(search.ok and #search.value.events or 'unavailable'), tostring(search.code)))
+            assert(correlation.ok and #correlation.value.events == count, 'Correlation visibility mismatch')
+            assert(detail.ok and ((mode == 'sensitive' and detail.value.event
+                and detail.value.event.eventId == fixture.restrictedId)
+                or (mode == 'standard' and detail.value.event == nil)), 'Restricted detail visibility mismatch')
+            assert(sealed.ok and sealed.value.event == nil, 'Sealed detail was exposed')
+        end
+        print(('[AdminAuditVisibilityLiveTest] PASS mode=%s search/detail/correlation=true sealedHidden=true'):format(mode))
+    end, debug.traceback)
+    if not called then print('[AdminAuditVisibilityLiveTest] FAIL ' .. tostring(problem)) end
+end, true)
+
+RegisterCommand('AdminAuditContentLiveTest', function(source, args)
+    if source ~= 0 then return end
+    local actor, mode = tonumber(args[1]), args[2]
+    if not actor or (mode ~= 'standard' and mode ~= 'sensitive' and mode ~= 'deny') then
+        return print('[AdminAuditContentLiveTest] Use <source> <standard|sensitive|deny>')
+    end
+    local called, problem = xpcall(function()
+        local audit = exports['feather-audit']
+        local fixture = audit:GetVisibilitySmokeFixture()
+        assert(fixture, 'Run AuditVisibilitySmokeTest first')
+        local result = audit:GetEvent({ fromEpoch = fixture.fromEpoch, toEpoch = fixture.toEpoch,
+            eventId = fixture.internalId }, actor)
+        if mode == 'deny' then
+            assert(result.code == 'forbidden' and not result.ok, 'Expected forbidden')
+        else
+            assert(FeatherAdmin.CanUse(actor, 'audit.search')
+                and FeatherAdmin.CanUse(actor, 'audit.sensitive.view') == (mode == 'sensitive'), 'Role does not match mode')
+            local row = result.ok and result.value.event
+            local content = row and row.content and row.content.context
+            assert(content and content.sequence == 1, 'Approved sequence missing')
+            assert((mode == 'standard' and content.message == nil)
+                or (mode == 'sensitive' and content.message == 'Safe test fixture'), 'Sensitive field visibility mismatch')
+            assert(content.padding_a == nil and row.projectedContext == nil and row.canonicalPayload == nil
+                and row.summary == nil and row.actorId == nil, 'Unapproved content exposed')
+        end
+        print('[AdminAuditContentLiveTest] PASS mode=' .. mode .. ' approvedProjection=true')
+    end, debug.traceback)
+    if not called then print('[AdminAuditContentLiveTest] FAIL ' .. tostring(problem)) end
+end, true)
+
+RegisterCommand('AdminAuditPausedReadLiveTest', function(source, args)
+    if source ~= 0 then return end
+    local actorSource = tonumber(args[1])
+    if not actorSource then return print('[AdminAuditPausedReadLiveTest] Use <loaded staff server ID> after AuditArmReadPause') end
+    local called, problem = xpcall(function()
+        if not FeatherAdmin.CanUse(actorSource, 'audit.search') then
+            return print('[AdminAuditPausedReadLiveTest] FAIL precondition: load the Administrator/Owner character before arming and starting the read.')
+        end
+        local now = os.time()
+        local result = exports['feather-audit']:Search({ fromEpoch = now - 3600,
+            toEpoch = now + 60, limit = 1 }, actorSource)
+        if type(result) ~= 'table' or type(result.meta) ~= 'table'
+            or result.meta.developmentPauseCompleted ~= true then
+            return print(('[AdminAuditPausedReadLiveTest] FAIL pause did not complete with rejection; ok=%s code=%s. Confirm AuditReadPause printed PAUSED and RESUMED; start on staff, switch only after PAUSED.'):format(
+                tostring(type(result) == 'table' and result.ok), tostring(type(result) == 'table' and result.code)))
+        end
+        assert(not result.ok and result.code == 'forbidden', 'Paused response was not rejected')
+        print('[AdminAuditPausedReadLiveTest] PASS resultDiscarded=true forbidden=true')
+    end, debug.traceback)
+    if not called then print('[AdminAuditPausedReadLiveTest] FAIL ' .. tostring(problem)) end
 end, true)

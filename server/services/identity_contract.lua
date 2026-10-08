@@ -29,9 +29,10 @@ RegisterCommand('AdminIdentitySmokeTest', function(source, args)
     local authorityProvider = exports['feather-core']:GetProvider('policy', 'feather-authority', 1)
     local auditAccountColumns = tonumber(DB.value([[
         SELECT COUNT(*) FROM `information_schema`.`COLUMNS`
-        WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'feather_admin_actions'
-          AND `COLUMN_NAME` IN ('admin_account_id', 'target_account_id')
-          AND `DATA_TYPE` = 'char' AND `CHARACTER_MAXIMUM_LENGTH` = 36
+        WHERE `TABLE_SCHEMA` = DATABASE() AND `TABLE_NAME` = 'feather_admin_audit_outbox'
+          AND `COLUMN_NAME` IN ('event_id', 'audit_event_id')
+          AND ((`COLUMN_NAME`='audit_event_id' AND `DATA_TYPE`='char' AND `CHARACTER_MAXIMUM_LENGTH`=36)
+            OR (`COLUMN_NAME`='event_id' AND `DATA_TYPE`='varchar' AND `CHARACTER_MAXIMUM_LENGTH`=128))
     ]])) or 0
     local tests = {
         { name = 'account identity', passed = identity ~= nil and IsUuid(identity.accountId) },
@@ -40,7 +41,7 @@ RegisterCommand('AdminIdentitySmokeTest', function(source, args)
         { name = 'staff authority', passed = staff ~= nil
             and type(staff.rolePrecedence) == 'number' },
         { name = 'Authority provider', passed = authorityProvider and authorityProvider.ok == true },
-        { name = 'audit account schema', passed = auditAccountColumns == 2 },
+        { name = 'audit outbox schema', passed = auditAccountColumns == 2 },
         { name = 'uuid schema columns', passed = allCharacterColumns > 0
             and characterColumnCount == allCharacterColumns,
             detail = ('%s/%s'):format(characterColumnCount, allCharacterColumns) }
