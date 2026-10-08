@@ -18,6 +18,16 @@ end
 local function InitializeDatabase()
     DB.awaitReady()
     DB.exec([[
+        CREATE TABLE IF NOT EXISTS feather_admin_audit_outbox (
+            event_id VARCHAR(128) NOT NULL PRIMARY KEY, payload MEDIUMTEXT NOT NULL,
+            state VARCHAR(16) NOT NULL DEFAULT 'pending', attempt_count INT UNSIGNED NOT NULL DEFAULT 0,
+            next_attempt BIGINT NOT NULL DEFAULT 0, lease_owner CHAR(36) NULL, lease_until BIGINT NULL,
+            audit_event_id CHAR(36) NULL, last_code VARCHAR(128) NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, delivered_at TIMESTAMP NULL,
+            INDEX idx_admin_audit_retry (state, next_attempt), INDEX idx_admin_audit_lease (state, lease_until)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    ]])
+    DB.exec([[
         CREATE TABLE IF NOT EXISTS feather_admin_bans (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT,
             account_id CHAR(36) NOT NULL,
@@ -88,32 +98,6 @@ local function InitializeDatabase()
             INDEX idx_fa_kicks_account (account_id),
             INDEX idx_fa_kicks_admin_account (admin_account_id),
             INDEX idx_fa_kicks_license (license)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-    ]])
-
-    DB.exec([[
-        CREATE TABLE IF NOT EXISTS feather_admin_actions (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            admin_account_id CHAR(36) NULL,
-            admin_license VARCHAR(100) NULL,
-            admin_name VARCHAR(100) NULL,
-            admin_character_id CHAR(36) NULL,
-            admin_character_name VARCHAR(150) NULL,
-            action VARCHAR(100) NOT NULL,
-            target_account_id CHAR(36) NULL,
-            target_license VARCHAR(100) NULL,
-            target_name VARCHAR(100) NULL,
-            target_character_id CHAR(36) NULL,
-            target_character_name VARCHAR(150) NULL,
-            details VARCHAR(500) NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
-            INDEX idx_fa_actions_admin_account (admin_account_id),
-            INDEX idx_fa_actions_target_account (target_account_id),
-            INDEX idx_fa_actions_admin_license (admin_license),
-            INDEX idx_fa_actions_target_license (target_license),
-            INDEX idx_fa_actions_action (action),
-            INDEX idx_fa_actions_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ]])
 
@@ -198,7 +182,7 @@ local function InitializeDatabase()
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             case_id BIGINT UNSIGNED NOT NULL,
             link_type VARCHAR(30) NOT NULL,
-            link_id BIGINT UNSIGNED NOT NULL,
+            link_id VARCHAR(128) NOT NULL,
             label VARCHAR(150) NULL,
             details VARCHAR(500) NULL,
             admin_account_id CHAR(36) NOT NULL,
@@ -309,6 +293,11 @@ local function InitializeDatabase()
                 REFERENCES feather_admin_cases (id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
     ]])
+    local linkType = DB.value([[SELECT DATA_TYPE FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='feather_admin_case_links' AND COLUMN_NAME='link_id']])
+    if linkType ~= 'varchar' then
+        DB.exec('ALTER TABLE feather_admin_case_links MODIFY link_id VARCHAR(128) NOT NULL')
+    end
     AdminDatabase.ready = true
     local callbacks = AdminDatabase.callbacks
     AdminDatabase.callbacks = {}

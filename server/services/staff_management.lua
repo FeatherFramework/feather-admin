@@ -131,23 +131,6 @@ FeatherAdmin.RegisterRPC('feather-admin:staff:search', function(params, _, src)
     TriggerClientEvent('feather-admin:staff:search:result', src, rows, page, result.value.hasNext)
 end, { windowMs = 3000, maxCalls = 1, maxPayloadBytes = 384 })
 
-FeatherAdmin.RegisterRPC('feather-admin:staff:history', function(params, _, src)
-    if not FeatherAdmin.RequirePermission(src, 'staff.history') then return end
-    local characterId, page = Trim(params.characterId), math.max(1, math.floor(tonumber(params.page) or 1))
-    local profile = Profile(characterId)
-    if not profile or not FeatherAdmin.CheckTargetAccountHierarchy(
-        src, 'staff.history', profile.accountId, nil) then return end
-    local limit = math.max(1, math.min(100, tonumber(Config.staff.historyLimit) or 20))
-    local rows = DB.query([[SELECT `admin_name` AS `adminName`,
-            `admin_character_name` AS `adminCharacterName`,`details`,
-            DATE_FORMAT(`created_at`,'%Y-%m-%d %H:%i:%s') AS `createdAt`
-        FROM `feather_admin_actions` WHERE `target_character_id`=? AND `action`='staff.role.assign'
-        ORDER BY `id` DESC LIMIT ? OFFSET ?]], characterId, limit + 1, (page - 1) * limit) or {}
-    local hasNext = #rows > limit
-    if hasNext then table.remove(rows) end
-    TriggerClientEvent('feather-admin:staff:history:result', src, rows, page, hasNext)
-end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 128 })
-
 FeatherAdmin.RegisterRPC('feather-admin:staff:role:assign', function(params, _, src)
     if not FeatherAdmin.RequirePermission(src, 'staff.role.assign') then return end
     local characterId, roleKey = Trim(params.characterId), Trim(params.roleKey)
@@ -251,6 +234,136 @@ RegisterCommand('AdminAuthorityStaffAssignmentContractSmokeTest', function(sourc
     end
     print(('[AdminAuthorityStaffAssignmentContractSmokeTest] done %d/%d passed (no assignments changed)'):format(
         passed, #tests))
+end, true)
+
+RegisterCommand('AdminBootstrapAdministrator', function(source, args)
+    if source ~= 0 then return end
+    local target, requestId = tonumber(args and args[1]), Trim(args and args[2])
+    local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
+    local administrator = CatalogRole('staff.admin.administrator')
+    if not identity or type(identity.accountId) ~= 'string' or not administrator
+        or requestId == '' or #requestId > 128
+        or not requestId:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$') then
+        return print('[AdminBootstrapAdministrator] FAIL use <connected source> <stable requestId>')
+    end
+    if StaffRole(identity.characterId).precedence > administrator.precedence then
+        return print('[AdminBootstrapAdministrator] FAIL target character already has Owner authority; load a separate character.')
+    end
+    local result = exports['feather-authority']:ReplaceOwnedStaffAssignment({
+        requestId = requestId, subjectType = 'character', subjectId = identity.characterId,
+        roleId = administrator.roleId, expectedRoleRevision = administrator.revision, scopeType = 'server',
+        reason = 'Bootstrap a Feather Admin administrator character from the server console.',
+        reasonCode = 'feather_admin.administrator_bootstrap'
+    })
+    if type(result) ~= 'table' or result.ok ~= true then
+        return print(('[AdminBootstrapAdministrator] FAIL code=%s message=%s'):format(
+            tostring(type(result) == 'table' and result.code or 'invalid_result'),
+            tostring(type(result) == 'table' and result.message or 'invalid result')))
+    end
+    RefreshAccess(target, 'your_staff_role_promoted')
+    AdminAudit.RecordTarget(0, 'staff.administrator.bootstrap', {
+        accountId = identity.accountId, characterId = identity.characterId,
+        name = identity.accountName, characterName = identity.characterName
+    }, ('authorityAssignment=%s replayed=%s request=%s'):format(
+        tostring(result.value.assignmentId), tostring(result.value.replayed), requestId))
+    print(('[AdminBootstrapAdministrator] PASS character=%s account=%s assignment=%s replayed=%s'):format(
+        identity.characterId, identity.accountId, tostring(result.value.assignmentId), tostring(result.value.replayed)))
+end, true)
+
+local auditRoleTests = {}
+
+local function RevokeAuditTestRole(source, args, sensitiveOnly)
+    if source ~= 0 then return end
+    local target, runId = tonumber(args and args[1]), Trim(args and args[2])
+    if runId == '' or #runId > 100 or not runId:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$') then
+        return print('[AdminAuditRevokeTestRole] FAIL use <source> <unique runId>')
+    end
+    local command = sensitiveOnly and 'AdminAuditDowngradeTestOwner' or 'AdminAuditRevokeTestRole'
+    local originalKey = sensitiveOnly and 'staff.admin.owner' or 'staff.admin.administrator'
+    local replacement = sensitiveOnly and CatalogRole('staff.admin.administrator') or nil
+    local identity = target and FeatherAdmin.Identity.Resolve(target) or nil
+    local session = target and exports['feather-core']:GetSessionContext(target) or nil
+    if not identity or not session or not session.ok or type(session.value) ~= 'table' or not session.value.sessionId
+        or session.value.characterId ~= identity.characterId
+        or StaffRole(identity.characterId).key ~= originalKey or (sensitiveOnly and not replacement) then
+        return print('[' .. command .. '] FAIL requires the original ' .. originalKey .. ' character and ready catalog.')
+    end
+    local called, paused = pcall(function()
+        return exports['feather-audit']:IsDevelopmentReadPaused(target, session.value.sessionId)
+    end)
+    if not called or paused ~= true or auditRoleTests[runId] then
+        return print('[AdminAuditRevokeTestRole] FAIL requires an active development read pause and a fresh runId.')
+    end
+    for _, test in pairs(auditRoleTests) do
+        if test.identity.characterId == identity.characterId and not test.restored then
+            return print('[AdminAuditRevokeTestRole] FAIL restore the previous test first.')
+        end
+    end
+    local test = { identity = identity, sessionId = session.value.sessionId, source = target,
+        originalKey = originalKey, replacementKey = sensitiveOnly and 'staff.admin.administrator' or 'player' }
+    -- Keep recovery data even if the export fails after the database commits.
+    auditRoleTests[runId] = test
+    local ok, result = pcall(function()
+        return exports['feather-authority']:ReplaceOwnedStaffAssignment({
+            requestId = runId .. ':revoke', subjectType = 'character', subjectId = identity.characterId,
+            roleId = replacement and replacement.roleId, expectedRoleRevision = replacement and replacement.revision,
+            scopeType = 'server', reason = 'Audit in-flight permission revocation acceptance test.',
+            reasonCode = 'feather_admin.audit_test_revoke'
+        })
+    end)
+    if not ok or type(result) ~= 'table' or not result.ok then
+        return print('[AdminAuditRevokeTestRole] FAIL Authority replacement; recovery retained, run AdminAuditRestoreTestRole ' .. runId)
+    end
+    RefreshAccess(target, 'your_staff_role_demoted')
+    AdminAudit.RecordTarget(0, 'staff.audit_test.revoke', identity, 'request=' .. runId)
+    if sensitiveOnly then
+        local current = exports['feather-core']:GetSessionContext(target)
+        local same = current and current.ok and current.value.sessionId == test.sessionId
+            and current.value.characterId == identity.characterId
+        local search = FeatherAdmin.CanUse(target, 'audit.search')
+        local sensitive = FeatherAdmin.CanUse(target, 'audit.sensitive.view')
+        print(('[%s] %s searchGranted=%s sensitiveGranted=%s sameSession=%s; restore with AdminAuditRestoreTestRole %s after RESUMED.'):format(
+            command, same and search and not sensitive and 'PASS' or 'FAIL', tostring(search), tostring(sensitive), tostring(same == true), runId))
+        return
+    end
+    print(('[AdminAuditRevokeTestRole] PASS character=%s session=%s; wait for paused-read rejection before restoring.'):format(
+        identity.characterId, test.sessionId))
+end
+
+RegisterCommand('AdminAuditRevokeTestRole', function(source, args) RevokeAuditTestRole(source, args, false) end, true)
+RegisterCommand('AdminAuditDowngradeTestOwner', function(source, args) RevokeAuditTestRole(source, args, true) end, true)
+
+RegisterCommand('AdminAuditRestoreTestRole', function(source, args)
+    if source ~= 0 then return end
+    local runId = Trim(args and args[1])
+    local test = auditRoleTests[runId]
+    if not test then return print('[AdminAuditRestoreTestRole] FAIL no recorded test; after Admin restart use AdminBootstrapAdministrator on the original character.') end
+    if test.restored then return print('[AdminAuditRestoreTestRole] PASS already restored') end
+    local role = StaffRole(test.identity.characterId)
+    if role.key ~= test.replacementKey and role.key ~= test.originalKey then
+        return print('[AdminAuditRestoreTestRole] FAIL role changed independently; refusing replacement.')
+    end
+    local administrator = CatalogRole(test.originalKey)
+    if not administrator then return print('[AdminAuditRestoreTestRole] FAIL catalog unavailable') end
+    local called, result = pcall(function()
+        return exports['feather-authority']:ReplaceOwnedStaffAssignment({
+            requestId = runId .. ':restore', subjectType = 'character', subjectId = test.identity.characterId,
+            roleId = administrator.roleId, expectedRoleRevision = administrator.revision, scopeType = 'server',
+            reason = 'Restore original staff role after Audit permission revocation test.',
+            reasonCode = 'feather_admin.audit_test_restore'
+        })
+    end)
+    if not called or type(result) ~= 'table' or not result.ok then
+        return print('[AdminAuditRestoreTestRole] FAIL restoration; retry with the same runId.')
+    end
+    test.restored = true
+    local target = OnlineSource(test.identity.characterId)
+    RefreshAccess(target, 'your_staff_role_promoted')
+    local session = target and exports['feather-core']:GetSessionContext(target) or nil
+    local same = session and session.ok and session.value.sessionId == test.sessionId
+        and session.value.characterId == test.identity.characterId
+    AdminAudit.RecordTarget(0, 'staff.audit_test.restore', test.identity, 'request=' .. runId)
+    print(('[AdminAuditRestoreTestRole] PASS character=%s sameSession=%s restoredRole=%s'):format(test.identity.characterId, tostring(same == true), test.originalKey))
 end, true)
 
 RegisterCommand('AdminAuthorityStaffAssignmentState', function(source, args)

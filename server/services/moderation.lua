@@ -62,7 +62,7 @@ local function resolveTarget(target)
     if characterId ~= '' then
         row = DB.one([[SELECT a.id AS account_id, a.display_name, p.character_id,
             CONCAT(p.first_name, ' ', p.last_name) AS character_name
-            FROM core_accounts a INNER JOIN character_profiles p
+            FROM core_accounts a INNER JOIN fc2_characters p
               ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci
             WHERE a.id = ? AND p.character_id = ? AND a.status = 'active' AND p.status = 'active' LIMIT 1]],
             accountId, characterId)
@@ -151,7 +151,7 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:search', function(params, _, 
     if roleKey == '' then roleKey = nil end
     local rows = DB.query(([[SELECT a.id AS accountId, a.display_name AS playerName,
         p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName
-        FROM core_accounts a LEFT JOIN character_profiles p
+        FROM core_accounts a LEFT JOIN fc2_characters p
           ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci AND p.status = 'active'
         WHERE a.status = 'active' AND %s ORDER BY a.display_name, p.created_at LIMIT %d]]):format(clause, limit), table.unpack(values, 1, #values)) or {}
     local filtered = {}
@@ -184,7 +184,7 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:warn', function(params, _, sr
     if not target or not reason or not admin
         or not FeatherAdmin.CheckTargetAccountHierarchy(src, 'moderation.warn', target.accountId, target.serverId) then return end
     insertAction('feather_admin_warnings', target, reason, admin)
-    AdminAudit.Record(src, 'moderation.warn', target.serverId, ('account=%s reason=%s'):format(target.accountId, reason))
+    AdminAudit.RecordTarget(src, 'moderation.warn', target, ('account=%s reason=%s'):format(target.accountId, reason))
     if target.serverId and target.serverId ~= src then
         FeatherAdmin.Notify(target.serverId, ('Warning: %s'):format(reason), 5000)
     end
@@ -197,7 +197,7 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:kick', function(params, _, sr
     local target, admin = targetId and snapshot(targetId) or nil, snapshot(src)
     if not target or not reason or not admin then return end
     insertAction('feather_admin_kicks', target, reason, admin)
-    AdminAudit.Record(src, 'moderation.kick', targetId, ('account=%s reason=%s'):format(target.accountId, reason))
+    AdminAudit.RecordTarget(src, 'moderation.kick', target, ('account=%s reason=%s'):format(target.accountId, reason))
     notify(src, 'player_kicked')
     DropPlayer(targetId, reason)
 end, { windowMs = 2000, maxCalls = 2, maxPayloadBytes = 512 })
@@ -216,7 +216,7 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:ban', function(params, _, src
         VALUES (?, ?, ?, ?, ?, ?, IF(? > 0, DATE_ADD(NOW(), INTERVAL ? MINUTE), NULL), ?, ?, ?, ?, ?)]],
         target.accountId, target.license, target.playerName, target.characterId, target.characterName, reason,
           duration, duration, admin.license, admin.accountId, admin.playerName, admin.characterId, admin.characterName)
-    AdminAudit.Record(src, 'moderation.ban', target.serverId, ('account=%s duration=%s reason=%s'):format(target.accountId, duration, reason))
+    AdminAudit.RecordTarget(src, 'moderation.ban', target, ('account=%s duration=%s reason=%s'):format(target.accountId, duration, reason))
     notify(src, 'player_banned')
     if target.serverId then DropPlayer(target.serverId, reason) end
 end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 1024 })
@@ -262,7 +262,7 @@ FeatherAdmin.RegisterRPC('feather-admin:moderation:unban', function(params, _, s
         revoked_by_account_id = ?, revoked_by_character_id = ?, revoked_by_character_name = ?, revoked_at = NOW()
         WHERE id = ? AND active = 1]], admin.playerName, admin.accountId, admin.characterId, admin.characterName, banId)
     if changed and changed > 0 then
-        AdminAudit.Record(src, 'moderation.unban', nil, ('ban_id=%s account=%s'):format(banId, ban.account_id))
+        AdminAudit.RecordTarget(src, 'moderation.unban', { accountId = ban.account_id }, ('ban_id=%s account=%s'):format(banId, ban.account_id))
         notify(src, 'ban_revoked')
     end
 end, { windowMs = 3000, maxCalls = 2, maxPayloadBytes = 128 })
@@ -285,7 +285,7 @@ FeatherAdmin.RegisterRPC('feather-admin:chat-moderation:issue', function(params,
     end)
     if not called then result = { ok=false, code='chat_unavailable', message='Chat moderation is unavailable.' } end
     if type(result) == 'table' and result.ok then
-        AdminAudit.Record(src, 'chat.mute.issue', target.serverId,
+        AdminAudit.RecordTarget(src, 'chat.mute.issue', target,
             ('account=%s scope=%s scope_key=%s duration=%s'):format(target.accountId,
                 tostring(params.scopeType), tostring(params.scopeKey), tostring(params.durationMinutes)))
         if target.serverId then
@@ -329,7 +329,7 @@ FeatherAdmin.RegisterRPC('feather-admin:chat-moderation:revoke', function(params
     end)
     if not called then result = { ok=false, code='chat_unavailable', message='Chat moderation is unavailable.' } end
     if type(result) == 'table' and result.ok then
-        AdminAudit.Record(src, 'chat.mute.revoke', target.serverId,
+        AdminAudit.RecordTarget(src, 'chat.mute.revoke', target,
             ('account=%s mute=%s'):format(target.accountId, tostring(params.muteId)))
     end
     chatResult(src, 'revoke', result)

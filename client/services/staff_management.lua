@@ -39,11 +39,12 @@ function AdminStaff.Assign(characterId, roleKey, reason, expectedRevision)
 end
 
 function AdminStaff.RequestHistory(characterId, page)
-    if not AdminUI.CanUse('staff.history') then return false end
-    AdminStaff.historyPage = math.max(1, math.floor(tonumber(page) or 1))
-    Feather.RPC.Notify('feather-admin:staff:history', {
-        characterId = characterId, page = AdminStaff.historyPage
-    })
+    if not AdminUI.CanUse('staff.history') or not AdminUI.CanUse('audit.search') then return false end
+    AdminFrameworkAudit.filters = { hours = 168, sourceResource = 'feather-admin',
+        eventType = 'admin.action.recorded', correlationId = '', adminAction = 'staff.role.assign',
+        targetCharacterId = characterId, targetAccountId = '' }
+    AdminUI.OpenFrameworkAudit()
+    AdminFrameworkAudit.Search()
     return true
 end
 
@@ -83,26 +84,6 @@ RegisterNetEvent('feather-admin:staff:search:result', function(results, page, ha
     AdminStaff.searchHasNext = hasNext == true
     AdminUI.OpenStaffSearchResults()
 end)
-
-RegisterNetEvent('feather-admin:staff:history:result', function(rows, page, hasNext, messageKey)
-    if messageKey then return Feather.Notify.RightNotify(AdminTranslate(messageKey), 3000) end
-    AdminStaff.history = type(rows) == 'table' and rows or {}
-    AdminStaff.historyPage = tonumber(page) or 1
-    AdminStaff.historyHasNext = hasNext == true
-    AdminUI.OpenStaffRoleHistory()
-end)
-
-local function ApplyRoleUpdate(updatedTarget)
-    if type(updatedTarget) ~= 'table' or type(updatedTarget.characterId) ~= 'string' then return end
-    local function Merge(target)
-        if type(target) == 'table' and target.characterId == updatedTarget.characterId then
-            for key, value in pairs(updatedTarget) do target[key] = value end
-        end
-    end
-    Merge(AdminStaff.selectedTarget)
-    for _, target in ipairs(AdminStaff.players) do Merge(target) end
-    for _, target in ipairs(AdminStaff.results) do Merge(target) end
-end
 
 RegisterNetEvent('feather-admin:staff:role:result', function(succeeded, messageKey, updatedTarget)
     Feather.Notify.RightNotify(AdminTranslate(messageKey or 'staff_role_update_failed'), 3500)

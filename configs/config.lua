@@ -23,11 +23,6 @@ Config = {
     -----------------------------------------------------
 
     -- Admin action logs are always written to the server console.
-    logging = {
-        webhook = '',                  -- Optional Discord webhook URL.
-        webhookName = 'Feather Admin', -- Name shown for Discord messages.
-        webhookAvatar = ''             -- Optional image URL.
-    },
     -----------------------------------------------------
 
     -- Resources displayed on the read-only Server Overview page.

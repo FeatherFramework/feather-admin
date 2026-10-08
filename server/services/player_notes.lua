@@ -32,7 +32,7 @@ local function target(accountId, characterId, serverId)
     if type(characterId) == 'string' and characterId ~= '' then
         row = DB.one([[SELECT a.id AS accountId, a.display_name AS targetName,
             p.character_id AS characterId, CONCAT(p.first_name, ' ', p.last_name) AS characterName
-            FROM core_accounts a INNER JOIN character_profiles p
+            FROM core_accounts a INNER JOIN fc2_characters p
               ON p.account_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci
             WHERE a.id = ? AND p.character_id = ? AND a.status = 'active' AND p.status = 'active' LIMIT 1]],
             accountId, characterId)

@@ -184,7 +184,11 @@ function AdminUI.OpenStaffRole()
     end
     if AdminUI.CanUse('staff.history') then
         AdminUI.AddButton(page, AdminTranslate('role_history'), function()
-            AdminStaff.RequestHistory(target.characterId, 1)
+            AdminFrameworkAudit.filters = { hours = 168, sourceResource = 'feather-admin',
+                eventType = 'admin.action.recorded', correlationId = '', adminAction = 'staff.role.assign',
+                targetCharacterId = target.characterId, targetAccountId = '' }
+            AdminUI.OpenFrameworkAudit()
+            AdminFrameworkAudit.Search()
         end)
     end
 
@@ -223,39 +227,4 @@ function AdminUI.OpenStaffRoleConfirmation()
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenStaffRole)
     AdminUI.OpenPage('staff_role_confirmation')
-end
-
-
-function AdminUI.OpenStaffRoleHistory()
-    local target = AdminStaff.selectedTarget
-    if type(target) ~= 'table' or not AdminUI.CanUse('staff.history') then return end
-    local page = AdminUI.RegisterPage('staff_role_history')
-    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('role_history'))
-    AdminUI.AddText(page, ('%s\n%s: %s'):format(playerName(target), AdminTranslate('page'), AdminStaff.historyPage))
-    if #AdminStaff.history == 0 then
-        AdminUI.AddText(page, AdminTranslate('no_role_history'))
-    else
-        for _, row in ipairs(AdminStaff.history) do
-            local administrator = row.adminCharacterName or row.adminName or AdminTranslate('not_available')
-            AdminUI.AddText(page, table.concat({
-                tostring(row.details or AdminTranslate('not_available')),
-                ('%s: %s'):format(AdminTranslate('changed_by'), administrator),
-                ('%s: %s'):format(AdminTranslate('changed_at'), row.createdAt)
-            }, '\n'))
-            AdminUI.AddLine(page)
-        end
-    end
-    if AdminStaff.historyPage > 1 then
-        AdminUI.AddButton(page, AdminTranslate('previous_page'), function()
-            AdminStaff.RequestHistory(target.characterId, AdminStaff.historyPage - 1)
-        end)
-    end
-    if AdminStaff.historyHasNext then
-        AdminUI.AddButton(page, AdminTranslate('next_page'), function()
-            AdminStaff.RequestHistory(target.characterId, AdminStaff.historyPage + 1)
-        end)
-    end
-    AdminUI.AddFooter(page)
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenStaffRole)
-    AdminUI.OpenPage('staff_role_history')
 end
