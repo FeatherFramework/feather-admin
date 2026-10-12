@@ -154,6 +154,30 @@ function AdminBoosters.Request(action, targetPlayer, requestId)
     })
 end
 
+-- Development-only convenience for testing UI lifecycle while NUI has focus.
+-- This requests the ordinary server-authorized/audited Kill action; it does
+-- not invoke the client health native or grant administrator permission.
+local lastDevKill
+RegisterCommand('AdminDevKillSelf', function(_, args)
+    if GetConvarInt('feather_admin_dev_selfkill', 0) ~= 1 then
+        print('[AdminDevKillSelf] disabled'); return
+    end
+    if args and #args > 0 then
+        print('[AdminDevKillSelf] self only; no arguments accepted'); return
+    end
+    local now = GetGameTimer()
+    if lastDevKill and (now - lastDevKill) % 4294967296 < 2000 then
+        print('[AdminDevKillSelf] wait before requesting again'); return
+    end
+    local target = GetPlayerServerId(PlayerId())
+    if type(target) ~= 'number' or target < 1 or target % 1 ~= 0 then
+        print('[AdminDevKillSelf] current player required'); return
+    end
+    lastDevKill = now
+    AdminBoosters.Request('kill', target)
+    print('[AdminDevKillSelf] requested; existing server permission and audit checks apply')
+end, false)
+
 function AdminBoosters.ToggleNoClip(enabled)
     if type(enabled) == 'boolean' then
         state.noclip = enabled
