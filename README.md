@@ -22,6 +22,10 @@ now use that contract.
 
 ## Features
 
+For alpha-only death/UI lifecycle testing, see the disabled-by-default
+[self-kill helper](docs/dev-selfkill.md). It retains existing server permissions
+and auditing and is planned for removal during production release cleanup.
+
 - Browse connected players and search online or offline characters through one Players directory
 - Review player capacity, uptime, OneSync mode, and configured Feather resource health
 - Send confirmed server-wide announcements with configurable limits and cooldowns
