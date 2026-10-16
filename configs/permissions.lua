@@ -42,6 +42,7 @@ Config.permissions = {
     ['inventory.give'] = 'administrator', ['inventory.inspect'] = 'moderator',
     ['inventory.remove'] = 'administrator', ['inventory.manage'] = 'administrator',
     ['weapons.issue'] = 'owner', ['weapons.ammo.grant'] = 'administrator',
+    ['weapons.evidence.hold'] = 'administrator', ['weapons.evidence.release'] = 'administrator',
 
     ['booster.invincibility'] = 'administrator', ['booster.invisibility'] = 'administrator',
     ['booster.infinite_stamina'] = 'administrator', ['booster.heal'] = 'moderator',

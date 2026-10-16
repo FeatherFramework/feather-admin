@@ -17,10 +17,12 @@ local function targetPayload(extra)
 end
 
 function AdminInventory.SetOnlineTarget(serverId)
+    AdminInventory.evidence=nil; AdminInventory.evidencePending=nil
     AdminInventory.target = { serverId = serverId }
 end
 
 function AdminInventory.SetTarget(target)
+    AdminInventory.evidence=nil; AdminInventory.evidencePending=nil
     AdminInventory.target = type(target) == 'table' and target or nil
 end
 
@@ -51,6 +53,67 @@ end
 RegisterNetEvent('feather-admin:inventory:catalog:result', function(items)
     AdminInventory.items = type(items) == 'table' and items or {}
     AdminUI.OpenInventoryCategories()
+end)
+
+local evidenceSequence=0
+local function evidenceRequest(phase,payload)
+    if AdminInventory.evidencePending then return end
+    local item=AdminInventory.selected
+    if not item then return end
+    evidenceSequence=evidenceSequence+1
+    local pending={id='evidence-ui:'..evidenceSequence,phase=phase,item=item,target=AdminInventory.target,sequence=AdminUI.openSequence}
+    AdminInventory.evidencePending=pending
+    payload.requestId=pending.id
+    Feather.RPC.Notify('feather-admin:inventory:evidence-'..(phase=='preview' and 'status' or 'change'),targetPayload(payload))
+    SetTimeout(15000,function()
+        if AdminInventory.evidencePending~=pending then return end
+        AdminInventory.evidencePending=nil
+        if AdminInventory.selected==pending.item and AdminInventory.target==pending.target
+            and AdminUI.openSequence==pending.sequence and AdminUI.currentPage~=nil then
+            AdminInventory.evidence={allowed=false,message=pending.phase=='change' and 'evidence_unresolved' or 'evidence_unavailable'}
+            AdminUI.OpenEvidenceConfirmation()
+        end
+    end)
+end
+function AdminInventory.RequestEvidence()
+    if not AdminUI.CanUse('inventory.inspect') then return end
+    AdminInventory.evidence=nil
+    evidenceRequest('preview',{instanceId=AdminInventory.selected and AdminInventory.selected.id})
+end
+function AdminInventory.ChangeEvidence()
+    local preview=AdminInventory.evidence
+    if not preview or not preview.allowed or AdminInventory.evidencePending
+        or preview._item~=AdminInventory.selected or preview._target~=AdminInventory.target then return end
+    AdminInventory.evidence={allowed=false,message='evidence_pending'}
+    evidenceRequest('change',{ticket=preview.ticket,operation=preview.operation})
+    AdminUI.OpenEvidenceConfirmation()
+    if AdminInventory.evidencePending then AdminInventory.evidencePending.sequence=AdminUI.openSequence end
+end
+RegisterNetEvent('feather-admin:inventory:evidence:result',function(id,phase,succeeded,key,value)
+    if source~=65535 then return end
+    local pending=AdminInventory.evidencePending
+    if not pending or pending.id~=id or pending.phase~=phase then return end
+    AdminInventory.evidencePending=nil
+    if AdminInventory.selected~=pending.item or AdminInventory.target~=pending.target
+        or AdminUI.openSequence~=pending.sequence or AdminUI.currentPage==nil then return end
+    if succeeded and phase=='preview' and type(value)=='table' and value.itemId==pending.item.id then
+        value._item=pending.item; value._target=pending.target
+        AdminInventory.evidence=value
+        SetTimeout(tonumber(value.expiresInMs) or 30000,function()
+            if AdminInventory.evidence~=value or AdminInventory.evidencePending then return end
+            value.allowed=false; value.message='evidence_preview_expired'
+            if AdminInventory.selected==pending.item and AdminInventory.target==pending.target
+                and AdminUI.currentPage=='inventory_evidence_confirmation' then AdminUI.OpenEvidenceConfirmation() end
+        end)
+    else
+        AdminInventory.evidence={allowed=false,message=key or 'evidence_unresolved'}
+        if succeeded and phase=='change' and type(value)=='table' and type(pending.item.metadata)=='table'
+            and type(pending.item.metadata.flags)=='table' then
+            pending.item.metadata.flags.evidence=value.evidence
+            pending.item.revision=value.itemRevision
+        end
+    end
+    AdminUI.OpenEvidenceConfirmation()
 end)
 
 RegisterNetEvent('feather-admin:inventory:result', function(succeeded, messageKey, displayName, quantity)

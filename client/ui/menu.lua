@@ -10,19 +10,6 @@ AdminUI = {
     openSequence = 0
 }
 
-AdminUI.Styles = {
-    header = { ['color'] = '#999' },
-    subheader = { ['font-size'] = '1.778vmin', ['color'] = '#CC9900' },
-    text = {
-        ['color'] = '#C0C0C0',
-        ['font-size'] = '1.481vmin',
-        ['font-variant'] = 'small-caps',
-        ['line-height'] = '1.8',
-        ['white-space'] = 'pre-line',
-    },
-    button = { ['color'] = '#E0E0E0' }
-}
-
 local Menu = exports['feather-menu-v2']
 
 local function RequireMenuResult(result, operation)
@@ -50,25 +37,7 @@ local function EnsureMenu()
         resizable = true,
         closable = true,
         controller = true,
-        position = { x = '22%', y = '50%' },
-        size = {
-            width = '32rem',
-            height = '80vh',
-            minWidth = '24rem',
-            maxWidth = '92vw',
-            maxHeight = '88vh',
-            breakpoints = {
-                ['720'] = '25rem',
-                ['1080'] = '32rem',
-                ['1440'] = '36rem',
-                ['2160'] = '42rem'
-            }
-        },
-        theme = {
-            preset = 'redemption',
-            accent = '#CC9900',
-            radius = '6px'
-        },
+        theme = { preset = 'redemption' },
         focus = { keyboard = true, cursor = true }
     }), 'create menu')
 
@@ -96,6 +65,10 @@ end
 local function AddElement(page, elementType, settings, callback)
     local menuId = EnsureMenu()
     settings.key = settings.key or NextElementKey(page, elementType)
+    if settings.slot ~= 'header' and settings.slot ~= 'footer' and elementType ~= 'accordion' then
+        settings.section = settings.section or page.section
+        settings.row = settings.row or page.row
+    end
 
     local handle
     local wrappedCallback
@@ -146,30 +119,13 @@ local function ChoiceCallback(callback, originals)
     end
 end
 
-local function HtmlToText(html)
-    return tostring(html or '')
-        :gsub('<br%s*/?>', '\n')
-        :gsub('</div%s*>', '\n')
-        :gsub('<[^>]+>', '')
-        :gsub('&quot;', '"')
-        :gsub('&#39;', "'")
-        :gsub('&lt;', '<')
-        :gsub('&gt;', '>')
-        :gsub('&amp;', '&')
-        :gsub('^%s+', '')
-        :gsub('%s+$', '')
-        :gsub('[ \t]+\n', '\n')
-        :gsub('\n[ \t]+', '\n')
-        :gsub('\n\n+', '\n')
-end
-
 function AdminUI.RegisterPage(key)
     local menuId = EnsureMenu()
     local previous = AdminUI.Pages[key]
     AdminUI.pageGeneration = AdminUI.pageGeneration + 1
     local pageKey = ('%s-%d'):format(key, AdminUI.pageGeneration)
     local created = RequireMenuResult(Menu:CreatePage(menuId, { key = pageKey }), 'create page')
-    local page = { id = created.pageId, key = pageKey, nextElement = 0 }
+    local page = { id = created.pageId, key = pageKey, route = key, nextElement = 0 }
     AdminUI.Pages[key] = page
 
     if previous then
@@ -192,18 +148,119 @@ function AdminUI.AddHeader(page, title, subtitle)
     end
 
     AddElement(page, 'line', { slot = 'header' })
+    local route = page.route or ''
+    -- Scope to target workflows, never label server-wide pages with a stale player.
+    if route == 'selected_player' or route == 'selected_player_tools'
+        or route == 'character_management' or route == 'player_management'
+        or route == 'boosters_player' or route == 'boosters_self'
+        or route == 'character_administration' or route == 'economy_confirmation'
+        or route:find('inventory', 1, true) == 1 or route:find('weapon_', 1, true) == 1
+        or route == 'ammo_grant_quantity' or route == 'ammo_grant_catalog'
+        or route == 'trolls' or route == 'appearance' or route == 'player_info' then
+        local selected
+        if route:find('inventory', 1, true) == 1 then selected = AdminInventory and AdminInventory.target
+        elseif route:find('weapon_', 1, true) == 1 or route:find('ammo_grant_', 1, true) == 1 then
+            selected = AdminWeapons and AdminWeapons.target
+        end
+        AdminUI.AddTargetContext(page, selected)
+    end
 end
 
-function AdminUI.AddButton(page, label, callback, style)
+function AdminUI.TargetLabel(selected)
+    local id
+    if selected then id = selected.serverId else id = AdminUI.GetTarget() end
+    local name = selected and (selected.characterName or selected.accountName or selected.playerName)
+    for _, player in ipairs(ClientAllPlayers or {}) do
+        if id and tonumber(player.serverId) == tonumber(id) then
+            name = name or player.characterName
+            break
+        end
+    end
+    local identity = id and (AdminTranslate('server_id') .. ': ' .. tostring(id))
+        or (AdminTranslate('character_id') .. ': ' .. tostring(selected and selected.characterId or AdminTranslate('not_available')))
+    local status = id and AdminTranslate('online') or AdminTranslate('offline')
+    return ('%s | %s | %s'):format(tostring(name or AdminTranslate('not_available')), identity, status)
+end
+
+function AdminUI.AddTargetContext(page, selected)
+    AddElement(page, 'textdisplay', { value = AdminTranslate('player') .. ': ' .. AdminUI.TargetLabel(selected), slot = 'header' })
+end
+
+function AdminUI.BeginSection(page, label, expanded)
+    local key = NextElementKey(page, 'section')
+    AddElement(page, 'accordion', { key = key, label = label, value = expanded == true, slot = 'content' })
+    page.section = key
+end
+
+function AdminUI.EndSection(page)
+    page.section, page.row = nil, nil
+end
+
+function AdminUI.AddPagination(page, current, total, navigate)
+    if total <= 1 then return end
+    AddElement(page, 'pagearrows', { current = current, total = total, slot = 'content' }, function(event)
+        local nextPage = current + (event.value == -1 and -1 or event.value == 1 and 1 or 0)
+        if nextPage ~= current and nextPage >= 1 and nextPage <= total then navigate(nextPage) end
+    end)
+end
+
+-- Shared catalog navigation; sorting/filtering uses a private list, never the source.
+function AdminUI.AddCatalog(page, entries, state, reopen, itemLabel, choose)
+    local query = state.query or ''
+    page.row = NextElementKey(page, 'filter')
+    AdminUI.AddInput(page, AdminTranslate('filter_catalog'), AdminTranslate('search'), function(data)
+        query = tostring(data.value or '')
+    end, query)
+    AdminUI.AddButton(page, AdminTranslate('search'), function()
+        state.query, state.page = query, 1
+        reopen()
+    end)
+    page.row = nil
+    local filtered = {}
+    for _, item in ipairs(entries or {}) do
+        if query == '' or (itemLabel(item) .. ' ' .. tostring(item.id or item.name or '')):lower():find(query:lower(), 1, true) then
+            filtered[#filtered + 1] = item
+        end
+    end
+    table.sort(filtered, function(a,b)
+        local left, right = itemLabel(a):lower(), itemLabel(b):lower()
+        if left == right then return tostring(a.id or a.name) < tostring(b.id or b.name) end
+        return left < right
+    end)
+    local total = math.max(1, math.ceil(#filtered / 15))
+    state.page = math.min(total, math.max(1, math.floor(tonumber(state.page) or 1)))
+    AdminUI.AddText(page, ('%s: %d / %d | %d'):format(AdminTranslate('page'), state.page, total, #filtered))
+    if #filtered == 0 then AdminUI.AddText(page, AdminTranslate('catalog_empty')) end
+    for index = (state.page - 1) * 15 + 1, math.min(state.page * 15, #filtered) do
+        local item = filtered[index]
+        AdminUI.AddButton(page, itemLabel(item), function() choose(item) end)
+    end
+    local current = state.page
+    AdminUI.AddPagination(page, current, total, function(nextPage) state.page=nextPage; reopen() end)
+end
+
+function AdminUI.ConfirmTargetAction(label, callback, back)
+    local target, sequence = AdminUI.GetTarget(), AdminUI.openSequence
+    local page = AdminUI.RegisterPage('target_action_confirmation')
+    AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('confirm_action'))
+    AdminUI.AddTargetContext(page)
+    AdminUI.AddText(page, label)
+    local submitted = false
+    AdminUI.AddButton(page, AdminTranslate('confirm_action'), function()
+        if submitted or AdminUI.GetTarget() ~= target or AdminUI.currentPage ~= 'target_action_confirmation'
+            or AdminUI.openSequence ~= sequence + 1 then return end
+        submitted = true
+        callback(target)
+        AdminUI.AddText(page, AdminTranslate('action_request_sent'))
+    end)
+    AdminUI.AddFooter(page)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), back)
+    AdminUI.OpenPage('target_action_confirmation')
+end
+
+function AdminUI.AddButton(page, label, callback)
     return AddElement(page, 'button', {
         label = label,
-        slot = 'content'
-    }, callback)
-end
-
-function AdminUI.AddHtmlButton(page, html, callback, style)
-    return AddElement(page, 'button', {
-        label = HtmlToText(html),
         slot = 'content'
     }, callback)
 end
@@ -227,7 +284,7 @@ function AdminUI.AddDropdown(page, options, placeholder, callback)
     }, ChoiceCallback(callback, originals))
 end
 
-function AdminUI.AddText(page, value, style)
+function AdminUI.AddText(page, value)
     return AddElement(page, 'textdisplay', {
         value = value,
         slot = 'content'
@@ -253,7 +310,7 @@ function AdminUI.AddFooter(page)
     AddElement(page, 'bottomline', { slot = 'footer' })
 end
 
-function AdminUI.AddFooterButton(page, label, callback, style)
+function AdminUI.AddFooterButton(page, label, callback)
     return AddElement(page, 'button', {
         label = label,
         slot = 'footer'
@@ -365,7 +422,7 @@ end
 
 function AdminUI.RunAction(label, callback)
     local succeeded = callback()
-    if succeeded ~= false then
+    if succeeded == true then
         Feather.Notify.RightNotify(label, 2000)
     end
     return succeeded

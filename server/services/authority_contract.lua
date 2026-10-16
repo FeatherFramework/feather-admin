@@ -56,13 +56,13 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
             and args[1]:match('^[A-Za-z0-9][A-Za-z0-9._:%-]*$'),
             'Use <stable requestId>')
         local request = { requestId = args[1], capabilities = FeatherAdmin.AuthorityCatalog.Definitions() }
-        assert(#request.capabilities == 88, 'Expected the reviewed 88-action Admin catalog')
+        assert(#request.capabilities == 90, 'Expected the reviewed 90-action Admin catalog')
         local first = exports['feather-authority']:RegisterCapabilities(request)
         assert(first.ok, tostring(first.code) .. ': ' .. tostring(first.message))
         local replay = exports['feather-authority']:RegisterCapabilities(request)
         assert(replay.ok and replay.value.replayed == true,
             'Exact capability catalog did not replay')
-        assert(#first.value.capabilities == 88 and #replay.value.capabilities == 88,
+        assert(#first.value.capabilities == 90 and #replay.value.capabilities == 90,
             'Registration receipt omitted capability identities')
         for index, identity in ipairs(first.value.capabilities) do
             assert(identity.key == replay.value.capabilities[index].key
@@ -80,8 +80,8 @@ RegisterCommand('AdminAuthorityCapabilityLiveTest', function(source, args)
         for _, capability in ipairs(listed.value) do
             if capability.ownerResource == GetCurrentResourceName() then owned = owned + 1 end
         end
-        assert(owned == 88, 'Authority catalog does not contain 88 Admin-owned capabilities')
-        print(('[AdminAuthorityCapabilityLiveTest] PASS capabilities=88 registered=%d updated=%d unchanged=%d firstReplayed=%s replayed=true stableIdentity=true mismatchRejected=true ownerBound=true'):format(
+        assert(owned == 90, 'Authority catalog does not contain 90 Admin-owned capabilities')
+        print(('[AdminAuthorityCapabilityLiveTest] PASS capabilities=90 registered=%d updated=%d unchanged=%d firstReplayed=%s replayed=true stableIdentity=true mismatchRejected=true ownerBound=true'):format(
             first.value.registered, first.value.updated, first.value.unchanged,
             tostring(first.value.replayed)))
     end, debug.traceback)
@@ -120,7 +120,7 @@ RegisterCommand('AdminAuthorityRoleCatalogLiveTest', function(source, args)
         end
         assert(roleResults[1].grants < roleResults[2].grants
             and roleResults[2].grants < roleResults[3].grants
-            and roleResults[3].grants == 88, 'Authority tier grants are not cumulative')
+            and roleResults[3].grants == 90, 'Authority tier grants are not cumulative')
         print(('[AdminAuthorityRoleCatalogLiveTest] PASS roles=3 moderator=%d administrator=%d owner=%d totalGrants=%d cumulative=true stableIdentity=true readOnly=true'):format(
             roleResults[1].grants, roleResults[2].grants, roleResults[3].grants,
             totalGrants))
@@ -171,7 +171,7 @@ RegisterCommand('AdminAuthorityRoleParitySmokeTest', function(source)
         local permissions, mappings = 0, 0
         for _ in pairs(Config.permissions) do permissions = permissions + 1 end
         for _ in pairs(Config.authorityActions) do mappings = mappings + 1 end
-        return permissions == 88 and mappings == permissions
+        return permissions == 90 and mappings == permissions
     end)())
     Check('Admin remains default', (function()
         local provider = exports['feather-core']:GetProvider('policy', nil, 1)

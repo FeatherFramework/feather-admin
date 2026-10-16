@@ -3,15 +3,15 @@ function AdminUI.OpenMain()
     AdminUI.SetTarget(GetPlayerServerId(PlayerId()))
 
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('main_menu'))
-    if AdminUI.CanUse('cases.view') then
-        AdminUI.AddButton(page, AdminChatTranslate('chat_case_list'), function() AdminChatCases.RequestList(0) end)
-    end
-
     if AdminUI.CanUse('players.view') then
         AdminUI.AddButton(page, AdminTranslate('player_list'), function()
             Feather.RPC.Notify('feather-admin:players:request', {})
             AdminUI.OpenPlayers()
         end)
+    end
+
+    if AdminUI.CanUse('cases.view') then
+        AdminUI.AddButton(page, AdminChatTranslate('chat_case_list'), function() AdminChatCases.RequestList(0) end)
     end
 
     if AdminUI.HasNavigationItems('server_operations') then
@@ -50,13 +50,13 @@ function AdminUI.OpenMain()
         local label = AdminTranslate('stop_spectating')
         AdminUI.AddButton(page, label, function()
             AdminUI.RunAction(label, AdminPlayerManagement.StopSpectating)
-        end, AdminUI.Styles.button)
+        end)
     end
 
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('close'), function()
         AdminUI.Close()
-    end, AdminUI.Styles.button)
+    end)
 
     AdminUI.OpenPage('main')
 end

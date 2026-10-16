@@ -23,7 +23,7 @@ function AdminUI.OpenEconomyConfirmation(field, amount)
 
     AdminUI.AddButton(page, AdminTranslate('confirm_remove'), function()
         AdminCharacter.AdjustEconomy(AdminUI.GetTarget(), field, 'remove', amount)
-    end, AdminUI.Styles.button)
+    end)
 
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenCharacterAdministration)
@@ -66,6 +66,13 @@ function AdminUI.OpenCharacterAdministration()
                     break
                 end
             end
+        end
+        if #operationOptions == 0 then
+            AdminUI.AddText(page, AdminTranslate('action_not_permitted'))
+            AdminUI.AddFooter(page)
+            AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenCharacterManagement)
+            AdminUI.OpenPage('character_administration')
+            return
         end
         selectedOperation = operationOptions[1].value
         AdminUI.AddArrows(page, AdminTranslate('economy_operation'), operationOptions, 0, function(data)

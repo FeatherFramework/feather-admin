@@ -134,11 +134,95 @@ FeatherAdmin.RegisterRPC('feather-admin:inventory:inspect', function(params, _, 
     for _, item in ipairs(listed.value) do
         rows[#rows + 1] = { id = tonumber(item.id), name = item.name,
             displayName = item.display_name or item.name, description = item.description,
-            slot = tonumber(item.slot_index), weight = tonumber(item.weight), metadata = item.metadata }
+            slot = tonumber(item.slot_index), weight = tonumber(item.weight), metadata = item.metadata,
+            revision = tonumber(item.row_revision or item.revision) }
     end
     TriggerClientEvent('feather-admin:inventory:inspect:result', src, true, nil,
         target, rows, resolved.value)
 end, { windowMs = 2000, maxCalls = 3, maxPayloadBytes = 192 })
+
+-- Evidence UI is deliberately own-current-character only until Weapons supports
+-- cross-owner custody. Private preview tickets bind revision/serial/session.
+local evidencePreviews,evidenceSequence={},0
+local function evidenceReply(src,id,phase,succeeded,key,value)
+    TriggerClientEvent('feather-admin:inventory:evidence:result',src,id,phase,succeeded,key,value)
+end
+local function evidenceActor(src,params)
+    local actor=FeatherAdmin.Identity.Resolve(src)
+    local target=inventoryTarget(params)
+    if not actor or not target or target.serverId~=src or target.characterId~=actor.characterId
+        or target.accountId~=actor.accountId or type(actor.sessionId)~='string' then return nil end
+    return actor,target
+end
+FeatherAdmin.RegisterRPC('feather-admin:inventory:evidence-status',function(params,_,src)
+    params=type(params)=='table' and params or {}
+    local requestId=params.requestId
+    if type(requestId)~='string' or #requestId>64 then return end
+    local function refuse() evidenceReply(src,requestId,'preview',false,'evidence_unavailable') end
+    local itemId=tonumber(params.instanceId)
+    if not FeatherAdmin.CanUse(src,'inventory.inspect') or not InspectionContractSatisfied
+        or not itemId or itemId<1 or itemId%1~=0 or itemId==math.huge
+        or GetResourceState('feather-weapons')~='started' then return refuse() end
+    local actor,target=evidenceActor(src,params)
+    if not actor or not FeatherAdmin.CheckTargetAccountHierarchy(src,'inventory.inspect',target.accountId,src) then return refuse() end
+    local called,result=pcall(function() return exports['feather-weapons']:ReadNativeEvidenceStatus(src,itemId) end)
+    if not called or not result or not result.ok then return refuse() end
+    local status=result.value
+    if not status.identity or status.identity.sessionId~=actor.sessionId or status.identity.characterId~=actor.characterId
+        or exports['feather-core']:IsSessionCurrent(src,actor.sessionId,actor.characterId)~=true then return refuse() end
+    evidenceSequence=evidenceSequence+1
+    local ticket={id=('evidence:%s:%s'):format(src,evidenceSequence),actor=actor,target=target,
+        itemId=itemId,revision=status.itemRevision,serial=status.serialNumber,operation=status.evidence and 'release' or 'hold'}
+    evidencePreviews[src]=ticket
+    SetTimeout(30000,function() if evidencePreviews[src]==ticket then evidencePreviews[src]=nil end end)
+    local action='weapons.evidence.'..ticket.operation
+    local allowed=status.enabled==true and status.equipped==false and status.nativeBound==false and status.reservation=='none'
+        and status.permissions and status.permissions[ticket.operation]==true and FeatherAdmin.CanUse(src,action)
+        and FeatherAdmin.CheckTargetAccountHierarchy(src,action,target.accountId,src)
+    ticket.allowed=allowed==true
+    evidenceReply(src,requestId,'preview',true,nil,{ticket=ticket.id,itemId=itemId,itemRevision=ticket.revision,
+        serialNumber=ticket.serial,evidence=status.evidence,operation=ticket.operation,allowed=allowed==true,expiresInMs=30000})
+end,{windowMs=2000,maxCalls=3,maxPayloadBytes=384})
+FeatherAdmin.RegisterRPC('feather-admin:inventory:evidence-change',function(params,_,src)
+    params=type(params)=='table' and params or {}
+    local requestId=params.requestId
+    if type(requestId)~='string' or #requestId>64 then return end
+    local ticket=evidencePreviews[src]
+    evidencePreviews[src]=nil -- consume before any yielding check/export
+    local function refuse(key,reason)
+        print(('[feather-admin] evidence confirmation REFUSED source=%s item=%s reason=%s'):format(
+            src,ticket and ticket.itemId or 'unknown',tostring(reason or key or 'unknown'):sub(1,160)))
+        evidenceReply(src,requestId,'change',false,key or 'evidence_unavailable')
+    end
+    if not ticket then return refuse('evidence_preview_expired','preview_missing_expired_or_consumed') end
+    if not ticket.allowed then return refuse(nil,'preview_not_allowed') end
+    if params.ticket~=ticket.id or params.operation~=ticket.operation then return refuse(nil,'preview_ticket_or_operation_mismatch') end
+    local actor,target=evidenceActor(src,params)
+    local action='weapons.evidence.'..ticket.operation
+    if not actor or actor.sessionId~=ticket.actor.sessionId or actor.characterId~=ticket.actor.characterId
+        or not FeatherAdmin.CanUse(src,'inventory.inspect') or not FeatherAdmin.CanUse(src,action)
+        or not FeatherAdmin.CheckTargetAccountHierarchy(src,action,target.accountId,src)
+        or GetResourceState('feather-weapons')~='started' then return refuse(nil,'actor_session_permission_or_hierarchy_changed') end
+    local called,result=pcall(function()
+        local request={characterId=actor.characterId,itemInstanceId=ticket.itemId,
+            serialNumber=ticket.serial,expectedRevision=ticket.revision}
+        local context={actorSource=src,actorCharacterId=actor.characterId,characterId=actor.characterId,sessionId=actor.sessionId,
+            correlationId=ticket.id,reason='admin_evidence_'..ticket.operation}
+        if ticket.operation=='hold' then return exports['feather-weapons']:HoldWeaponEvidence(request,context) end
+        return exports['feather-weapons']:ReleaseWeaponEvidence(request,context)
+    end)
+    if not called or type(result)~='table' then return refuse('evidence_unresolved','weapons_export_unacknowledged') end
+    if not result.ok then
+        local reason=result.error and result.error.details and result.error.details.reason
+        return refuse(reason=='native_evidence_commit_unresolved_no_retry' and 'evidence_unresolved' or 'evidence_unavailable',
+            reason or result.error and result.error.code or 'weapons_refused_without_reason')
+    end
+    pcall(AdminAudit.RecordTarget,src,action,targetAudit(target),('instance=%s serial=%s revision=%s'):format(
+        ticket.itemId,ticket.serial,tostring(result.value.revision)))
+    evidenceReply(src,requestId,'change',true,result.value.provenancePersisted==false and 'evidence_committed_audit_warning' or 'evidence_committed',
+        {itemId=ticket.itemId,itemRevision=result.value.revision,evidence=ticket.operation=='hold'})
+end,{windowMs=2000,maxCalls=2,maxPayloadBytes=384})
+AddEventHandler('playerDropped',function() evidencePreviews[source]=nil end)
 
 FeatherAdmin.RegisterRPC('feather-admin:inventory:remove-instance', function(params, _, src)
     if not FeatherAdmin.RequirePermission(src, 'inventory.remove') or not InspectionContractSatisfied then return end
