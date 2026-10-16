@@ -60,6 +60,9 @@ Config.hierarchy = {
         ['inventory.remove'] = true,
         ['weapons.issue'] = true,
         ['weapons.ammo.grant'] = true,
+        -- Own-item evidence administration; native service still enforces scope.
+        ['weapons.evidence.hold'] = true,
+        ['weapons.evidence.release'] = true,
 
         -- Player status
         ['booster.invincibility'] = true,
@@ -67,7 +70,7 @@ Config.hierarchy = {
         ['booster.infinite_stamina'] = true,
         ['booster.heal'] = true,
         ['booster.revive'] = true,
-        ['booster.kill'] = false,
+        ['booster.kill'] = true,
         ['booster.disable_fow'] = true,
 
         -- Appearance

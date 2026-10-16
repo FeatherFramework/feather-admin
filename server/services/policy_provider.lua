@@ -102,10 +102,10 @@ RegisterCommand('AdminReleaseContractSmokeTest',function(source)
             {'Authority provider available',authorityProvider.ok==true
                 and authorityProvider.value.provider.owner=='feather-authority'},
             {'Authority catalog ready',type(catalog)=='table' and catalog.ready==true
-                and type(catalog.result)=='table' and catalog.result.capabilities==88
+                and type(catalog.result)=='table' and catalog.result.capabilities==90
                 and catalog.result.roles==3 and catalog.result.moderator==33
-                and catalog.result.administrator==65 and catalog.result.owner==88
-                and catalog.result.totalGrants==186},
+                and catalog.result.administrator==67 and catalog.result.owner==90
+                and catalog.result.totalGrants==190},
             {'owner bootstrap available',registered.AdminBootstrapOwner==true},
             {'clean Authority commands',registered.AdminAuthorityContractSmokeTest==true
                 and not registered.AdminAuthorityMigrationContractSmokeTest

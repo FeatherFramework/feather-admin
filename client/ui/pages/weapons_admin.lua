@@ -6,7 +6,7 @@ local function backToCharacter()
     local target = AdminWeapons.target or {}
     if target.serverId then
         AdminUI.SetTarget(target.serverId)
-        AdminUI.OpenCharacterManagement()
+        AdminUI.OpenSelectedPlayer()
     elseif AdminPlayerDirectory.selected then
         AdminUI.OpenOfflinePlayer(AdminPlayerDirectory.selected)
     else
@@ -31,13 +31,11 @@ end
 function AdminUI.OpenWeaponIssueCatalog()
     local page = AdminUI.RegisterPage('weapon_issue_catalog')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('issue_weapon'))
-    for _, entry in ipairs(AdminWeapons.weapons) do
-        local definition = entry
-        AdminUI.AddButton(page, label(definition), function()
+    AdminWeapons.weaponList = AdminWeapons.weaponList or {}
+    AdminUI.AddCatalog(page, AdminWeapons.weapons, AdminWeapons.weaponList, AdminUI.OpenWeaponIssueCatalog, label, function(definition)
             AdminWeapons.selected, AdminWeapons.action = definition, 'weapon'
             AdminUI.OpenWeaponGrantConfirmation()
-        end)
-    end
+    end)
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenWeaponAdmin)
     AdminUI.OpenPage('weapon_issue_catalog')
@@ -46,13 +44,11 @@ end
 function AdminUI.OpenAmmoGrantCatalog()
     local page = AdminUI.RegisterPage('ammo_grant_catalog')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('grant_ammunition'))
-    for _, entry in ipairs(AdminWeapons.ammunition) do
-        local definition = entry
-        AdminUI.AddButton(page, label(definition), function()
+    AdminWeapons.ammoList = AdminWeapons.ammoList or {}
+    AdminUI.AddCatalog(page, AdminWeapons.ammunition, AdminWeapons.ammoList, AdminUI.OpenAmmoGrantCatalog, label, function(definition)
             AdminWeapons.selected, AdminWeapons.action, AdminWeapons.quantity = definition, 'ammo', ''
             AdminUI.OpenAmmoGrantQuantity()
-        end)
-    end
+    end)
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenWeaponAdmin)
     AdminUI.OpenPage('ammo_grant_catalog')
@@ -83,6 +79,9 @@ function AdminUI.OpenWeaponGrantConfirmation()
     local definition = AdminWeapons.selected
     if not definition then return end
     local page = AdminUI.RegisterPage('weapon_grant_confirmation')
+    local target, action, quantity = AdminWeapons.target, AdminWeapons.action, tonumber(AdminWeapons.quantity)
+    local sequence = AdminUI.openSequence + 1
+    local submitted = false
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('confirm_action'))
     local details = { ('%s: %s'):format(AdminTranslate('item'), label(definition)) }
     if AdminWeapons.action == 'ammo' then
@@ -90,12 +89,16 @@ function AdminUI.OpenWeaponGrantConfirmation()
     end
     AdminUI.AddText(page, table.concat(details, '\n'))
     AdminUI.AddButton(page, AdminTranslate('confirm_action'), function()
-        if AdminWeapons.action == 'weapon' then
+        if submitted or AdminWeapons.target ~= target or AdminWeapons.selected ~= definition
+            or AdminUI.currentPage ~= 'weapon_grant_confirmation' or AdminUI.openSequence ~= sequence then return end
+        submitted = true
+        if action == 'weapon' then
             AdminWeapons.Issue(definition.id)
         else
-            AdminWeapons.GrantAmmo(definition.id, tonumber(AdminWeapons.quantity))
+            AdminWeapons.GrantAmmo(definition.id, quantity)
         end
-    end, AdminUI.Styles.button)
+        AdminUI.AddText(page, AdminTranslate('action_request_sent'))
+    end)
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), function()
         if AdminWeapons.action == 'weapon' then AdminUI.OpenWeaponIssueCatalog()

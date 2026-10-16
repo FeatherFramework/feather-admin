@@ -149,7 +149,7 @@ function AdminUI.OpenModerationConfirmation(action, reason, duration, scope)
             or action == 'ban' and AdminModeration.Ban(reason, parsedDuration)
             or action == 'mute' and AdminModeration.Mute(reason, parsedDuration, scope)
         if succeeded then AdminUI.Close() end
-    end, AdminUI.Styles.button)
+    end)
 
     AdminUI.AddFooter(page)
 
@@ -257,7 +257,7 @@ function AdminUI.OpenModerationHistory(history)
         if entry.kind == 'ban' and entry.status == 'active' and AdminUI.CanUse('moderation.unban') then
             AdminUI.AddButton(page, AdminChatTranslate('unban'), function()
                 AdminModeration.Unban(entry.id)
-            end, AdminUI.Styles.button)
+            end)
         end
     end
 
@@ -283,7 +283,7 @@ function AdminUI.OpenChatMutes(mutes)
         if AdminUI.CanUseOnTarget('chat.mute.revoke', AdminModeration.target and AdminModeration.target.serverId) then
             AdminUI.AddButton(page, AdminChatTranslate('revoke_chat_mute'), function()
                 AdminModeration.RevokeMute(mute.muteId)
-            end, AdminUI.Styles.button)
+            end)
         end
     end
     AdminUI.AddFooter(page)
@@ -381,7 +381,7 @@ function AdminUI.OpenModerationTarget()
 
     AdminUI.AddFooterButton(page, AdminChatTranslate('submit'), function()
         AdminUI.OpenModerationConfirmation(form.action, form.reason, form.duration, form.scope)
-    end, AdminUI.Styles.button)
+    end)
 
     AdminUI.AddFooterButton(page, AdminChatTranslate('back'), function()
         if target.serverId then

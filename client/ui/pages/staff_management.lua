@@ -1,8 +1,3 @@
-local function escape(value)
-    return tostring(value or ''):gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;')
-        :gsub('"', '&quot;'):gsub("'", '&#39;')
-end
-
 local function playerName(target)
     local name = tostring(target.characterName or '')
     if name == '' then name = tostring(target.serverName or target.playerName or AdminTranslate('not_available')) end
@@ -28,10 +23,7 @@ local function targetButton(target)
     local account = target.playerName or target.serverName or AdminTranslate('not_available')
     local detail = ('%s: %s | %s: %s | %s | %s'):format(AdminTranslate('character_id'),
         tostring(target.characterId), AdminTranslate('account_name'), account, roleLabel(target), targetStatus(target))
-    return ([=[
-        <div style="font-size:1.65vmin;line-height:1.25;">%s</div>
-        <div style="font-size:1.1vmin;line-height:1.25;color:#c0c0c0;">%s</div>
-    ]=]):format(escape(playerName(target)), escape(detail))
+    return ('%s | %s'):format(playerName(target), detail)
 end
 
 local function openTarget(target, origin)
@@ -83,7 +75,7 @@ function AdminUI.OpenStaffManagement()
     else
         for _, entry in ipairs(AdminStaff.players) do
             local target = entry
-            AdminUI.AddHtmlButton(page, targetButton(target), function()
+            AdminUI.AddButton(page, targetButton(target), function()
                 openTarget(target, 'staff_management')
             end)
         end
@@ -115,7 +107,7 @@ function AdminUI.OpenStaffSearchResults()
     else
         for _, entry in ipairs(AdminStaff.results) do
             local target = entry
-            AdminUI.AddHtmlButton(page, targetButton(target), function()
+            AdminUI.AddButton(page, targetButton(target), function()
                 openTarget(target, 'staff_search')
             end)
         end

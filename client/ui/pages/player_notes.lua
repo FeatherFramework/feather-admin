@@ -84,8 +84,7 @@ function AdminUI.OpenPlayerNoteDetails()
         end)
     end
     if AdminUI.CanUse('notes.archive') then
-        AdminUI.AddButton(page, AdminTranslate('archive_player_note'), AdminUI.OpenPlayerNoteArchiveConfirmation,
-            AdminUI.Styles.button)
+        AdminUI.AddButton(page, AdminTranslate('archive_player_note'), AdminUI.OpenPlayerNoteArchiveConfirmation)
     end
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenPlayerNotes)
@@ -120,7 +119,7 @@ function AdminUI.OpenPlayerNoteArchiveConfirmation()
     AdminUI.AddText(page, note.body)
     AdminUI.AddButton(page, AdminTranslate('confirm_archive'), function()
         AdminPlayerNotes.Archive(note.id)
-    end, AdminUI.Styles.button)
+    end)
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenPlayerNoteDetails)
     AdminUI.OpenPage('player_note_archive_confirmation')

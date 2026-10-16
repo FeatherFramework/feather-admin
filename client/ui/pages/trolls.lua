@@ -28,13 +28,14 @@ function AdminUI.OpenTrolls()
             local label = AdminTranslate(action.key)
             local buttonLabel = action.toggle and AdminUI.GetToggleLabel(label, action.action) or label
             AdminUI.AddButton(page, buttonLabel, function(_, element)
-                local request = function() AdminTrolls.Request(action.action, AdminUI.GetTarget()) end
                 if action.toggle then
                     AdminUI.RunServerToggleAction(label, action.action, element, function(requestId)
                         AdminTrolls.Request(action.action, AdminUI.GetTarget(), requestId)
                     end)
                 else
-                    AdminUI.RunAction(label, request)
+                    AdminUI.ConfirmTargetAction(label, function(target)
+                        AdminTrolls.Request(action.action, target)
+                    end, AdminUI.OpenTrolls)
                 end
             end)
         end
@@ -42,7 +43,7 @@ function AdminUI.OpenTrolls()
 
     AdminUI.AddFooter(page)
 
-    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenSelectedPlayerTools)
+    AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenSelectedPlayer)
 
     AdminUI.OpenPage('trolls')
 end

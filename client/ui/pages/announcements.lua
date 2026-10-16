@@ -23,7 +23,7 @@ function AdminUI.OpenAnnouncementConfirmation(title, message)
         if not AdminAnnouncements.Send(cleanTitle, cleanMessage) then
             Feather.Notify.RightNotify(AdminTranslate('announcement_failed'), 3000)
         end
-    end, AdminUI.Styles.button)
+    end)
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenAnnouncements)
     AdminUI.OpenPage('announcement_confirmation')

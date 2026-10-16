@@ -3,8 +3,7 @@ local selectedActions = {
     character = {
         'economy.dollars.add', 'economy.dollars.remove', 'economy.gold.add', 'economy.gold.remove',
         'economy.tokens.add', 'economy.tokens.remove', 'economy.xp.add', 'economy.xp.remove',
-        'character.restore_model', 'inventory.give', 'inventory.inspect',
-        'weapons.issue', 'weapons.ammo.grant'
+        'character.restore_model'
     },
     status = {
         'booster.invincibility', 'booster.invisibility', 'booster.infinite_stamina', 'booster.heal',
@@ -22,7 +21,25 @@ function AdminUI.OpenSelectedPlayer()
     if not AdminUI.CanUse('players.view') then return end
     local page = AdminUI.RegisterPage('selected_player')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('selected_player_header'))
+    local canInventory = AdminUI.CanUse('inventory.inspect') or AdminUI.CanUseOnTarget('inventory.give')
+    local canWeapons = AdminUI.CanUse('weapons.issue') or AdminUI.CanUse('weapons.ammo.grant')
+    if canInventory or canWeapons then AdminUI.BeginSection(page, AdminTranslate('inventory_and_equipment'), true) end
+    if AdminUI.CanUse('inventory.inspect') or AdminUI.CanUseOnTarget('inventory.give') then
+        AdminUI.AddButton(page, AdminTranslate('inventory'), function()
+            AdminInventory.SetOnlineTarget(AdminUI.GetTarget())
+            AdminUI.OpenInventoryActions()
+        end)
+    end
+    if AdminUI.CanUse('weapons.issue') or AdminUI.CanUse('weapons.ammo.grant') then
+        AdminUI.AddButton(page, AdminTranslate('weapons_and_ammo'), function()
+            AdminWeapons.SetOnlineTarget(AdminUI.GetTarget())
+            AdminWeapons.RequestCatalog()
+        end)
+    end
 
+    AdminUI.EndSection(page)
+    if AdminUI.CanUse('player.info') or AdminUI.CanUse('moderation.view') or AdminUI.CanUse('notes.view')
+        or AdminUI.CanUse('cases.view') then AdminUI.BeginSection(page, AdminTranslate('player_overview'), true) end
     if AdminUI.CanUse('player.info') then
         AdminUI.AddButton(page, AdminTranslate('player_information'), function()
             if not AdminUI.RequireUseOnTarget('player.info') then return end
@@ -49,13 +66,20 @@ function AdminUI.OpenSelectedPlayer()
         AdminUI.AddButton(page, AdminChatTranslate('chat_case_list'), function() AdminChatCases.RequestList(0) end)
     end
 
+    AdminUI.EndSection(page)
     if AdminUI.CanUse('staff.role.assign') then
+        AdminUI.BeginSection(page, AdminTranslate('staff_oversight'), false)
         AdminUI.AddButton(page, AdminTranslate('staff_role'), function()
             if not AdminUI.RequireUseOnTarget('staff.role.assign') then return end
             AdminStaff.Request(AdminUI.GetTarget())
         end)
+        AdminUI.EndSection(page)
     end
 
+    if AdminUI.CanUseAnyAction(selectedActions.teleportation) or AdminUI.CanUseAnyAction(selectedActions.character)
+        or AdminUI.CanUseAnyAction(selectedActions.status) or AdminUI.CanUseAnyAction(selectedActions.appearance) then
+        AdminUI.BeginSection(page, AdminTranslate('player_tools'), true)
+    end
     if AdminUI.CanUseAnyAction(selectedActions.teleportation) then
         AdminUI.AddButton(page, AdminTranslate('teleportation'), function()
             if AdminUI.RequireAnyUseOnTarget(selectedActions.teleportation) then AdminUI.OpenPlayerManagement() end
@@ -68,9 +92,23 @@ function AdminUI.OpenSelectedPlayer()
         end)
     end
 
-    if AdminUI.CanUseAnyAction(selectedActions.status) or AdminUI.CanUseAnyAction(selectedActions.appearance)
-        or AdminUI.CanUseAnyAction(selectedActions.effects) then
-        AdminUI.AddButton(page, AdminTranslate('player_tools'), AdminUI.OpenSelectedPlayerTools)
+    if AdminUI.CanUseAnyAction(selectedActions.status) then
+        AdminUI.AddButton(page, AdminTranslate('player_status'), function()
+            if AdminUI.RequireAnyUseOnTarget(selectedActions.status) then AdminUI.OpenBoosters(false) end
+        end)
+    end
+    if AdminUI.CanUseAnyAction(selectedActions.appearance) then
+        AdminUI.AddButton(page, AdminTranslate('appearance'), function()
+            if AdminUI.RequireAnyUseOnTarget(selectedActions.appearance) then AdminUI.OpenAppearance('selected_player') end
+        end)
+    end
+    AdminUI.EndSection(page)
+    if AdminUI.CanUseAnyAction(selectedActions.effects) then
+        AdminUI.BeginSection(page, AdminTranslate('special_effects'), false)
+        AdminUI.AddButton(page, AdminTranslate('special_effects'), function()
+            if AdminUI.RequireAnyUseOnTarget(selectedActions.effects) then AdminUI.OpenTrolls() end
+        end)
+        AdminUI.EndSection(page)
     end
 
     AdminUI.AddFooter(page)
@@ -85,7 +123,7 @@ function AdminUI.OpenSelectedPlayer()
     AdminUI.OpenPage('selected_player')
 end
 
-function AdminUI.OpenPlayers()
+function AdminUI.OpenPlayers(pageNumber)
     if not AdminUI.CanUse('players.view') then return end
     local page = AdminUI.RegisterPage('players')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('players_header'))
@@ -117,27 +155,47 @@ function AdminUI.OpenPlayers()
         AdminUI.AddLine(page)
     end
 
-    table.sort(ClientAllPlayers, function(left, right)
+    local filter = AdminUI.onlinePlayerFilter or ''
+    AdminUI.AddInput(page, AdminTranslate('filter_online_players'), AdminTranslate('player_search'), function(data)
+        filter = tostring(data.value or '')
+    end, filter)
+    AdminUI.AddButton(page, AdminTranslate('search'), function()
+        AdminUI.onlinePlayerFilter = filter
+        AdminUI.OpenPlayers(1)
+    end)
+    local players = {}
+    for _, player in ipairs(ClientAllPlayers or {}) do
+        if filter == '' or tostring(player.characterName or ''):lower():find(filter:lower(), 1, true)
+            or tostring(player.serverId) == filter then players[#players + 1] = player end
+    end
+    table.sort(players, function(left, right)
         local leftName = tostring(left.characterName or ''):lower()
         local rightName = tostring(right.characterName or ''):lower()
         if leftName == rightName then return left.serverId < right.serverId end
         return leftName < rightName
     end)
-    for _, player in ipairs(ClientAllPlayers) do
+    local total = math.max(1, math.ceil(#players / 15))
+    local current = math.min(total, math.max(1, math.floor(tonumber(pageNumber) or AdminUI.onlinePlayerPage or 1)))
+    AdminUI.onlinePlayerPage = current
+    AdminUI.AddText(page, ('%s: %d / %d | %d'):format(AdminTranslate('page'), current, total, #players))
+    if #players == 0 then AdminUI.AddText(page, AdminTranslate('no_matching_players')) end
+    for index = (current - 1) * 15 + 1, math.min(current * 15, #players) do
+        local player = players[index]
         local target = player.serverId
         local name = player.characterName or AdminTranslate('not_available')
-        local safeName = tostring(name):gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;')
-            :gsub('"', '&quot;'):gsub("'", '&#39;')
-        local html = ([=[
-            <div style="font-size:1.65vmin;line-height:1.25;">%s</div>
-            <div style="font-size:1.2vmin;line-height:1.25;color:#c0c0c0;">%s: %s</div>
-        ]=]):format(safeName, ('%s | %s'):format(AdminTranslate('online'), AdminTranslate('server_id')), target)
-        AdminUI.AddHtmlButton(page, html, function()
+        local label = ('%s | %s: %s'):format(name, AdminTranslate('server_id'), target)
+        AdminUI.AddButton(page, label, function()
             AdminUI.playerParent = 'players'
             AdminUI.SetTarget(target)
             AdminUI.OpenSelectedPlayer()
         end)
     end
+
+    AdminUI.AddPagination(page, current, total, AdminUI.OpenPlayers)
+    AdminUI.AddButton(page, AdminTranslate('refresh'), function()
+        Feather.RPC.Notify('feather-admin:players:request', {})
+        AdminUI.OpenPlayers(current)
+    end)
 
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), function()
@@ -153,12 +211,7 @@ local function directoryButton(target)
     local detail = target.isOnline
         and ('%s | %s: %s'):format(status, AdminTranslate('server_id'), tostring(target.serverId))
         or ('%s | %s: %s'):format(status, AdminTranslate('character_id'), tostring(target.characterId))
-    local safeName = tostring(name):gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;')
-        :gsub('"', '&quot;'):gsub("'", '&#39;')
-    return ([=[
-        <div style="font-size:1.65vmin;line-height:1.25;">%s</div>
-        <div style="font-size:1.15vmin;line-height:1.25;color:#c0c0c0;">%s</div>
-    ]=]):format(safeName, detail)
+    return ('%s | %s'):format(name, detail)
 end
 
 function AdminUI.OpenPlayerSearchResults()
@@ -169,7 +222,7 @@ function AdminUI.OpenPlayerSearchResults()
     else
         for _, entry in ipairs(AdminPlayerDirectory.results) do
             local target = entry
-            AdminUI.AddHtmlButton(page, directoryButton(target), function()
+            AdminUI.AddButton(page, directoryButton(target), function()
                 if target.isOnline then
                     AdminUI.playerParent = 'player_search_results'
                     AdminUI.SetTarget(target.serverId)
@@ -244,18 +297,6 @@ function AdminUI.OpenCharacterManagement()
     if canManageBalances then
         AdminUI.AddButton(page, AdminTranslate('balances_and_economy'), function()
             AdminCharacter.RequestEconomySummary(AdminUI.GetTarget())
-        end)
-    end
-    if AdminUI.CanUse('inventory.inspect') or AdminUI.CanUseOnTarget('inventory.give') then
-        AdminUI.AddButton(page, AdminTranslate('inventory'), function()
-            AdminInventory.SetOnlineTarget(AdminUI.GetTarget())
-            AdminUI.OpenInventoryActions()
-        end)
-    end
-    if AdminUI.CanUse('weapons.issue') or AdminUI.CanUse('weapons.ammo.grant') then
-        AdminUI.AddButton(page, AdminTranslate('weapons_and_ammo'), function()
-            AdminWeapons.SetOnlineTarget(AdminUI.GetTarget())
-            AdminWeapons.RequestCatalog()
         end)
     end
     if AdminUI.CanUseOnTarget('character.restore_model') then

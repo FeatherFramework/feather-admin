@@ -2,6 +2,24 @@
 
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Staff access uses character-scoped Feather Authority roles and explicit capability grants.
 
+## 0.15.0 UI and evidence update
+
+Uses the current `feather-menu-v2` layout contract (reviewed against
+`2.0.0-alpha.8`): native accordions, responsive rows and page arrows, with the
+shared redemption theme and no Admin menu CSS overrides. Noclip keeps its own HUD
+styling. Player tools are directly accessible from grouped player sections;
+online players, inspected items and grant catalogs support search/pagination.
+Item details are structured with a separate read-only raw metadata view.
+
+Native firearm evidence controls are restricted to the actor's own current,
+unequipped item and the existing default-off Weapons opt-in. They require the
+matching Weapons evidence exports and Inventory revision projection. They do
+not implement cross-character custody or destruction.
+
+See [release preparation and deployment](docs/PR_PREPARATION_0.15.0.md) for the
+verified scope, dependencies and remaining live UI gate. No new role assignments
+or automatic feature activation are part of this update.
+
 With `feather-audit` started, Staff Oversight → Framework Audit provides bounded
 event searches, detail reads, and related-event navigation. It requires
 `audit.search` (Administrator by default); `audit.sensitive.view` (Owner by default)

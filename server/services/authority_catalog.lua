@@ -3,9 +3,9 @@ FeatherAdmin.AuthorityCatalog = {
     result = nil
 }
 
-local CAPABILITY_REQUEST_ID = 'admin-authority-capabilities-003'
+local CAPABILITY_REQUEST_ID = 'admin-authority-capabilities-005'
 local ROLE_REQUEST_ID = 'admin-authority-roles-002'
-local GRANT_MIGRATION_REQUEST_ID = 'admin-authority-grants-003'
+local GRANT_MIGRATION_REQUEST_ID = 'admin-authority-grants-005'
 local REASON_CODE = 'feather_admin.authority_catalog'
 
 function FeatherAdmin.AuthorityCatalog.Definitions()
@@ -28,7 +28,7 @@ local function Provision()
     assert(type(ready) == 'table' and ready.ok == true, 'Authority did not become ready')
 
     local definitions = FeatherAdmin.AuthorityCatalog.Definitions()
-    assert(#definitions == 88, 'Expected the reviewed 88-action Admin catalog')
+    assert(#definitions == 90, 'Expected the reviewed 90-action Admin catalog')
     local capabilities = exports['feather-authority']:RegisterCapabilities({
         requestId = CAPABILITY_REQUEST_ID,
         capabilities = definitions
@@ -104,7 +104,7 @@ local function Provision()
 
     assert(#roleResults == 3 and roleResults[1].grants < roleResults[2].grants
         and roleResults[2].grants < roleResults[3].grants
-        and roleResults[3].grants == 88,
+        and roleResults[3].grants == 90,
         'Authority tier grants are not the reviewed cumulative catalog')
     return {
         capabilities = #definitions,

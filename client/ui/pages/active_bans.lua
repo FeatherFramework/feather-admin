@@ -33,7 +33,7 @@ function AdminUI.OpenActiveBanRevokeConfirmation()
     AdminUI.AddText(page, banDetails(ban))
     AdminUI.AddButton(page, AdminTranslate('confirm_unban'), function()
         AdminModeration.Unban(ban.id, 'active_bans')
-    end, AdminUI.Styles.button)
+    end)
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenActiveBanDetails)
     AdminUI.OpenPage('active_ban_revoke_confirmation')
@@ -47,8 +47,7 @@ function AdminUI.OpenActiveBanDetails()
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('active_ban_details'))
     AdminUI.AddText(page, banDetails(ban))
     if AdminUI.CanUse('moderation.unban') then
-        AdminUI.AddButton(page, AdminTranslate('unban'), AdminUI.OpenActiveBanRevokeConfirmation,
-            AdminUI.Styles.button)
+        AdminUI.AddButton(page, AdminTranslate('unban'), AdminUI.OpenActiveBanRevokeConfirmation)
     end
     AdminUI.AddFooter(page)
     AdminUI.AddFooterButton(page, AdminTranslate('back'), AdminUI.OpenActiveBans)
