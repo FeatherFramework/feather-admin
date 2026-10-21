@@ -2,6 +2,14 @@
 
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Staff access uses character-scoped Feather Authority roles and explicit capability grants.
 
+## 0.15.1 native domain policy update
+
+Adds exact native Jobs service-policy grants and scoped employment/Access fixture
+actions. Native employer checks passed 7/7 for active/inactive/missing cases;
+Access employment lifecycle passed 28/28 and restart/cleanup 10/10. Domain DevMode
+stays true for early alpha at owner direction. No new player-role grants, schema
+changes or UI changes in this patch. Earlier UI acceptance limits remain below.
+
 ## 0.15.0 UI and evidence update
 
 Uses the current `feather-menu-v2` layout contract (reviewed against

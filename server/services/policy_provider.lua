@@ -1,12 +1,13 @@
 local providerInstalled = false
 
-local function Decision(allowed, code, reason)
+local function Decision(allowed, code, reason, details)
     return {
         ok = true,
         value = {
             allowed = allowed == true,
             code = code,
-            reason = reason
+            reason = reason,
+            details = details,
         }
     }
 end
@@ -22,7 +23,9 @@ local function EvaluateService(action,context)
     local callers=type(Config.servicePolicy)=='table' and Config.servicePolicy[context.caller]
     local actions=type(callers)=='table' and callers[context.subject.resource]
     if type(actions)~='table' or actions[action]~=true then
-        return Decision(false,'service_forbidden','No explicit service action grant exists.')
+        return Decision(false,'service_forbidden','No explicit service action grant exists.', {
+            serviceCaller = context.caller, servicePrincipal = context.subject.resource,
+        })
     end
     return Decision(true,'allowed','The configured service action is permitted.')
 end
@@ -63,6 +66,38 @@ local function InstallProvider()
 end
 
 InstallProvider()
+
+RegisterCommand('AdminAccessServicePolicySmokeTest', function(source)
+    if source ~= 0 then return end
+    CreateThread(function()
+        local callers = type(Config.servicePolicy) == 'table' and Config.servicePolicy['feather-access']
+        local principal = type(callers) == 'table' and callers['feather-access-tests']
+        local context = { caller = 'feather-access', source = 0, system = true,
+            subject = { resource = 'feather-access-tests' } }
+        local foreign = { caller = 'feather-access', source = 0, system = true, subject = { resource = 'foreign' } }
+        local spoof = { caller = 'feather-access-tests', source = 0, system = true,
+            subject = { resource = 'feather-access-tests' } }
+        local called, provider = pcall(function() return exports['feather-core']:GetProvider('policy', nil, 1) end)
+        local metadata = called and type(provider) == 'table' and provider.ok == true
+            and type(provider.value) == 'table' and provider.value.provider
+        local tests = {
+            { 'loaded manage grant', type(principal) == 'table' and principal['access.grant.manage'] == true },
+            { 'loaded read grant', type(principal) == 'table' and principal['access.grant.read'] == true },
+            { 'manage evaluates allowed', EvaluateService('access.grant.manage', context).value.allowed == true },
+            { 'read evaluates allowed', EvaluateService('access.grant.read', context).value.allowed == true },
+            { 'foreign principal denied', EvaluateService('access.grant.manage', foreign).value.allowed == false },
+            { 'broker spoof denied', EvaluateService('access.grant.manage', spoof).value.allowed == false },
+            { 'unknown action denied', EvaluateService('access.unconfigured', context).value.allowed == false },
+            { 'default provider is Admin', type(metadata) == 'table' and metadata.owner == 'feather-admin' },
+        }
+        local passed = 0
+        for _, test in ipairs(tests) do
+            if test[2] then passed = passed + 1 end
+            print(('[AdminAccessServicePolicySmokeTest] %s %s'):format(test[2] and 'PASS' or 'FAIL', test[1]))
+        end
+        print(('[AdminAccessServicePolicySmokeTest] done %d/%d passed (read-only)'):format(passed, #tests))
+    end)
+end, true)
 
 RegisterCommand('AdminReleaseContractSmokeTest',function(source)
     if source~=0 then return end
