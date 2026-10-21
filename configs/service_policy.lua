@@ -20,6 +20,10 @@ Config.servicePolicy = {
     -- Access still requires its own caller trust and target-provider authority.
     -- This fixture principal is dormant unless Access DevMode is enabled.
     ['feather-access'] = {
+        ['feather-jobs-tests'] = {
+            ['access.grant.manage'] = true,
+            ['access.grant.read'] = true,
+        },
         ['feather-access-tests'] = {
             ['access.grant.manage'] = true,
             ['access.grant.read'] = true,
