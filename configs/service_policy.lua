@@ -1,6 +1,22 @@
 -- Server-only policy grants. No wildcards, staff-role fallback, or client actors.
 -- The broker caller authenticates the delegated subject.resource principal.
 Config.servicePolicy = {
+    -- Native Jobs brokers authenticate these exact principals independently of staff roles.
+    ['feather-jobs'] = {
+        -- Dormant unless Jobs grants the development fixture caller trust.
+        ['feather-jobs-tests'] = {
+            ['jobs.definition.manage'] = true,
+            ['jobs.assignment.manage'] = true,
+        },
+        ['feather-jobs'] = {
+            ['jobs.definition.manage'] = true,
+            ['jobs.assignment.manage'] = true,
+        },
+        ['feather-admin'] = {
+            ['jobs.definition.manage'] = true,
+            ['jobs.assignment.manage'] = true,
+        },
+    },
     -- Access still requires its own caller trust and target-provider authority.
     -- This fixture principal is dormant unless Access DevMode is enabled.
     ['feather-access'] = {
@@ -10,6 +26,12 @@ Config.servicePolicy = {
         },
     },
     ['feather-organizations'] = {
+        -- Organizations grants this caller trust only in development mode.
+        ['feather-jobs-tests'] = {
+            ['organizations.organization.create'] = true,
+            ['organizations.organization.update'] = true,
+            ['organizations.organization.suspend'] = true,
+        },
         ['feather-shops'] = {
             ['organizations.organization.create']=true,
             ['organizations.organization.update']=true
