@@ -1,5 +1,7 @@
 # Feather Admin
 
+0.15.3 adds exact Assets/Property Access broker policies and narrowly scoped development fixture permissions.
+
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Staff access uses character-scoped Feather Authority roles and explicit capability grants.
 
 ## 0.15.2 Inventory Access policy update
