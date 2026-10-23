@@ -1,6 +1,6 @@
 # Feather Admin
 
-0.15.3 adds exact Assets/Property Access broker policies and narrowly scoped development fixture permissions.
+0.15.4 adds audited Economy wallet funding and scoped Stables asset-management permissions.
 
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Staff access uses character-scoped Feather Authority roles and explicit capability grants.
 
@@ -194,7 +194,8 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - Server-only `configs/audit.lua`: producer instance, batch size, and polling interval
 - `serverOverview.resources`: choose which resources appear on Server Overview
 - `announcements`: configure title/message limits, cooldown, and display duration
-- `economy.maxAmount`: reserved for the future provider-backed economy screen
+- `economy.maxAmount`: client-side displayed amount limit; the server also applies `walletFunding.maxBaseUnits`
+- `walletFunding`: allowed currencies (dollars by default) and integer base-unit limit for audited Economy wallet issues
 - `inventory.maxGrantQuantity`: limit the quantity in one admin item grant
 - `weapons.maxAmmoGrantQuantity`: limit ammunition granted in one admin action
 - `weapons.issuedCondition`: set the starting condition of admin-issued weapons

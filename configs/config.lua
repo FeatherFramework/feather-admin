@@ -2,8 +2,9 @@ Config = {
 
     -- Admin permissions use the active Character's assignment from feather-authority.
     identity = {
-        -- Economy remains hidden until its dedicated provider is available.
+        -- Only the integrated dollars addition is exposed; other legacy actions stay hidden.
         disabledActionPrefixes = { 'economy.' },
+        enabledActions = { ['economy.dollars.add'] = true },
         disabledActions = { ['character.restore_model'] = true }
     },
 
@@ -68,6 +69,8 @@ Config = {
     economy = {
         maxAmount = 1000000
     },
+    -- Console-only Economy issue action. Amounts are integer currency BASE UNITS.
+    walletFunding = { maxBaseUnits = 1000000, currencies = { dollars = true } },
     -----------------------------------------------------
 
     -- Limits the quantity added by one admin item grant.

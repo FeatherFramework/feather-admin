@@ -1,4 +1,7 @@
 AdminEnglishTranslations = {
+    wallet_pending_request = 'Resolve the pending wallet addition before changing its target or amount.',
+    wallet_issue_unconfirmed = 'Wallet addition was not confirmed. Retry the same target and amount.',
+    wallet_issue_confirmed = 'Wallet addition confirmed.',
     inventory_and_equipment = 'Inventory and equipment',
     player_overview = 'Overview and moderation',
     filter_catalog = 'Filter catalog by name or definition ID',

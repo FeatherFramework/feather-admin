@@ -47,10 +47,7 @@ function AdminUI.OpenCharacterAdministration()
     AdminUI.AddText(page, table.concat({
         ('%s: %s'):format(AdminTranslate('character_name'),
             tostring(summary.characterName ~= '' and summary.characterName or AdminTranslate('not_available'))),
-        ('%s: %s'):format(AdminTranslate('economy_dollars'), tostring(summary.dollars or 0)),
-        ('%s: %s'):format(AdminTranslate('economy_gold'), tostring(summary.gold or 0)),
-        ('%s: %s'):format(AdminTranslate('economy_tokens'), tostring(summary.tokens or 0)),
-        ('%s: %s'):format(AdminTranslate('economy_xp'), tostring(summary.xp or 0))
+        ('%s: %s'):format(AdminTranslate('economy_dollars'), tostring(summary.dollars or 0))
     }, '\n'))
     AdminUI.AddLine(page)
 

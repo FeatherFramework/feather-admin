@@ -1,6 +1,9 @@
 -- Server-only policy grants. No wildcards, staff-role fallback, or client actors.
 -- The broker caller authenticates the delegated subject.resource principal.
 Config.servicePolicy = {
+    ['feather-economy'] = {
+        ['feather-admin'] = { ['economy.currency.issue'] = true },
+    },
     ['feather-property'] = {
         ['feather-property-access-tests'] = {
             ['property.property.manage'] = true,
@@ -8,6 +11,11 @@ Config.servicePolicy = {
         },
     },
     ['feather-assets'] = {
+        -- Assets authenticates this principal and still enforces manager ownership.
+        -- Asset management only; no ownership-transfer action is granted.
+        ['bcc-stables'] = {
+            ['assets.asset.manage'] = true,
+        },
         ['feather-assets-access-tests'] = {
             ['assets.asset.manage'] = true,
             ['assets.ownership.transfer'] = true,
@@ -84,3 +92,7 @@ Config.servicePolicy = {
         }
     }
 }
+
+-- Service-only exceptions to hidden legacy UI prefixes; explicit disabledActions
+-- still wins. This never grants a player/menu permission or an action by itself.
+Config.servicePolicyActionExceptions = { ['economy.currency.issue'] = true }

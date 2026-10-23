@@ -3,6 +3,9 @@ AdminCharacter = {
 }
 
 local economyFields = { 'dollars', 'gold', 'tokens', 'xp' }
+local issueSequence=0
+local issueSession=('%08x-%08x'):format(GetGameTimer(),math.random(0,0x7fffffff))
+local pendingIssue
 
 local function availableEconomyPermission()
     for _, operation in ipairs({ 'add', 'remove' }) do
@@ -22,9 +25,19 @@ end
 
 function AdminCharacter.AdjustEconomy(target, field, operation, amount)
     if target == nil or AdminCharacter.ParseAmount(amount) == nil then return false end
-    Feather.RPC.Notify('feather-admin:economy:adjust', {
-        playerId = target, field = field, operation = operation, value = amount
-    })
+    local summary=AdminCharacter.economySummary
+    if field~='dollars' or operation~='add' or type(summary)~='table'
+        or tonumber(summary.playerId)~=tonumber(target) or type(summary.characterId)~='string' then return false end
+    local value=tostring(amount)
+    if pendingIssue and (pendingIssue.characterId~=summary.characterId or pendingIssue.value~=value) then
+        Feather.Notify.RightNotify(AdminTranslate('wallet_pending_request'),4000); return false
+    end
+    if not pendingIssue then
+        issueSequence=issueSequence+1
+        pendingIssue={playerId=target,characterId=summary.characterId,field=field,operation=operation,value=value,
+            requestId=('%s-%d'):format(issueSession,issueSequence)}
+    end
+    Feather.RPC.Notify('feather-admin:economy:adjust',pendingIssue)
     return true
 end
 
@@ -66,6 +79,25 @@ RegisterNetEvent('feather-admin:economy:result', function(field, operation, amou
     if AdminUI.currentPage == 'character_administration' or AdminUI.currentPage == 'economy_confirmation' then
         AdminUI.OpenCharacterAdministration()
     end
+end)
+
+RegisterNetEvent('feather-admin:wallet:error',function(code)
+    if pendingIssue then
+        if code=='invalid_input' and not pendingIssue.uncertain then pendingIssue=nil
+        else pendingIssue.uncertain=true end
+    end
+    Feather.Notify.RightNotify(AdminTranslate('wallet_issue_unconfirmed'),4000)
+end)
+
+RegisterNetEvent('feather-admin:wallet:issued',function(result)
+    if type(result)~='table' then return end
+    if pendingIssue and result.requestId==pendingIssue.requestId then pendingIssue=nil end
+    local summary=AdminCharacter.economySummary
+    if type(summary)=='table' and summary.characterId==result.characterId then
+        AdminCharacter.economySummary=nil
+        AdminCharacter.RequestEconomySummary(summary.playerId)
+    end
+    Feather.Notify.RightNotify(AdminTranslate('wallet_issue_confirmed'),3000)
 end)
 
 RegisterNetEvent('feather-admin:economy:summary', function(summary)

@@ -136,6 +136,7 @@ function FeatherAdmin.IsActionEnabled(action)
     if type(identityConfig.disabledActions) == 'table' and identityConfig.disabledActions[action] then
         return false
     end
+    if type(identityConfig.enabledActions)=='table' and identityConfig.enabledActions[action]==true then return true end
     for _, prefix in ipairs(identityConfig.disabledActionPrefixes or {}) do
         if type(prefix) == 'string' and action:sub(1, #prefix) == prefix then return false end
     end
