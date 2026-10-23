@@ -19,7 +19,11 @@ local function EvaluateService(action,context)
         or type(context.subject.resource)~='string' then
         return Decision(false,'invalid_service_context','Authenticated service context is required.')
     end
-    if not FeatherAdmin.IsActionEnabled(action) then return Decision(false,'action_disabled','That action is disabled.') end
+    local disabled = type(Config.identity)=='table' and Config.identity.disabledActions
+    local exception = type(Config.servicePolicyActionExceptions)=='table' and Config.servicePolicyActionExceptions[action]==true
+    if (type(disabled)=='table' and disabled[action]) or (not FeatherAdmin.IsActionEnabled(action) and not exception) then
+        return Decision(false,'action_disabled','That action is disabled.')
+    end
     local callers=type(Config.servicePolicy)=='table' and Config.servicePolicy[context.caller]
     local actions=type(callers)=='table' and callers[context.subject.resource]
     if type(actions)~='table' or actions[action]~=true then
@@ -34,10 +38,10 @@ local function Evaluate(action, context)
     if type(action) ~= 'string' or type(context) ~= 'table' then
         return Decision(false, 'invalid_input', 'Policy action and context are required.')
     end
+    if context.source==0 then return EvaluateService(action,context) end
     if not FeatherAdmin.IsActionEnabled(action) then
         return Decision(false, 'action_disabled', 'That action is disabled.')
     end
-    if context.source==0 then return EvaluateService(action,context) end
 
     if type(Config.permissions[action]) ~= 'string' then
         return Decision(false, 'unknown_action', 'That action has no configured policy.')
