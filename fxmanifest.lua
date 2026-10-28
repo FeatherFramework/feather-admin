@@ -6,12 +6,13 @@ lua54 'yes'
 name 'feather-admin'
 description 'The official Admin menu for the Feather Framework'
 author 'BCC Scripts'
-version '0.15.4'
+version '0.15.5'
 
 ui_page 'web/noclip.html'
 
 files {
-    'web/noclip.html'
+    'web/noclip.html',
+    'web/weather/*.svg'
 }
 
 shared_scripts {
@@ -44,6 +45,7 @@ client_scripts {
     'client/ui/pages/framework_audit.lua',
     'client/ui/pages/server_overview.lua',
     'client/ui/pages/announcements.lua',
+    'client/ui/pages/weather.lua',
     'client/ui/pages/active_bans.lua',
     'client/ui/pages/reports.lua',
     'client/ui/pages/cases.lua',

@@ -1,8 +1,20 @@
 # Feather Admin
 
-0.15.4 adds audited Economy wallet funding and scoped Stables asset-management permissions.
+0.15.5 adds gated Weather and seasons management, a compact forecast table and reusable monochrome weather symbols.
+
+0.15.4 added audited Economy wallet funding and scoped Stables asset-management permissions.
 
 Feather Admin adds an in-game admin menu to RedM servers that use the Feather Framework. Staff access uses character-scoped Feather Authority roles and explicit capability grants.
+
+## Optional Weather and seasons controls
+
+Server operations → Weather and seasons reads shared conditions and the global forecast from `feather-weather`. Moderators receive `weather.view`; administrators and owners additionally receive `weather.clock`, `weather.weather`, `weather.wind`, `weather.seasons` and `weather.reset`. These exact role grants were approved by the user. Provisioning upgrades the reviewed catalog to 96 capabilities / 203 cumulative grants while preserving role identities; repeated starts reuse existing grants.
+
+Controls cover simulated/UTC clock and freeze/rate/offset, weather/transition/freeze/forced coverage, manual wind, automatic wind/freeze, calendar season/day/enabled/frozen and a confirmed reset. Each shared mutation has a confirmation page. Requests are checked on the server, limited to three per two seconds with a 1024-byte payload bound, and successful changes are audited. Client menu visibility is not authorization. Conditions shown are snapshots; refresh after timeout/restart or to inspect current progression.
+
+Weather is optional and must explicitly trust `feather-admin` for mutations (its current default). Missing/stopped/denying Weather produces an unavailable/denied response without blocking unrelated Admin tools. The server bridge invokes only fixed Weather exports, never a client-supplied method or resource name. Feather Menu renders the UI; no new NUI bundle/build is required. New pages and role upgrades need `refresh`, then a coordinated Admin restart. Weather remains an independent resource.
+
+Weather presentation uses seven original monochrome SVG symbols in `web/weather/`, covering clear, cloudy, rain, storm, snow, fog and sandstorm. The compact current shared-weather card uses a four-rem icon; the next three forecast entries are shown as paired Weather / Expected in columns. View full forecast opens the complete snapshot, while paused forecasts show Paused instead of a misleading countdown. These are global conditions, not the observer's regional projection. The symbols are standalone transparent vectors, suitable for reuse in other Feather interfaces; no remote images or generated landscape assets are required. Their asset glob is included in the manifest, so run `refresh` before restarting Admin after this update.
 
 ## 0.15.2 Inventory Access policy update
 

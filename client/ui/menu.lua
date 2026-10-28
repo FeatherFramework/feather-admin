@@ -196,6 +196,21 @@ function AdminUI.EndSection(page)
     page.section, page.row = nil, nil
 end
 
+function AdminUI.BeginRow(page)
+    page.row = NextElementKey(page, 'row')
+end
+
+function AdminUI.EndRow(page)
+    page.row = nil
+end
+
+function AdminUI.AddImage(page, image, label, alt)
+    return AddElement(page, 'imagebox', {
+        image=image, label=label, alt=alt or label,
+        width='100%', height='4rem', objectFit='contain', slot='content'
+    })
+end
+
 function AdminUI.AddPagination(page, current, total, navigate)
     if total <= 1 then return end
     AddElement(page, 'pagearrows', { current = current, total = total, slot = 'content' }, function(event)
