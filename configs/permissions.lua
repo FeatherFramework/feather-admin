@@ -1,6 +1,10 @@
 -- Minimum Authority role required by the reviewed default Admin catalog.
 -- These keys build explicit capability grants; they are not numeric permission levels.
 Config.permissions = {
+    ['weather.view'] = 'moderator',
+    ['weather.clock'] = 'administrator', ['weather.weather'] = 'administrator',
+    ['weather.wind'] = 'administrator', ['weather.seasons'] = 'administrator',
+    ['weather.reset'] = 'administrator',
     ['audit.search'] = 'administrator',
     ['audit.sensitive.view'] = 'owner',
     ['roles.assignment.manage'] = 'owner',
