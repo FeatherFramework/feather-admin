@@ -11,6 +11,11 @@ Config.servicePolicy = {
         },
     },
     ['feather-property'] = {
+        -- Effective only while Property permits the isolated development fixture.
+        ['feather-doors-property-tests'] = {
+            ['property.property.manage'] = true,
+            ['property.interest.manage'] = true,
+        },
         ['feather-property-access-tests'] = {
             ['property.property.manage'] = true,
             ['property.interest.manage'] = true,
