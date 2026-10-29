@@ -28,7 +28,7 @@ local function Provision()
     assert(type(ready) == 'table' and ready.ok == true, 'Authority did not become ready')
 
     local definitions = FeatherAdmin.AuthorityCatalog.Definitions()
-    assert(#definitions == 96, 'Expected the reviewed 96-action Admin catalog')
+    assert(#definitions == 96, ('Expected the reviewed 96-action Admin catalog; loaded %d. Check configs/permissions.lua and configs/authority_actions.lua. Currency Issue/Destroy service grants belong in configs/service_policy.lua.'):format(#definitions))
     local capabilities = exports['feather-authority']:RegisterCapabilities({
         requestId = CAPABILITY_REQUEST_ID,
         capabilities = definitions

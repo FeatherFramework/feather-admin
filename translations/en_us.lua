@@ -1,7 +1,9 @@
 AdminEnglishTranslations = {
-    wallet_pending_request = 'Resolve the pending wallet addition before changing its target or amount.',
-    wallet_issue_unconfirmed = 'Wallet addition was not confirmed. Retry the same target and amount.',
-    wallet_issue_confirmed = 'Wallet addition confirmed.',
+    wallet_pending_request = 'Resolve the pending wallet adjustment before changing its target, currency, operation or amount.',
+    wallet_issue_unconfirmed = 'Wallet adjustment was not confirmed. Retry the same target, currency, operation and amount.',
+    wallet_issue_confirmed = 'Wallet adjustment confirmed.',
+    wallet_insufficient_funds = 'That wallet does not have enough funds. Enter a smaller amount.',
+    wallet_permission_denied = 'Wallet adjustment denied. Check the staff permission and Economy service policy.',
     weather_shared_conditions='Shared conditions', weather_weather_art='Weather illustration',
     weather_condition='Weather', weather_expected_in='Expected in', weather_next_forecast='Next conditions',
     weather_full_forecast='View full forecast', weather_forecast_paused='Paused', weather_forecast_unknown='Not estimated',

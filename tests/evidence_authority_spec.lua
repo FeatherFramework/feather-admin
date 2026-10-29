@@ -81,4 +81,17 @@ end
 end
 run(false); run(true)
 run(false,true); run(true,true)
+-- Refuse a mixed/edited catalog before registering or granting capabilities.
+local blocked,writes=nil,0
+AdminDatabase.OnReady=function(fn) blocked=fn end
+exports['feather-authority'].RegisterCapabilities=function() writes=writes+1;return {ok=true} end
+for _,delta in ipairs({1,-1}) do
+ Config={};dofile('configs/permissions.lua');dofile('configs/authority_actions.lua')
+ if delta==1 then Config.authorityActions['economy.currency.destroy']='staff.admin.economy.currency.destroy'
+ else Config.authorityActions['weather.view']=nil end
+ dofile('server/services/authority_catalog.lua')
+ local ok,err=pcall(blocked)
+ assert(not ok and tostring(err):find('loaded '..(96+delta),1,true))
+ assert(writes==0 and not FeatherAdmin.AuthorityCatalog.State().ready)
+end
 print('Admin Authority PASS (evidence and 90-to-96 weather upgrades, reviewed view/mutation tiers, stable roles and replay; mocked Authority)')
