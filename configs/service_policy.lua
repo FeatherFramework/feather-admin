@@ -2,7 +2,13 @@
 -- The broker caller authenticates the delegated subject.resource principal.
 Config.servicePolicy = {
     ['feather-economy'] = {
-        ['feather-admin'] = { ['economy.currency.issue'] = true },
+        ['bcc-stables'] = {
+            ['economy.currency.issue'] = true
+        },
+        ['feather-admin'] = {
+            ['economy.currency.issue'] = true,
+            ['economy.currency.destroy'] = true
+        },
     },
     ['feather-property'] = {
         ['feather-property-access-tests'] = {
@@ -95,4 +101,4 @@ Config.servicePolicy = {
 
 -- Service-only exceptions to hidden legacy UI prefixes; explicit disabledActions
 -- still wins. This never grants a player/menu permission or an action by itself.
-Config.servicePolicyActionExceptions = { ['economy.currency.issue'] = true }
+Config.servicePolicyActionExceptions = { ['economy.currency.issue'] = true, ['economy.currency.destroy'] = true }

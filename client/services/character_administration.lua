@@ -2,7 +2,7 @@ AdminCharacter = {
     economySummary = nil
 }
 
-local economyFields = { 'dollars', 'gold', 'tokens', 'xp' }
+local economyFields = { 'dollars', 'gold' }
 local issueSequence=0
 local issueSession=('%08x-%08x'):format(GetGameTimer(),math.random(0,0x7fffffff))
 local pendingIssue
@@ -26,10 +26,11 @@ end
 function AdminCharacter.AdjustEconomy(target, field, operation, amount)
     if target == nil or AdminCharacter.ParseAmount(amount) == nil then return false end
     local summary=AdminCharacter.economySummary
-    if field~='dollars' or operation~='add' or type(summary)~='table'
+    if (field~='dollars' and field~='gold') or (operation~='add' and operation~='remove') or type(summary)~='table'
         or tonumber(summary.playerId)~=tonumber(target) or type(summary.characterId)~='string' then return false end
     local value=tostring(amount)
-    if pendingIssue and (pendingIssue.characterId~=summary.characterId or pendingIssue.value~=value) then
+    if pendingIssue and (pendingIssue.characterId~=summary.characterId or tonumber(pendingIssue.playerId)~=tonumber(target)
+        or pendingIssue.field~=field or pendingIssue.operation~=operation or pendingIssue.value~=value) then
         Feather.Notify.RightNotify(AdminTranslate('wallet_pending_request'),4000); return false
     end
     if not pendingIssue then
@@ -83,10 +84,14 @@ end)
 
 RegisterNetEvent('feather-admin:wallet:error',function(code)
     if pendingIssue then
-        if code=='invalid_input' and not pendingIssue.uncertain then pendingIssue=nil
+        local refused={invalid_input=true,insufficient_funds=true,authorization_denied=true,account_not_found=true,character_unavailable=true,
+            wallet_conflict=true,session_stale=true,dependency_unavailable=true,not_ready=true,unsupported_contract=true,audit_unavailable=true}
+        if refused[code] and not pendingIssue.uncertain then pendingIssue=nil
         else pendingIssue.uncertain=true end
     end
-    Feather.Notify.RightNotify(AdminTranslate('wallet_issue_unconfirmed'),4000)
+    local message=code=='insufficient_funds' and 'wallet_insufficient_funds'
+        or code=='authorization_denied' and 'wallet_permission_denied' or 'wallet_issue_unconfirmed'
+    Feather.Notify.RightNotify(AdminTranslate(message),4000)
 end)
 
 RegisterNetEvent('feather-admin:wallet:issued',function(result)

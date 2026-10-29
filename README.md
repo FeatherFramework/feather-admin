@@ -1,5 +1,7 @@
 # Feather Admin
 
+Current version: **0.15.6** adds audited cash/gold additions and removals, scoped service grants and catalog diagnostics.
+
 0.15.5 adds gated Weather and seasons management, a compact forecast table and reusable monochrome weather symbols.
 
 0.15.4 added audited Economy wallet funding and scoped Stables asset-management permissions.
@@ -207,7 +209,7 @@ Most server owners only need to edit `configs/config.lua`. Open it with a text e
 - `serverOverview.resources`: choose which resources appear on Server Overview
 - `announcements`: configure title/message limits, cooldown, and display duration
 - `economy.maxAmount`: client-side displayed amount limit; the server also applies `walletFunding.maxBaseUnits`
-- `walletFunding`: allowed currencies (dollars by default) and integer base-unit limit for audited Economy wallet issues
+- `walletFunding`: allowed currencies (dollars and gold by default) and integer base-unit limit for audited Economy wallet additions/removals
 - `inventory.maxGrantQuantity`: limit the quantity in one admin item grant
 - `weapons.maxAmmoGrantQuantity`: limit ammunition granted in one admin action
 - `weapons.issuedCondition`: set the starting condition of admin-issued weapons
@@ -430,3 +432,8 @@ session. Owners are refused. Restore after the read completes; retry the same
 run ID if restoration fails. After an Admin restart, recovery requires loading
 the original character and using `AdminBootstrapAdministrator` with a fresh
 request ID. Full acceptance procedures live in feather-framework-docs.
+
+Cash and gold additions/removals are implemented in Balances and economy using
+Economy Issue/Destroy with exact staff permissions, removal confirmation and
+receipt-backed retries. Tokens/XP remain disabled. See [wallet adjustments](docs/WALLET_FUNDING.md)
+for configuration, exact deployment paths and the pending live test gate.

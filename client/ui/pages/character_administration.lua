@@ -1,8 +1,6 @@
 local economyFields = {
     { field = 'dollars', key = 'economy_dollars' },
-    { field = 'gold', key = 'economy_gold' },
-    { field = 'tokens', key = 'economy_tokens' },
-    { field = 'xp', key = 'economy_xp' }
+    { field = 'gold', key = 'economy_gold' }
 }
 
 local function permission(field, operation)
@@ -44,11 +42,12 @@ function AdminUI.OpenCharacterAdministration()
     local selectedField
     local page = AdminUI.RegisterPage('character_administration')
     AdminUI.AddHeader(page, AdminTranslate('admin_header'), AdminTranslate('balances_and_economy'))
-    AdminUI.AddText(page, table.concat({
-        ('%s: %s'):format(AdminTranslate('character_name'),
-            tostring(summary.characterName ~= '' and summary.characterName or AdminTranslate('not_available'))),
-        ('%s: %s'):format(AdminTranslate('economy_dollars'), tostring(summary.dollars or 0))
-    }, '\n'))
+    local balances={('%s: %s'):format(AdminTranslate('character_name'),
+        tostring(summary.characterName ~= '' and summary.characterName or AdminTranslate('not_available')))}
+    for _,entry in ipairs(economyFields) do if summary[entry.field]~=nil then
+        balances[#balances+1]=('%s: %s'):format(AdminTranslate(entry.key),tostring(summary[entry.field]))
+    end end
+    AdminUI.AddText(page,table.concat(balances,'\n'))
     AdminUI.AddLine(page)
 
     if AdminUI.CanUseAny('economy.') then

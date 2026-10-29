@@ -30,3 +30,11 @@ check('Unknown action denied','assets.unknown',context('feather-assets','bcc-sta
 check('Existing fixture grants preserved','assets.ownership.transfer',context('feather-assets','feather-assets-access-tests'),true)
 assert(Config.servicePolicy['feather-assets']['bcc-stables']['*']==nil)
 print(('%d/%d Stables Assets policy cases passed; Core authentication is not modeled.'):format(count,count))
+
+check('Stables buyback currency issue allowed','economy.currency.issue',context('feather-economy','bcc-stables'),true)
+check('Stables currency destroy denied','economy.currency.destroy',context('feather-economy','bcc-stables'),false)
+check('Wrong issuer broker denied','economy.currency.issue',context('bcc-stables','bcc-stables'),false)
+Config.permissions={}
+local player=context('feather-economy','bcc-stables');player.source=1;player.system=false
+check('Client actor cannot use service issue grant','economy.currency.issue',player,false)
+print('PASS Stables service payout scope; reason restriction belongs to Economy')
