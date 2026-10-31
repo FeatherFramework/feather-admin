@@ -23,9 +23,10 @@ Config.servicePolicy = {
     },
     ['feather-assets'] = {
         -- Assets authenticates this principal and still enforces manager ownership.
-        -- Asset management only; no ownership-transfer action is granted.
+        -- Horse trades require explicit recipient consent in Stables.
         ['bcc-stables'] = {
             ['assets.asset.manage'] = true,
+            ['assets.ownership.transfer'] = true,
         },
         ['feather-assets-access-tests'] = {
             ['assets.asset.manage'] = true,

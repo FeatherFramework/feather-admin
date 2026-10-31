@@ -21,7 +21,8 @@ local function context(broker,principal)
     return {source=0,system=true,caller=broker,subject={resource=principal}}
 end
 check('Stables asset management allowed','assets.asset.manage',context('feather-assets','bcc-stables'),true)
-check('Stables transfer denied','assets.ownership.transfer',context('feather-assets','bcc-stables'),false)
+check('Stables horse transfer allowed','assets.ownership.transfer',context('feather-assets','bcc-stables'),true)
+check('Wrong transfer broker denied','assets.ownership.transfer',context('bcc-stables','bcc-stables'),false)
 check('Wrong broker denied','assets.asset.manage',context('bcc-stables','bcc-stables'),false)
 check('Unknown principal denied','assets.asset.manage',context('feather-assets','other'),false)
 local forged=context('feather-assets','bcc-stables'); forged.characterId='forged'
