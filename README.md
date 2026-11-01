@@ -1,6 +1,8 @@
 # Feather Admin
 
-Current version: **0.15.7** adds scoped service policy for the isolated Doors Property-binding fixture.
+Current version: **0.15.8** authorizes Stables horse ownership transfers through the Assets broker, with direct and forged broker requests refused.
+
+0.15.7 adds scoped service policy for the isolated Doors Property-binding fixture.
 
 0.15.6 adds audited cash/gold additions and removals, scoped service grants and catalog diagnostics.
 
